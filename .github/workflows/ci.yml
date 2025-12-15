@@ -51,9 +51,7 @@ jobs:
 
       - name: Clippy lint
         shell: bash
-        run: |
-          rustup component add clippy
-          cargo clippy --locked --all-targets --all-features
+        run: cargo clippy --locked --all-targets --all-features
 
       - name: Tests
         shell: bash
