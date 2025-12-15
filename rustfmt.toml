@@ -1,0 +1,42 @@
+# 企业级 Rust 代码格式配置
+# IronCore Multi-Chain Wallet System
+
+# 基础配置
+edition = "2021"
+max_width = 100
+hard_tabs = false
+tab_spaces = 4
+
+# 导入配置
+imports_granularity = "Crate"
+group_imports = "StdExternalCrate"
+reorder_imports = true
+
+# 代码风格
+use_small_heuristics = "Default"
+fn_single_line = false
+where_single_line = false
+
+# 注释配置
+comment_width = 100
+wrap_comments = true
+normalize_comments = true
+normalize_doc_attributes = true
+
+# 格式化选项
+format_code_in_doc_comments = true
+format_macro_matchers = true
+format_strings = false
+
+# 链式调用
+chain_width = 60
+chains_overflow_last = true
+
+# 控制流
+match_arm_leading_pipes = "Never"
+match_block_trailing_comma = false
+overflow_delimited_expr = true
+
+# 企业级代码质量
+unstable_features = false
+

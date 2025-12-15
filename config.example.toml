@@ -1,0 +1,60 @@
+# IronCore Backend Configuration Example
+# Copy this file to config.toml and modify as needed
+
+[database]
+url = "postgres://root@localhost:26257/ironcore?sslmode=disable"
+max_connections = 16
+min_connections = 2
+acquire_timeout_secs = 5
+idle_timeout_secs = 300
+
+[redis]
+url = "redis://localhost:6379"
+
+[immudb]
+addr = "127.0.0.1:3322"
+user = "immudb"
+password = "immudb"
+database = "defaultdb"
+
+[jwt]
+secret = "your-secret-key-must-be-at-least-32-characters-long"
+token_expiry_secs = 3600
+refresh_token_expiry_secs = 604800
+
+[server]
+bind_addr = "0.0.0.0:8088"
+allow_degraded_start = false
+
+[logging]
+level = "info"
+format = "text"  # "json" or "text"
+enable_file_logging = false
+log_file_path = "./logs/app.log"
+max_file_size_mb = 100
+max_files = 10
+
+[monitoring]
+enable_prometheus = true
+prometheus_bind_addr = "0.0.0.0:9090"
+enable_health_check = true
+
+[features]
+enable_fee_system = true
+enable_rpc_failover = true
+enable_notify_system = true
+
+[blockchain]
+eth_rpc_url = "https://ethereum-sepolia-rpc.publicnode.com"
+bsc_rpc_url = "https://bsc-dataseed1.binance.org"
+polygon_rpc_url = "https://polygon-rpc.com"
+solana_rpc_url = "https://api.mainnet-beta.solana.com"
+bitcoin_rpc_url = "https://blockstream.info/api"
+ton_rpc_url = "https://toncenter.com/api/v2/jsonRPC"
+
+[cross_chain]
+bridge_fee_percentage = 0.003  # 0.3%跨链桥费率
+min_bridge_amount_usdt = 10.0
+max_bridge_amount_usdt = 100000.0
+default_slippage = 0.005        # 0.5%默认滑点
+

@@ -1,0 +1,303 @@
+openapi: 3.0.3
+info:
+  title: IronCore Backend API
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8088
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+          headers:
+            x-request-id: { schema: { type: string } }
+            x-api-version: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Healthz"
+  /api/health:
+    get:
+      summary: API health
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /api/errors:
+    get:
+      summary: Error map
+      responses:
+        "200":
+          description: Error map
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+  /api/fees:
+    get:
+      summary: Estimate fees
+      parameters:
+        - in: query
+          name: chain_id
+          schema: { type: integer }
+          required: true
+        - in: query
+          name: to
+          schema: { type: string }
+          required: true
+        - in: query
+          name: amount
+          schema: { type: string }
+          required: true
+      responses:
+        "200":
+          description: Fee suggestion
+          headers:
+            x-request-id: { schema: { type: string } }
+            x-api-version: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeesResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/gas/suggest:
+    get:
+      summary: Gas price suggestion
+      parameters:
+        - in: query
+          name: chain_id
+          schema: { type: integer }
+          required: true
+      responses:
+        "200":
+          description: Gas suggestion
+          headers:
+            x-request-id: { schema: { type: string } }
+            x-api-version: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GasSuggestResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/network/status:
+    get:
+      summary: Network status
+      parameters:
+        - in: query
+          name: chain_id
+          schema: { type: integer }
+          required: true
+      responses:
+        "200":
+          description: Network status
+          headers:
+            x-request-id: { schema: { type: string } }
+            x-api-version: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NetworkStatusResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /balance:
+    get:
+      summary: Balance
+      parameters:
+        - in: query
+          name: address
+          schema: { type: string }
+          required: true
+      responses:
+        "200":
+          description: Balance
+          headers:
+            x-request-id: { schema: { type: string } }
+            x-api-version: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BalanceResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/v1/wallets:
+    post:
+      summary: Create wallet metadata
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWalletReq"
+      responses:
+        "200":
+          description: Wallet created
+          headers:
+            x-request-id: { schema: { type: string } }
+            x-api-version: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletResp"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/v1/tx:
+    post:
+      summary: Create tx request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTxReq"
+      responses:
+        "200":
+          description: Tx created
+          headers:
+            x-request-id: { schema: { type: string } }
+            x-api-version: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TxResp"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+components:
+  schemas:
+    ErrorBody:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+      required: [code, message]
+    HealthResponse:
+      type: object
+      properties:
+        status: { type: string }
+    Healthz:
+      type: object
+      properties:
+        status: { type: string }
+        db_ok: { type: boolean }
+        redis_ok: { type: boolean }
+        immu_ok: { type: boolean, nullable: true }
+      required: [status, db_ok, redis_ok]
+    FeesResponse:
+      type: object
+      properties:
+        gas_price: { type: string }
+        gas_limit: { type: integer, format: int64 }
+        fee: { type: string, nullable: true }
+      required: [gas_price, gas_limit]
+    GasSuggestResponse:
+      type: object
+      properties:
+        normal: { type: string }
+        fast: { type: string, nullable: true }
+        slow: { type: string, nullable: true }
+      required: [normal]
+    NetworkStatusResponse:
+      type: object
+      properties:
+        block_height: { type: integer, format: int64 }
+        gas_price: { type: string, nullable: true }
+        congestion: { type: integer, format: int64, nullable: true }
+      required: [block_height]
+    BalanceResponse:
+      type: object
+      properties:
+        balance: { type: string }
+        chain_id: { type: integer, format: int64 }
+        confirmed: { type: boolean }
+      required: [balance, chain_id, confirmed]
+    CreateWalletReq:
+      type: object
+      properties:
+        tenant_id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        chain_id: { type: integer }
+        address: { type: string }
+        pubkey: { type: string }
+        policy_id: { type: string, format: uuid, nullable: true }
+      required: [tenant_id, user_id, chain_id, address, pubkey]
+    WalletResp:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        chain_id: { type: integer }
+        address: { type: string }
+        pubkey: { type: string }
+      required: [id, tenant_id, user_id, chain_id, address, pubkey]
+    CreateTxReq:
+      type: object
+      properties:
+        tenant_id: { type: string, format: uuid }
+        wallet_id: { type: string, format: uuid }
+        chain_id: { type: integer }
+        to_addr: { type: string }
+        amount_wei: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
+          nullable: true
+      required: [tenant_id, wallet_id, chain_id, to_addr, amount_wei]
+    TxResp:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string }
+      required: [id, status]
+
+

@@ -1,0 +1,5 @@
+{
+  "chain": "ethereum",
+  "operation": "swap",
+  "amount": 1000.0
+}

@@ -1,0 +1,190 @@
+//! 集成测试
+//! 测试API端点和完整流程
+
+use std::sync::Arc;
+
+use axum::http::StatusCode;
+use ironcore::{
+    app_state::AppState,
+    infrastructure::{audit::ImmuCtx, cache::RedisCtx, db::PgPool},
+};
+
+/// 测试辅助函数：创建测试应用状态
+async fn create_test_app_state() -> Arc<AppState> {
+    // 注意：实际测试中应该使用测试数据库
+    let database_url = std::env::var("TEST_DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://root@localhost:26257/test?sslmode=disable".into());
+
+    let pool = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await
+        .expect("Failed to create test database pool");
+
+    let redis_url =
+        std::env::var("TEST_REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".into());
+    let redis = Arc::new(RedisCtx::new(&redis_url).expect("Failed to create Redis client"));
+
+    let immu = Arc::new(ImmuCtx::new(
+        "127.0.0.1:3322".into(),
+        "immudb".into(),
+        "immudb".into(),
+        "defaultdb".into(),
+    ));
+
+    Arc::new(AppState::new(pool, (*redis).clone(), immu))
+}
+
+#[tokio::test]
+#[ignore] // 需要数据库连接，默认忽略
+async fn test_health_check() {
+    let state = create_test_app_state().await;
+
+    // 测试健康检查端点
+    // 这里应该使用实际的HTTP客户端测试
+    // 示例：使用reqwest或axum_test
+}
+
+#[tokio::test]
+#[ignore]
+async fn test_database_connection() {
+    let database_url = std::env::var("TEST_DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://root@localhost:26257/test?sslmode=disable".into());
+
+    let pool = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(1)
+        .connect(&database_url)
+        .await;
+
+    assert!(pool.is_ok(), "Database connection should succeed");
+}
+
+#[tokio::test]
+async fn test_config_loading() {
+    // 测试配置加载
+    std::env::set_var(
+        "JWT_SECRET",
+        "test_secret_that_is_at_least_32_characters_long",
+    );
+
+    let config = ironforge_backend::config::Config::from_env();
+    assert!(config.is_ok());
+}
+
+#[tokio::test]
+async fn test_metrics_endpoint() {
+    // 测试metrics端点
+    use ironcore::metrics;
+
+    // 增加一些指标
+    metrics::count_ok("test_endpoint");
+    metrics::count_err("test_endpoint");
+
+    let output = metrics::render_prometheus();
+    assert!(output.contains("ironcore_requests_total"));
+    assert!(output.contains("ironcore_errors_total"));
+}
+
+#[tokio::test]
+async fn test_password_hashing() {
+    // 测试密码哈希和验证
+    use ironcore::infrastructure::password;
+
+    let password = "test_password_123";
+    let hash = password::hash_password(password).unwrap();
+
+    // 验证正确密码
+    assert!(password::verify_password(password, &hash).unwrap());
+
+    // 验证错误密码
+    assert!(!password::verify_password("wrong_password", &hash).unwrap());
+}
+
+#[tokio::test]
+async fn test_jwt_token() {
+    // 测试JWT Token生成和验证
+    std::env::set_var(
+        "JWT_SECRET",
+        "test_secret_key_for_jwt_signing_at_least_32_chars",
+    );
+
+    use ironcore::infrastructure::jwt;
+    use uuid::Uuid;
+
+    let user_id = Uuid::new_v4();
+    let tenant_id = Uuid::new_v4();
+    let role = "admin".to_string();
+
+    // 生成token
+    let token = jwt::generate_token(user_id, tenant_id, role.clone()).unwrap();
+    assert!(!token.is_empty());
+
+    // 验证token
+    let claims = jwt::verify_token(&token).unwrap();
+    assert_eq!(claims.sub, user_id.to_string());
+    assert_eq!(claims.role, role);
+}
+
+#[tokio::test]
+async fn test_encryption() {
+    // 测试加密解密功能
+    use ironcore::infrastructure::encryption;
+
+    let key = b"01234567890123456789012345678901"; // 32 bytes
+    let data = b"Hello, World! This is a test message.";
+
+    // 加密
+    let encrypted = encryption::encrypt_data(data, key).unwrap();
+    assert_ne!(encrypted, data);
+    assert!(encrypted.len() > data.len());
+
+    // 解密
+    let decrypted = encryption::decrypt_data(&encrypted, key).unwrap();
+    assert_eq!(decrypted, data);
+}
+
+#[tokio::test]
+async fn test_config_validation() {
+    // 测试配置验证
+    std::env::set_var(
+        "JWT_SECRET",
+        "test_secret_key_for_jwt_signing_at_least_32_chars",
+    );
+
+    use ironcore::config::Config;
+
+    let config = Config::from_env().unwrap();
+
+    // 验证配置
+    assert!(config.validate().is_ok());
+
+    // 测试无效配置
+    let mut invalid_config = config.clone();
+    invalid_config.jwt.secret = "short".to_string();
+    assert!(invalid_config.validate().is_err());
+}
+
+#[tokio::test]
+async fn test_alert_manager() {
+    // 测试告警管理器
+    use ironcore::infrastructure::monitoring::{AlertManager, AlertRule, AlertSeverity};
+
+    let mut manager = AlertManager::new();
+
+    let rule = AlertRule {
+        name: "test_rule".to_string(),
+        condition: "error_rate > 0.1".to_string(),
+        threshold: 0.1,
+        severity: AlertSeverity::Warning,
+        enabled: true,
+    };
+
+    manager.add_rule(rule);
+    assert_eq!(manager.rules.len(), 1);
+
+    // 测试告警检查
+    let metrics = "ironcore_errors_total 20\nironcore_requests_total 100\n";
+    let alerts = manager.check_alerts(metrics);
+    // 错误率 = 20/100 = 0.2 > 0.1，应该触发告警
+    assert!(!alerts.is_empty());
+}

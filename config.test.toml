@@ -1,0 +1,37 @@
+# IronCore 支付网关测试环境配置
+# 使用测试 API 密钥进行开发
+
+[payment_gateway]
+# ============ Stripe 测试配置 ============
+stripe_secret_key = "sk_test_51xxxxx"
+stripe_publishable_key = "pk_test_51xxxxx"
+stripe_webhook_secret = "whsec_test_xxxxx"
+
+# ============ PayPal 沙盒配置 ============
+paypal_client_id = "sandbox_client_id"
+paypal_client_secret = "sandbox_client_secret"
+paypal_webhook_id = "sandbox_webhook_id"
+paypal_sandbox = true
+
+# ============ MoonPay 测试配置 ============
+moonpay_api_key = "pk_test_xxxxx"
+moonpay_secret_key = "sk_test_xxxxx"
+
+# ============ Transak 测试配置 ============
+transak_api_key = "test_api_key"
+transak_environment = "STAGING"
+
+[server]
+bind_addr = "127.0.0.1:8088"
+allow_degraded_start = true
+
+[database]
+url = "postgres://root@localhost:26257/ironcore?sslmode=disable"
+max_connections = 8
+
+[redis]
+url = "redis://localhost:6379"
+
+[jwt]
+secret = "test-jwt-secret-for-development-only"
+token_expiry_secs = 3600

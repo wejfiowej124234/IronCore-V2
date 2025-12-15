@@ -1,0 +1,46 @@
+# IronCore 支付网关配置文件模板
+# 生产环境配置 - 请勿提交到版本控制
+
+[payment_gateway]
+# ============ Stripe 配置 ============
+# 获取方式：https://dashboard.stripe.com/apikeys
+stripe_secret_key = "sk_live_xxxxx"              # 生产环境密钥（必须以 sk_live_ 开头）
+stripe_publishable_key = "pk_live_xxxxx"          # 可发布密钥（前端使用）
+stripe_webhook_secret = "whsec_xxxxx"             # Webhook 签名验证密钥
+
+# ============ PayPal 配置 ============
+# 获取方式：https://developer.paypal.com/dashboard/applications
+paypal_client_id = "xxxxx"                        # PayPal 应用 Client ID
+paypal_client_secret = "xxxxx"                    # PayPal 应用 Secret
+paypal_webhook_id = "xxxxx"                       # Webhook ID（从 PayPal Dashboard 创建）
+paypal_sandbox = false                            # false = 生产环境，true = 沙盒环境
+
+# ============ MoonPay 配置 ============
+# 获取方式：https://www.moonpay.com/dashboard/api_keys
+moonpay_api_key = "pk_live_xxxxx"                 # 公开 API 密钥（前端使用）
+moonpay_secret_key = "sk_live_xxxxx"              # 密钥（用于 Webhook 验证）
+
+# ============ Transak 配置 ============
+# 获取方式：https://dashboard.transak.com/
+transak_api_key = "xxxxx"                         # Transak API Key
+transak_environment = "PRODUCTION"                # "PRODUCTION" 或 "STAGING"
+
+# ============ 其他配置 ============
+[server]
+bind_addr = "0.0.0.0:8088"
+allow_degraded_start = false
+
+[database]
+url = "postgres://root@localhost:26257/ironcore?sslmode=disable"
+max_connections = 16
+
+[redis]
+url = "redis://localhost:6379"
+
+[jwt]
+secret = "your-production-jwt-secret-min-32-chars"
+token_expiry_secs = 3600
+
+# ============ 回调 URL 配置 ============
+# 前端 URL（支付成功/取消后跳转）
+# export FRONTEND_URL="https://your-domain.com"

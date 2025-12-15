@@ -1,0 +1,172 @@
+-- ============================================================================
+-- Migration: 0033_update_fiat_providers_optimization.sql
+-- Description: 优化支付服务商配置 - 添加Onramper/TransFi/Alchemy Pay，更新优先级
+-- Date: 2025-12-05
+-- ============================================================================
+
+-- Step 1: 添加provider_type字段，区分聚合器和直连
+ALTER TABLE fiat.providers ADD COLUMN IF NOT EXISTS provider_type TEXT NOT NULL DEFAULT 'direct';
+COMMENT ON COLUMN fiat.providers.provider_type IS 'Provider type: aggregator (聚合器) or direct (直连)';
+
+-- Step 2: 更新现有5个服务商的优先级
+-- 降低Simplex/Transak/Banxa优先级（准备移除）
+UPDATE fiat.providers SET priority = 50, is_enabled = false WHERE name = 'simplex';
+UPDATE fiat.providers SET priority = 50, is_enabled = false WHERE name = 'transak';
+UPDATE fiat.providers SET priority = 50, is_enabled = false WHERE name = 'banxa';
+
+-- 保留MoonPay和Ramp作为兜底
+UPDATE fiat.providers SET priority = 60 WHERE name = 'moonpay';
+UPDATE fiat.providers SET priority = 70 WHERE name = 'ramp';
+
+-- Step 3: 插入新服务商 - Onramper (聚合器)
+INSERT INTO fiat.providers (
+    name,
+    display_name,
+    provider_type,
+    is_enabled,
+    priority,
+    fee_min_percent,
+    fee_max_percent,
+    api_url,
+    webhook_url,
+    timeout_seconds,
+    supported_countries,
+    supported_payment_methods,
+    health_status
+) VALUES (
+    'onramper',
+    'Onramper (Aggregator)',
+    'aggregator',
+    true,
+    100,  -- 最高优先级
+    0.5,
+    4.0,
+    'https://api.onramper.com',
+    '/api/v1/fiat/webhook/onramper',
+    30,
+    ARRAY['GLOBAL'],  -- 全球支持
+    ARRAY['credit_card', 'debit_card', 'bank_transfer', 'alipay', 'wechat_pay', 'apple_pay', 'google_pay'],
+    'unknown'
+) ON CONFLICT (name) DO UPDATE SET
+    display_name = EXCLUDED.display_name,
+    provider_type = EXCLUDED.provider_type,
+    priority = EXCLUDED.priority,
+    fee_min_percent = EXCLUDED.fee_min_percent,
+    fee_max_percent = EXCLUDED.fee_max_percent,
+    supported_payment_methods = EXCLUDED.supported_payment_methods;
+
+-- Step 4: 插入新服务商 - TransFi (中国特化)
+INSERT INTO fiat.providers (
+    name,
+    display_name,
+    provider_type,
+    is_enabled,
+    priority,
+    fee_min_percent,
+    fee_max_percent,
+    api_url,
+    webhook_url,
+    timeout_seconds,
+    supported_countries,
+    supported_payment_methods,
+    health_status
+) VALUES (
+    'transfi',
+    'TransFi (China/Emerging)',
+    'direct',
+    true,
+    90,  -- 中国用户高优先级
+    1.5,
+    3.5,
+    'https://api.transfi.com',
+    '/api/v1/fiat/webhook/transfi',
+    30,
+    ARRAY['CN', 'HK', 'TW', 'SG', 'NG', 'KE', 'ZA', 'BR', 'MX', 'AR'],  -- 中国+新兴市场
+    ARRAY['alipay', 'wechat_pay', 'credit_card', 'bank_transfer', 'mpesa', 'pix'],
+    'unknown'
+) ON CONFLICT (name) DO UPDATE SET
+    display_name = EXCLUDED.display_name,
+    priority = EXCLUDED.priority,
+    fee_min_percent = EXCLUDED.fee_min_percent,
+    fee_max_percent = EXCLUDED.fee_max_percent,
+    supported_countries = EXCLUDED.supported_countries,
+    supported_payment_methods = EXCLUDED.supported_payment_methods;
+
+-- Step 5: 插入新服务商 - Alchemy Pay (Web3优化)
+INSERT INTO fiat.providers (
+    name,
+    display_name,
+    provider_type,
+    is_enabled,
+    priority,
+    fee_min_percent,
+    fee_max_percent,
+    api_url,
+    webhook_url,
+    timeout_seconds,
+    supported_countries,
+    supported_payment_methods,
+    health_status
+) VALUES (
+    'alchemypay',
+    'Alchemy Pay (Web3)',
+    'direct',
+    true,
+    85,  -- Web3场景优先
+    1.0,
+    3.0,
+    'https://api.alchemypay.org',
+    '/api/v1/fiat/webhook/alchemypay',
+    30,
+    ARRAY['CN', 'HK', 'TW', 'SG', 'JP', 'KR', 'TH', 'VN', 'ID', 'MY', 'PH'],  -- 亚太优先
+    ARRAY['alipay', 'wechat_pay', 'credit_card', 'apple_pay', 'google_pay', 'bank_transfer'],
+    'unknown'
+) ON CONFLICT (name) DO UPDATE SET
+    display_name = EXCLUDED.display_name,
+    priority = EXCLUDED.priority,
+    fee_min_percent = EXCLUDED.fee_min_percent,
+    fee_max_percent = EXCLUDED.fee_max_percent,
+    supported_countries = EXCLUDED.supported_countries,
+    supported_payment_methods = EXCLUDED.supported_payment_methods;
+
+-- Step 6: 添加唯一约束（如果不存在）
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'providers_name_unique' 
+        AND conrelid = 'fiat.providers'::regclass
+    ) THEN
+        ALTER TABLE fiat.providers ADD CONSTRAINT providers_name_unique UNIQUE (name);
+    END IF;
+END $$;
+
+-- Step 7: 创建索引优化查询性能
+CREATE INDEX IF NOT EXISTS idx_providers_priority_enabled ON fiat.providers(priority DESC, is_enabled) WHERE is_enabled = true;
+CREATE INDEX IF NOT EXISTS idx_providers_type ON fiat.providers(provider_type);
+CREATE INDEX IF NOT EXISTS idx_providers_health ON fiat.providers(health_status) WHERE is_enabled = true;
+
+-- Step 8: 添加注释
+COMMENT ON TABLE fiat.providers IS '法币支付服务商配置表 - 支持聚合器和直连两种类型';
+COMMENT ON COLUMN fiat.providers.provider_type IS 'aggregator: 聚合器(Onramper), direct: 直连服务商';
+COMMENT ON COLUMN fiat.providers.priority IS '优先级: 100=Onramper聚合器, 90=TransFi中国, 85=Alchemy亚太, 70=Ramp欧美, 60=MoonPay兜底';
+
+-- Step 9: 查询验证
+DO $$ 
+DECLARE
+    provider_count INT;
+    enabled_count INT;
+BEGIN
+    SELECT COUNT(*) INTO provider_count FROM fiat.providers;
+    SELECT COUNT(*) INTO enabled_count FROM fiat.providers WHERE is_enabled = true;
+    
+    RAISE NOTICE '✅ Migration completed successfully!';
+    RAISE NOTICE '📊 Total providers: %, Enabled: %', provider_count, enabled_count;
+    RAISE NOTICE '🎯 Priority order:';
+    RAISE NOTICE '  100 - Onramper (Aggregator)';
+    RAISE NOTICE '   90 - TransFi (China)';
+    RAISE NOTICE '   85 - Alchemy Pay (Web3)';
+    RAISE NOTICE '   70 - Ramp (EU/US)';
+    RAISE NOTICE '   60 - MoonPay (Global Fallback)';
+    RAISE NOTICE '   50 - Simplex/Transak/Banxa (Disabled)';
+END $$;

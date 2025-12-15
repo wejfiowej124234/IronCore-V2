@@ -1,0 +1,132 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, tenant_id, user_id, wallet_id, chain, chain_type, tx_hash, tx_type, status, \n                    from_address, to_address, amount::TEXT as amount, token_symbol, gas_fee, nonce, metadata,\n                    created_at, updated_at, confirmed_at\n             FROM transactions \n             WHERE wallet_id = $1\n             ORDER BY created_at DESC\n             LIMIT $2 OFFSET $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "tenant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "wallet_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "chain",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "chain_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "tx_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "tx_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "from_address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "to_address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "amount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "token_symbol",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "gas_fee",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "nonce",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 15,
+        "name": "metadata",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 16,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 17,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 18,
+        "name": "confirmed_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      null,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "deeee411c62646b40010708de30650a56a6f1a49dadad75104ab38c8b9c34e13"
+}

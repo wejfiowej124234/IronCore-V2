@@ -1,0 +1,288 @@
+-- 🎯 企业级5服务商架构升级（2025优化版）
+-- 3层聚合架构：主力(3) + 兜底(2)
+-- 移除：Simplex, Transak, Banxa (被聚合器覆盖或功能重叠)
+-- 新增：Onramper(聚合器), TransFi(中国特化), Alchemy Pay(Web3)
+
+-- Step 1: 清理旧数据
+DELETE FROM fiat.providers;
+
+-- Step 2: 插入新的5服务商配置
+
+-- ✅ 主力1: Onramper - 聚合器(优先级100)
+INSERT INTO fiat.providers (
+    id,
+    name,
+    display_name,
+    is_enabled,
+    priority,
+    fee_min_percent,
+    fee_max_percent,
+    api_url,
+    webhook_url,
+    timeout_seconds,
+    supported_countries,
+    supported_payment_methods,
+    health_status,
+    last_health_check,
+    consecutive_failures,
+    total_requests,
+    successful_requests,
+    average_response_time_ms,
+    created_at,
+    updated_at
+) VALUES (
+    '11111111-1111-1111-1111-111111111111'::uuid,
+    'onramper',
+    'Onramper',
+    true,
+    100,  -- 最高优先级
+    0.5,  -- 聚合器费率最优
+    3.5,
+    'https://api.onramper.com',
+    'https://webhook.onramper.com',
+    30,
+    ARRAY['US', 'GB', 'EU', 'CA', 'AU', 'JP', 'KR', 'SG', 'HK', 'TW', 'CN', 'IN', 'BR', 'MX', 'RU', 'ZA', 'AE', 'TR', 'ID', 'TH', 'VN', 'PH', 'MY'],
+    ARRAY['credit_card', 'debit_card', 'bank_transfer', 'apple_pay', 'google_pay', 'wechat_pay', 'alipay', 'sepa', 'pix', 'upi', 'faster_payments'],
+    'healthy',
+    NOW(),
+    0,
+    0,
+    0,
+    0,
+    NOW(),
+    NOW()
+) ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    display_name = EXCLUDED.display_name,
+    priority = EXCLUDED.priority,
+    fee_min_percent = EXCLUDED.fee_min_percent,
+    fee_max_percent = EXCLUDED.fee_max_percent,
+    supported_countries = EXCLUDED.supported_countries,
+    supported_payment_methods = EXCLUDED.supported_payment_methods,
+    updated_at = NOW();
+
+-- ✅ 主力2: TransFi - 中国特化(优先级90)
+INSERT INTO fiat.providers (
+    id,
+    name,
+    display_name,
+    is_enabled,
+    priority,
+    fee_min_percent,
+    fee_max_percent,
+    api_url,
+    webhook_url,
+    timeout_seconds,
+    supported_countries,
+    supported_payment_methods,
+    health_status,
+    last_health_check,
+    consecutive_failures,
+    total_requests,
+    successful_requests,
+    average_response_time_ms,
+    created_at,
+    updated_at
+) VALUES (
+    '22222222-2222-2222-2222-222222222222'::uuid,
+    'transfi',
+    'TransFi',
+    true,
+    90,
+    1.5,  -- 新兴市场低费率
+    3.5,
+    'https://api.transfi.com',
+    'https://webhook.transfi.com',
+    30,
+    ARRAY['CN', 'HK', 'TW', 'SG', 'MY', 'TH', 'VN', 'ID', 'PH', 'IN', 'BR', 'MX', 'AR', 'TR', 'ZA', 'AE', 'RU'],
+    ARRAY['alipay', 'wechat_pay', 'bank_transfer', 'credit_card', 'debit_card', 'pix', 'upi', 'paytm', 'gcash'],
+    'healthy',
+    NOW(),
+    0,
+    0,
+    0,
+    0,
+    NOW(),
+    NOW()
+) ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    display_name = EXCLUDED.display_name,
+    priority = EXCLUDED.priority,
+    fee_min_percent = EXCLUDED.fee_min_percent,
+    fee_max_percent = EXCLUDED.fee_max_percent,
+    supported_countries = EXCLUDED.supported_countries,
+    supported_payment_methods = EXCLUDED.supported_payment_methods,
+    updated_at = NOW();
+
+-- ✅ 主力3: Alchemy Pay - Web3优化(优先级85)
+INSERT INTO fiat.providers (
+    id,
+    name,
+    display_name,
+    is_enabled,
+    priority,
+    fee_min_percent,
+    fee_max_percent,
+    api_url,
+    webhook_url,
+    timeout_seconds,
+    supported_countries,
+    supported_payment_methods,
+    health_status,
+    last_health_check,
+    consecutive_failures,
+    total_requests,
+    successful_requests,
+    average_response_time_ms,
+    created_at,
+    updated_at
+) VALUES (
+    '33333333-3333-3333-3333-333333333333'::uuid,
+    'alchemypay',
+    'Alchemy Pay',
+    true,
+    85,
+    2.0,  -- DeFi友好费率
+    4.0,
+    'https://api.alchemypay.org',
+    'https://webhook.alchemypay.org',
+    30,
+    ARRAY['CN', 'US', 'GB', 'EU', 'CA', 'AU', 'JP', 'KR', 'SG', 'HK', 'TW', 'IN', 'TH', 'VN', 'ID', 'PH'],
+    ARRAY['alipay', 'wechat_pay', 'credit_card', 'debit_card', 'bank_transfer', 'apple_pay', 'google_pay', 'binance_pay', 'okx_pay'],
+    'healthy',
+    NOW(),
+    0,
+    0,
+    0,
+    0,
+    NOW(),
+    NOW()
+) ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    display_name = EXCLUDED.display_name,
+    priority = EXCLUDED.priority,
+    fee_min_percent = EXCLUDED.fee_min_percent,
+    fee_max_percent = EXCLUDED.fee_max_percent,
+    supported_countries = EXCLUDED.supported_countries,
+    supported_payment_methods = EXCLUDED.supported_payment_methods,
+    updated_at = NOW();
+
+-- ✅ 兜底1: Ramp Network - 欧美兜底(优先级70)
+INSERT INTO fiat.providers (
+    id,
+    name,
+    display_name,
+    is_enabled,
+    priority,
+    fee_min_percent,
+    fee_max_percent,
+    api_url,
+    webhook_url,
+    timeout_seconds,
+    supported_countries,
+    supported_payment_methods,
+    health_status,
+    last_health_check,
+    consecutive_failures,
+    total_requests,
+    successful_requests,
+    average_response_time_ms,
+    created_at,
+    updated_at
+) VALUES (
+    '44444444-4444-4444-4444-444444444444'::uuid,
+    'ramp',
+    'Ramp Network',
+    true,
+    70,  -- 降低优先级作为兜底
+    0.49,  -- 费率最低
+    2.9,
+    'https://api.ramp.network',
+    'https://webhook.ramp.network',
+    30,
+    ARRAY['US', 'GB', 'EU', 'CA', 'AU', 'CH', 'NO', 'SE', 'DK', 'FI', 'NL', 'BE', 'AT', 'IE', 'ES', 'IT', 'PT', 'FR', 'DE'],
+    ARRAY['bank_transfer', 'sepa', 'instant_sepa', 'ach', 'open_banking', 'faster_payments'],
+    'healthy',
+    NOW(),
+    0,
+    0,
+    0,
+    0,
+    NOW(),
+    NOW()
+) ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    display_name = EXCLUDED.display_name,
+    priority = EXCLUDED.priority,
+    fee_min_percent = EXCLUDED.fee_min_percent,
+    fee_max_percent = EXCLUDED.fee_max_percent,
+    supported_countries = EXCLUDED.supported_countries,
+    supported_payment_methods = EXCLUDED.supported_payment_methods,
+    updated_at = NOW();
+
+-- ✅ 兜底2: MoonPay - 全球兜底(优先级60)
+INSERT INTO fiat.providers (
+    id,
+    name,
+    display_name,
+    is_enabled,
+    priority,
+    fee_min_percent,
+    fee_max_percent,
+    api_url,
+    webhook_url,
+    timeout_seconds,
+    supported_countries,
+    supported_payment_methods,
+    health_status,
+    last_health_check,
+    consecutive_failures,
+    total_requests,
+    successful_requests,
+    average_response_time_ms,
+    created_at,
+    updated_at
+) VALUES (
+    '55555555-5555-5555-5555-555555555555'::uuid,
+    'moonpay',
+    'MoonPay',
+    true,
+    60,  -- 最后兜底
+    1.0,  -- 品牌信任
+    4.5,
+    'https://api.moonpay.com',
+    'https://webhook.moonpay.com',
+    30,
+    ARRAY['US', 'GB', 'EU', 'CA', 'AU', 'NZ', 'JP', 'KR', 'SG', 'HK', 'TW', 'IN', 'BR', 'MX', 'ZA', 'AE', 'CH', 'NO', 'SE', 'DK', 'FI'],
+    ARRAY['credit_card', 'debit_card', 'bank_transfer', 'apple_pay', 'google_pay', 'samsung_pay', 'sepa', 'pix'],
+    'healthy',
+    NOW(),
+    0,
+    0,
+    0,
+    0,
+    NOW(),
+    NOW()
+) ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    display_name = EXCLUDED.display_name,
+    priority = EXCLUDED.priority,
+    fee_min_percent = EXCLUDED.fee_min_percent,
+    fee_max_percent = EXCLUDED.fee_max_percent,
+    supported_countries = EXCLUDED.supported_countries,
+    supported_payment_methods = EXCLUDED.supported_payment_methods,
+    updated_at = NOW();
+
+-- Step 3: 验证数据
+DO $$
+DECLARE
+    provider_count INT;
+BEGIN
+    SELECT COUNT(*) INTO provider_count FROM fiat.providers WHERE is_enabled = true;
+    
+    IF provider_count = 5 THEN
+        RAISE NOTICE '✅ 5服务商架构升级完成：Onramper(100), TransFi(90), AlchemyPay(85), Ramp(70), MoonPay(60)';
+    ELSE
+        RAISE WARNING '⚠️ 预期5个服务商，实际: %', provider_count;
+    END IF;
+END $$;

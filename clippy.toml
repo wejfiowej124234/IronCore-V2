@@ -1,0 +1,21 @@
+# 企业级 Clippy 配置
+# IronCore Multi-Chain Wallet System
+
+# 认知复杂度阈值
+cognitive-complexity-threshold = 30
+
+# 类型复杂度阈值
+type-complexity-threshold = 500
+
+# Vec 初始化容量提示阈值
+vec-box-size-threshold = 4096
+
+# 函数参数数量阈值
+too-many-arguments-threshold = 8
+
+# 单字符绑定名称阈值
+single-char-binding-names-threshold = 5
+
+# 文档配置
+missing-docs-in-crate-items = false
+
