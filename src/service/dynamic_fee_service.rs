@@ -63,10 +63,13 @@ impl DynamicFeeService {
         // 更新缓存
         {
             let mut cache = self.fee_cache.write().await;
-            cache.insert(cache_key, FeeCacheItem {
-                fee,
-                updated_at: Instant::now(),
-            });
+            cache.insert(
+                cache_key,
+                FeeCacheItem {
+                    fee,
+                    updated_at: Instant::now(),
+                },
+            );
         }
 
         Ok(fee)
@@ -151,10 +154,13 @@ impl DynamicFeeService {
         // 更新缓存
         {
             let mut cache = self.fee_cache.write().await;
-            cache.insert(cache_key, FeeCacheItem {
-                fee,
-                updated_at: Instant::now(),
-            });
+            cache.insert(
+                cache_key,
+                FeeCacheItem {
+                    fee,
+                    updated_at: Instant::now(),
+                },
+            );
         }
 
         Ok(fee)
@@ -206,10 +212,13 @@ impl DynamicFeeService {
         // 更新缓存
         {
             let mut cache = self.fee_cache.write().await;
-            cache.insert(cache_key, FeeCacheItem {
-                fee,
-                updated_at: Instant::now(),
-            });
+            cache.insert(
+                cache_key,
+                FeeCacheItem {
+                    fee,
+                    updated_at: Instant::now(),
+                },
+            );
         }
 
         Ok(fee)

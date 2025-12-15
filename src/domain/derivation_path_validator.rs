@@ -31,52 +31,70 @@ impl DerivationPathValidator {
         let mut standards = HashMap::new();
 
         // Ethereum (EIP-2334, BIP44)
-        standards.insert(1, DerivationPathStandard {
-            chain_id: 1,
-            coin_type: 60,
-            standard_path: "m/44'/60'/0'/0/0".to_string(),
-            curve_type: CurveType::Secp256k1,
-        });
+        standards.insert(
+            1,
+            DerivationPathStandard {
+                chain_id: 1,
+                coin_type: 60,
+                standard_path: "m/44'/60'/0'/0/0".to_string(),
+                curve_type: CurveType::Secp256k1,
+            },
+        );
 
         // BSC (EVM compatible, uses ETH coin type)
-        standards.insert(56, DerivationPathStandard {
-            chain_id: 56,
-            coin_type: 60, // Same as ETH
-            standard_path: "m/44'/60'/0'/0/0".to_string(),
-            curve_type: CurveType::Secp256k1,
-        });
+        standards.insert(
+            56,
+            DerivationPathStandard {
+                chain_id: 56,
+                coin_type: 60, // Same as ETH
+                standard_path: "m/44'/60'/0'/0/0".to_string(),
+                curve_type: CurveType::Secp256k1,
+            },
+        );
 
         // Polygon (EVM compatible, uses ETH coin type)
-        standards.insert(137, DerivationPathStandard {
-            chain_id: 137,
-            coin_type: 60, // Same as ETH
-            standard_path: "m/44'/60'/0'/0/0".to_string(),
-            curve_type: CurveType::Secp256k1,
-        });
+        standards.insert(
+            137,
+            DerivationPathStandard {
+                chain_id: 137,
+                coin_type: 60, // Same as ETH
+                standard_path: "m/44'/60'/0'/0/0".to_string(),
+                curve_type: CurveType::Secp256k1,
+            },
+        );
 
         // Bitcoin (BIP84 - Native SegWit)
-        standards.insert(0, DerivationPathStandard {
-            chain_id: 0,
-            coin_type: 0,
-            standard_path: "m/84'/0'/0'/0/0".to_string(),
-            curve_type: CurveType::Secp256k1,
-        });
+        standards.insert(
+            0,
+            DerivationPathStandard {
+                chain_id: 0,
+                coin_type: 0,
+                standard_path: "m/84'/0'/0'/0/0".to_string(),
+                curve_type: CurveType::Secp256k1,
+            },
+        );
 
         // Solana
-        standards.insert(501, DerivationPathStandard {
-            chain_id: 501,
-            coin_type: 501,
-            standard_path: "m/44'/501'/0'/0'".to_string(),
-            curve_type: CurveType::Ed25519,
-        });
+        standards.insert(
+            501,
+            DerivationPathStandard {
+                chain_id: 501,
+                coin_type: 501,
+                standard_path: "m/44'/501'/0'/0'".to_string(),
+                curve_type: CurveType::Ed25519,
+            },
+        );
 
         // TON
-        standards.insert(607, DerivationPathStandard {
-            chain_id: 607,
-            coin_type: 607,
-            standard_path: "m/44'/607'/0'/0'/0'/0'".to_string(),
-            curve_type: CurveType::Ed25519,
-        });
+        standards.insert(
+            607,
+            DerivationPathStandard {
+                chain_id: 607,
+                coin_type: 607,
+                standard_path: "m/44'/607'/0'/0'/0'/0'".to_string(),
+                curve_type: CurveType::Ed25519,
+            },
+        );
 
         Self { standards }
     }

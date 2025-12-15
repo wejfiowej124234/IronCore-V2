@@ -926,21 +926,25 @@ impl FiatService {
                                 _currency
                             );
 
-                            return Ok((_provider.name.clone(), OnrampQuote {
-                                fiat_amount: amount_decimal,
-                                crypto_amount,
-                                exchange_rate,
-                                fee_amount,
-                                fee_percentage: (fee_amount / amount_decimal) * Decimal::from(100),
-                                estimated_arrival: format!(
-                                    "{} minutes",
-                                    onramper_quote.estimated_arrival_time_minutes.unwrap_or(30)
-                                ),
-                                quote_expires_at: Utc::now() + chrono::Duration::minutes(15),
-                                min_amount: Decimal::from_str("10.0").unwrap(),
-                                max_amount: Decimal::from_str("50000.0").unwrap(),
-                                quote_id: onramper_quote.quote_id,
-                            }));
+                            return Ok((
+                                _provider.name.clone(),
+                                OnrampQuote {
+                                    fiat_amount: amount_decimal,
+                                    crypto_amount,
+                                    exchange_rate,
+                                    fee_amount,
+                                    fee_percentage: (fee_amount / amount_decimal)
+                                        * Decimal::from(100),
+                                    estimated_arrival: format!(
+                                        "{} minutes",
+                                        onramper_quote.estimated_arrival_time_minutes.unwrap_or(30)
+                                    ),
+                                    quote_expires_at: Utc::now() + chrono::Duration::minutes(15),
+                                    min_amount: Decimal::from_str("10.0").unwrap(),
+                                    max_amount: Decimal::from_str("50000.0").unwrap(),
+                                    quote_id: onramper_quote.quote_id,
+                                },
+                            ));
                         }
                         Err(e) => {
                             tracing::error!("❌ Onramper报价失败: {}", e);
@@ -985,19 +989,25 @@ impl FiatService {
                                 fee_amount
                             );
 
-                            return Ok((_provider.name.clone(), OnrampQuote {
-                                fiat_amount: amount_decimal,
-                                crypto_amount,
-                                exchange_rate,
-                                fee_amount,
-                                fee_percentage: (fee_amount / amount_decimal) * Decimal::from(100),
-                                estimated_arrival: "Instant".to_string(),
-                                quote_expires_at: Utc::now()
-                                    + chrono::Duration::seconds(transfi_quote.valid_for_seconds),
-                                min_amount: Decimal::from_str("10.0").unwrap(),
-                                max_amount: Decimal::from_str("50000.0").unwrap(),
-                                quote_id: transfi_quote.quote_id,
-                            }));
+                            return Ok((
+                                _provider.name.clone(),
+                                OnrampQuote {
+                                    fiat_amount: amount_decimal,
+                                    crypto_amount,
+                                    exchange_rate,
+                                    fee_amount,
+                                    fee_percentage: (fee_amount / amount_decimal)
+                                        * Decimal::from(100),
+                                    estimated_arrival: "Instant".to_string(),
+                                    quote_expires_at: Utc::now()
+                                        + chrono::Duration::seconds(
+                                            transfi_quote.valid_for_seconds,
+                                        ),
+                                    min_amount: Decimal::from_str("10.0").unwrap(),
+                                    max_amount: Decimal::from_str("50000.0").unwrap(),
+                                    quote_id: transfi_quote.quote_id,
+                                },
+                            ));
                         }
                         Err(e) => {
                             tracing::error!("❌ TransFi报价失败: {}", e);

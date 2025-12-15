@@ -51,10 +51,13 @@ impl CsrfManager {
         // 使用map_err返回错误而不是panic
         match self.tokens.lock() {
             Ok(mut tokens) => {
-                tokens.insert(token.clone(), TokenInfo {
-                    created_at: Instant::now(),
-                    origin: origin.to_string(),
-                });
+                tokens.insert(
+                    token.clone(),
+                    TokenInfo {
+                        created_at: Instant::now(),
+                        origin: origin.to_string(),
+                    },
+                );
 
                 // 清理过期token（忽略错误，避免递归问题）
                 drop(tokens);

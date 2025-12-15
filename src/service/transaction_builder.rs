@@ -91,36 +91,54 @@ impl TransactionBuilder {
         let mut chain_configs = HashMap::new();
 
         // 注册支持的链配置
-        chain_configs.insert("ETH".to_string(), ChainConfig {
-            chain_id: 1,
-            name: "Ethereum".to_string(),
-            symbol: "ETH".to_string(),
-        });
-        chain_configs.insert("BSC".to_string(), ChainConfig {
-            chain_id: 56,
-            name: "BNB Smart Chain".to_string(),
-            symbol: "BNB".to_string(),
-        });
-        chain_configs.insert("POLYGON".to_string(), ChainConfig {
-            chain_id: 137,
-            name: "Polygon".to_string(),
-            symbol: "MATIC".to_string(),
-        });
-        chain_configs.insert("SOL".to_string(), ChainConfig {
-            chain_id: 501,
-            name: "Solana".to_string(),
-            symbol: "SOL".to_string(),
-        });
-        chain_configs.insert("BTC".to_string(), ChainConfig {
-            chain_id: 0,
-            name: "Bitcoin".to_string(),
-            symbol: "BTC".to_string(),
-        });
-        chain_configs.insert("TON".to_string(), ChainConfig {
-            chain_id: 607,
-            name: "TON".to_string(),
-            symbol: "TON".to_string(),
-        });
+        chain_configs.insert(
+            "ETH".to_string(),
+            ChainConfig {
+                chain_id: 1,
+                name: "Ethereum".to_string(),
+                symbol: "ETH".to_string(),
+            },
+        );
+        chain_configs.insert(
+            "BSC".to_string(),
+            ChainConfig {
+                chain_id: 56,
+                name: "BNB Smart Chain".to_string(),
+                symbol: "BNB".to_string(),
+            },
+        );
+        chain_configs.insert(
+            "POLYGON".to_string(),
+            ChainConfig {
+                chain_id: 137,
+                name: "Polygon".to_string(),
+                symbol: "MATIC".to_string(),
+            },
+        );
+        chain_configs.insert(
+            "SOL".to_string(),
+            ChainConfig {
+                chain_id: 501,
+                name: "Solana".to_string(),
+                symbol: "SOL".to_string(),
+            },
+        );
+        chain_configs.insert(
+            "BTC".to_string(),
+            ChainConfig {
+                chain_id: 0,
+                name: "Bitcoin".to_string(),
+                symbol: "BTC".to_string(),
+            },
+        );
+        chain_configs.insert(
+            "TON".to_string(),
+            ChainConfig {
+                chain_id: 607,
+                name: "TON".to_string(),
+                symbol: "TON".to_string(),
+            },
+        );
 
         Self { chain_configs }
     }

@@ -215,12 +215,15 @@ impl PriceService {
         updated: DateTime<Utc>,
     ) {
         let mut cache = self.cache.write().await;
-        cache.insert(symbol.to_uppercase(), Price {
-            symbol: symbol.to_uppercase(),
-            price_usdt: price,
-            source,
-            last_updated: updated,
-        });
+        cache.insert(
+            symbol.to_uppercase(),
+            Price {
+                symbol: symbol.to_uppercase(),
+                price_usdt: price,
+                source,
+                last_updated: updated,
+            },
+        );
     }
 
     /// 从 Redis 获取价格（可选，支持优雅降级）

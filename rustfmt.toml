@@ -8,25 +8,12 @@ hard_tabs = false
 tab_spaces = 4
 
 # 导入配置
-imports_granularity = "Crate"
-group_imports = "StdExternalCrate"
 reorder_imports = true
 
 # 代码风格
 use_small_heuristics = "Default"
-fn_single_line = false
-where_single_line = false
 
-# 注释配置
-comment_width = 100
-wrap_comments = true
-normalize_comments = true
-normalize_doc_attributes = true
-
-# 格式化选项
-format_code_in_doc_comments = true
-format_macro_matchers = true
-format_strings = false
+# 注：保持 rustfmt 配置为 stable 兼容（CI 使用 stable rustfmt）。
 
 # 链式调用
 chain_width = 60
@@ -34,8 +21,5 @@ chain_width = 60
 # 控制流
 match_arm_leading_pipes = "Never"
 match_block_trailing_comma = false
-overflow_delimited_expr = true
 
-# 企业级代码质量
-unstable_features = false
 

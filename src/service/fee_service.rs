@@ -150,10 +150,13 @@ impl FeeService {
                             tracing::debug!(key=%key, "cache_hit_l2_redis");
                             // 回填 L1 缓存
                             let mut cache = self.cache.write().await;
-                            cache.insert(key.clone(), CachedRule {
-                                rule: rule.clone(),
-                                fetched_at: Instant::now(),
-                            });
+                            cache.insert(
+                                key.clone(),
+                                CachedRule {
+                                    rule: rule.clone(),
+                                    fetched_at: Instant::now(),
+                                },
+                            );
                             return Ok(Some(rule));
                         }
                     }
@@ -193,10 +196,13 @@ impl FeeService {
             // 回填 L1 缓存
             {
                 let mut cache = self.cache.write().await;
-                cache.insert(key.clone(), CachedRule {
-                    rule: rule.clone(),
-                    fetched_at: Instant::now(),
-                });
+                cache.insert(
+                    key.clone(),
+                    CachedRule {
+                        rule: rule.clone(),
+                        fetched_at: Instant::now(),
+                    },
+                );
             }
 
             // 回填 L2 Redis 缓存（后台异步，不阻塞主流程）
