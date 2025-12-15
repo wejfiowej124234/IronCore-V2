@@ -73,109 +73,107 @@ pub fn render_prometheus() -> String {
         Err(poisoned) => poisoned.into_inner(),
     };
     let mut out = String::new();
-    out.push_str("# HELP ironforge_requests_total Total requests\n");
-    out.push_str("# TYPE ironforge_requests_total counter\n");
-    out.push_str(&format!("ironforge_requests_total {}\n", s.total));
+    out.push_str("# HELP ironcore_requests_total Total requests\n");
+    out.push_str("# TYPE ironcore_requests_total counter\n");
+    out.push_str(&format!("ironcore_requests_total {}\n", s.total));
 
-    out.push_str("# HELP ironforge_errors_total Total error responses\n");
-    out.push_str("# TYPE ironforge_errors_total counter\n");
-    out.push_str(&format!("ironforge_errors_total {}\n", s.errors));
+    out.push_str("# HELP ironcore_errors_total Total error responses\n");
+    out.push_str("# TYPE ironcore_errors_total counter\n");
+    out.push_str(&format!("ironcore_errors_total {}\n", s.errors));
 
-    out.push_str("# HELP ironforge_endpoint_requests_total Requests per endpoint\n");
-    out.push_str("# TYPE ironforge_endpoint_requests_total counter\n");
+    out.push_str("# HELP ironcore_endpoint_requests_total Requests per endpoint\n");
+    out.push_str("# TYPE ironcore_endpoint_requests_total counter\n");
     for (k, v) in s.per_endpoint.iter() {
         out.push_str(&format!(
-            "ironforge_endpoint_requests_total{{endpoint=\"{}\"}} {}\n",
+            "ironcore_endpoint_requests_total{{endpoint=\"{}\"}} {}\n",
             k, v
         ));
     }
 
-    out.push_str("# HELP ironforge_endpoint_errors_total Errors per endpoint\n");
-    out.push_str("# TYPE ironforge_endpoint_errors_total counter\n");
+    out.push_str("# HELP ironcore_endpoint_errors_total Errors per endpoint\n");
+    out.push_str("# TYPE ironcore_endpoint_errors_total counter\n");
     for (k, v) in s.per_endpoint_err.iter() {
         out.push_str(&format!(
-            "ironforge_endpoint_errors_total{{endpoint=\"{}\"}} {}\n",
+            "ironcore_endpoint_errors_total{{endpoint=\"{}\"}} {}\n",
             k, v
         ));
     }
 
     // 上游统计
-    out.push_str("# HELP ironforge_upstream_requests_total Upstream requests\n");
-    out.push_str("# TYPE ironforge_upstream_requests_total counter\n");
+    out.push_str("# HELP ironcore_upstream_requests_total Upstream requests\n");
+    out.push_str("# TYPE ironcore_upstream_requests_total counter\n");
     out.push_str(&format!(
-        "ironforge_upstream_requests_total{{result=\"ok\"}} {}\n",
+        "ironcore_upstream_requests_total{{result=\"ok\"}} {}\n",
         s.upstream_ok
     ));
     out.push_str(&format!(
-        "ironforge_upstream_requests_total{{result=\"err\"}} {}\n",
+        "ironcore_upstream_requests_total{{result=\"err\"}} {}\n",
         s.upstream_err
     ));
 
-    out.push_str("# HELP ironforge_upstream_latency_ms_sum Sum of upstream latency in ms\n");
-    out.push_str("# TYPE ironforge_upstream_latency_ms_sum counter\n");
+    out.push_str("# HELP ironcore_upstream_latency_ms_sum Sum of upstream latency in ms\n");
+    out.push_str("# TYPE ironcore_upstream_latency_ms_sum counter\n");
     out.push_str(&format!(
-        "ironforge_upstream_latency_ms_sum {}\n",
+        "ironcore_upstream_latency_ms_sum {}\n",
         s.upstream_latency_sum_ms
     ));
 
-    out.push_str(
-        "# HELP ironforge_upstream_latency_ms_bucket Upstream latency histogram buckets\n",
-    );
-    out.push_str("# TYPE ironforge_upstream_latency_ms_bucket histogram\n");
+    out.push_str("# HELP ironcore_upstream_latency_ms_bucket Upstream latency histogram buckets\n");
+    out.push_str("# TYPE ironcore_upstream_latency_ms_bucket histogram\n");
     let bounds = [50, 100, 250, 500, 1000];
     for (i, bound) in bounds.iter().enumerate() {
         out.push_str(&format!(
-            "ironforge_upstream_latency_ms_bucket{{le=\"{}\"}} {}\n",
+            "ironcore_upstream_latency_ms_bucket{{le=\"{}\"}} {}\n",
             bound, s.upstream_hist_buckets[i]
         ));
     }
     // +Inf 桶
     out.push_str(&format!(
-        "ironforge_upstream_latency_ms_bucket{{le=\"+Inf\"}} {}\n",
+        "ironcore_upstream_latency_ms_bucket{{le=\"+Inf\"}} {}\n",
         s.upstream_hist_buckets.iter().sum::<u64>()
     ));
 
     // 费用系统指标
-    out.push_str("# HELP ironforge_fee_calculation_total Total fee calculations\n");
-    out.push_str("# TYPE ironforge_fee_calculation_total counter\n");
+    out.push_str("# HELP ironcore_fee_calculation_total Total fee calculations\n");
+    out.push_str("# TYPE ironcore_fee_calculation_total counter\n");
     out.push_str(&format!(
-        "ironforge_fee_calculation_total {}\n",
+        "ironcore_fee_calculation_total {}\n",
         s.fee_calculation_total
     ));
 
-    out.push_str("# HELP ironforge_fee_audit_write_fail_total Failed fee audit writes\n");
-    out.push_str("# TYPE ironforge_fee_audit_write_fail_total counter\n");
+    out.push_str("# HELP ironcore_fee_audit_write_fail_total Failed fee audit writes\n");
+    out.push_str("# TYPE ironcore_fee_audit_write_fail_total counter\n");
     out.push_str(&format!(
-        "ironforge_fee_audit_write_fail_total {}\n",
+        "ironcore_fee_audit_write_fail_total {}\n",
         s.fee_audit_write_fail
     ));
 
-    out.push_str("# HELP ironforge_fee_total_amount_collected Total platform fees collected\n");
-    out.push_str("# TYPE ironforge_fee_total_amount_collected counter\n");
+    out.push_str("# HELP ironcore_fee_total_amount_collected Total platform fees collected\n");
+    out.push_str("# TYPE ironcore_fee_total_amount_collected counter\n");
     out.push_str(&format!(
-        "ironforge_fee_total_amount_collected {}\n",
+        "ironcore_fee_total_amount_collected {}\n",
         s.fee_total_amount
     ));
 
     // RPC 选择指标
-    out.push_str("# HELP ironforge_rpc_selection_total Total RPC endpoint selections\n");
-    out.push_str("# TYPE ironforge_rpc_selection_total counter\n");
+    out.push_str("# HELP ironcore_rpc_selection_total Total RPC endpoint selections\n");
+    out.push_str("# TYPE ironcore_rpc_selection_total counter\n");
     out.push_str(&format!(
-        "ironforge_rpc_selection_total {}\n",
+        "ironcore_rpc_selection_total {}\n",
         s.rpc_selection_total
     ));
 
-    out.push_str("# HELP ironforge_rpc_selection_fallback_total RPC selections using fallback\n");
-    out.push_str("# TYPE ironforge_rpc_selection_fallback_total counter\n");
+    out.push_str("# HELP ironcore_rpc_selection_fallback_total RPC selections using fallback\n");
+    out.push_str("# TYPE ironcore_rpc_selection_fallback_total counter\n");
     out.push_str(&format!(
-        "ironforge_rpc_selection_fallback_total {}\n",
+        "ironcore_rpc_selection_fallback_total {}\n",
         s.rpc_selection_fallback
     ));
 
-    out.push_str("# HELP ironforge_rpc_circuit_open_total RPC endpoints in circuit open state\n");
-    out.push_str("# TYPE ironforge_rpc_circuit_open_total counter\n");
+    out.push_str("# HELP ironcore_rpc_circuit_open_total RPC endpoints in circuit open state\n");
+    out.push_str("# TYPE ironcore_rpc_circuit_open_total counter\n");
     out.push_str(&format!(
-        "ironforge_rpc_circuit_open_total {}\n",
+        "ironcore_rpc_circuit_open_total {}\n",
         s.rpc_circuit_open_total
     ));
 

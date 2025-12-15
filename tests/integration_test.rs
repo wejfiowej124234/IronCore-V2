@@ -307,10 +307,10 @@ async fn test_boundary_values() {
 
     let amount = 1_000_000.0;
     let fee = amount * (percent_bp as f64) / 10_000.0;
-    assert_eq!(fee, 50.0, "Large amount: 1M * 0.5% = 50");
+    assert_eq!(fee, 5000.0, "Large amount: 1M * 0.5% = 5000");
 
     let max_fee = 10.0_f64;
-    let calculated_fee = 50.0_f64;
+    let calculated_fee = 5000.0_f64;
     let final_fee = calculated_fee.min(max_fee);
     assert_eq!(final_fee, 10.0, "Fee should be capped at max");
 }

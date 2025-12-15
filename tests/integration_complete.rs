@@ -445,11 +445,11 @@ async fn test_fee_calculation_edge_cases() {
     // 测试大额
     let amount = 1_000_000.0;
     let fee = amount * (percent_bp as f64) / 10_000.0;
-    assert_eq!(fee, 50.0);
+    assert_eq!(fee, 5_000.0);
 
     // 测试最大封顶
     let max_fee = 10.0_f64;
-    let calculated_fee = 50.0_f64;
+    let calculated_fee = 5_000.0_f64;
     let final_fee = calculated_fee.min(max_fee);
     assert_eq!(final_fee, 10.0);
 }

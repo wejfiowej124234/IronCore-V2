@@ -1,8 +1,12 @@
 //! 密码哈希和验证模块
-//! 使用 bcrypt 进行密码哈希
+//! 使用 Argon2id 进行密码哈希
 
 use anyhow::{anyhow, Result};
-use bcrypt::{hash, verify, DEFAULT_COST};
+use argon2::{
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    Algorithm, Argon2, Params, Version,
+};
+use rand::rngs::OsRng;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// 密码包装器（使用Zeroize保护）
@@ -27,7 +31,12 @@ impl Password {
 /// # Returns
 /// 返回bcrypt哈希后的密码
 pub fn hash_password(password: &str) -> Result<String> {
-    hash(password, DEFAULT_COST).map_err(|e| anyhow!("Failed to hash password: {}", e))
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, Params::default());
+    argon2
+        .hash_password(password.as_bytes(), &salt)
+        .map(|hash| hash.to_string())
+        .map_err(|e| anyhow!("Failed to hash password: {}", e))
 }
 
 /// 验证密码
@@ -39,7 +48,20 @@ pub fn hash_password(password: &str) -> Result<String> {
 /// # Returns
 /// 如果密码匹配返回true，否则返回false
 pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
-    verify(password, hash).map_err(|e| anyhow!("Failed to verify password: {}", e))
+    if hash.starts_with("$argon2") {
+        let parsed =
+            PasswordHash::new(hash).map_err(|e| anyhow!("Invalid password hash: {}", e))?;
+        let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, Params::default());
+        return Ok(argon2.verify_password(password.as_bytes(), &parsed).is_ok());
+    }
+
+    // Backwards-compatible fallback: verify legacy bcrypt hashes.
+    if hash.starts_with("$2") {
+        return bcrypt::verify(password, hash)
+            .map_err(|e| anyhow!("Failed to verify password: {}", e));
+    }
+
+    Err(anyhow!("Unsupported password hash format"))
 }
 
 #[cfg(test)]
@@ -51,7 +73,12 @@ mod tests {
         let password = "my_secure_password_123";
         let hash = hash_password(password).unwrap();
 
+        assert!(hash.starts_with("$argon2"));
+
         assert!(verify_password(password, &hash).unwrap());
         assert!(!verify_password("wrong_password", &hash).unwrap());
+
+        let hash2 = hash_password(password).unwrap();
+        assert_ne!(hash, hash2);
     }
 }

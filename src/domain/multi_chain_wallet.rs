@@ -10,6 +10,7 @@ use crate::domain::{
     chain_config::{ChainConfig, ChainRegistry},
     derivation::DerivationStrategyFactory,
 };
+use crate::utils::chain_normalizer;
 
 /// 钱包创建请求
 #[derive(Debug, Clone)]
@@ -119,7 +120,7 @@ impl MultiChainWalletService {
                 chain_id: chain_config.chain_id,
                 name: chain_config.name.clone(),
                 symbol: chain_config.symbol.clone(),
-                curve_type: format!("{:?}", chain_config.curve_type),
+                curve_type: format!("{:?}", chain_config.curve_type).to_lowercase(),
             },
             mnemonic: None, // ✅ 永不返回助记词
             wallet: WalletInfo {
@@ -151,6 +152,7 @@ impl MultiChainWalletService {
         })?;
 
         let mut results = Vec::new();
+        let mut seen_addresses = std::collections::HashSet::<String>::new();
 
         for chain in chains {
             let request = CreateWalletRequest {
@@ -165,7 +167,9 @@ impl MultiChainWalletService {
                 Ok(mut response) => {
                     // ✅ 非托管模式：永不返回助记词
                     response.mnemonic = None;
-                    results.push(response);
+                    if seen_addresses.insert(response.wallet.address.clone()) {
+                        results.push(response);
+                    }
                 }
                 Err(e) => {
                     log::warn!("Failed to create wallet for chain {}: {}", chain, e);
@@ -197,7 +201,7 @@ impl MultiChainWalletService {
                 chain_id: config.chain_id,
                 name: config.name.clone(),
                 symbol: config.symbol.clone(),
-                curve_type: format!("{:?}", config.curve_type),
+                curve_type: format!("{:?}", config.curve_type).to_lowercase(),
             })
             .collect())
     }
@@ -211,15 +215,15 @@ impl MultiChainWalletService {
         let mut grouped: HashMap<String, Vec<WalletChainInfo>> = HashMap::new();
 
         for config in self.registry.list_all() {
-            let curve_name = format!("{:?}", config.curve_type);
+            let curve_group_key = format!("{:?}", config.curve_type);
             let chain_info = WalletChainInfo {
                 chain_id: config.chain_id,
                 name: config.name.clone(),
                 symbol: config.symbol.clone(),
-                curve_type: curve_name.clone(),
+                curve_type: curve_group_key.to_lowercase(),
             };
 
-            grouped.entry(curve_name).or_default().push(chain_info);
+            grouped.entry(curve_group_key).or_default().push(chain_info);
         }
 
         Ok(grouped)
@@ -241,9 +245,34 @@ impl MultiChainWalletService {
         }
 
         // 尝试作为 symbol 查找
-        self.registry
-            .get_by_symbol(chain)
-            .ok_or_else(|| anyhow::anyhow!("Unsupported chain: {}", chain))
+        if let Some(cfg) = self.registry.get_by_symbol(chain) {
+            return Ok(cfg);
+        }
+
+        // 尝试标准化链标识符（支持别名/全称），再映射到已注册的 chain_id
+        if let Ok(canonical) = chain_normalizer::normalize_chain_identifier(chain) {
+            let chain_id = match canonical.as_str() {
+                "ethereum" => 1,
+                "bsc" => 56,
+                "polygon" => 137,
+                "arbitrum" => 42161,
+                "optimism" => 10,
+                "avalanche" => 43114,
+                "solana" => 501,
+                "bitcoin" => 0,
+                "ton" => 607,
+                _ => {
+                    return Err(anyhow::anyhow!("Unsupported chain: {}", chain));
+                }
+            };
+
+            return self
+                .registry
+                .get_by_chain_id(chain_id)
+                .ok_or_else(|| anyhow::anyhow!("Unsupported chain_id: {}", chain_id));
+        }
+
+        Err(anyhow::anyhow!("Unsupported chain: {}", chain))
     }
 
     /// 获取或生成助记词

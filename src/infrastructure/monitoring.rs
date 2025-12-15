@@ -77,13 +77,13 @@ impl AlertManager {
     fn evaluate_condition(&self, condition: &str, metrics: &str, threshold: f64) -> bool {
         // 解析Prometheus metrics格式并评估条件
         // Prometheus metrics格式示例：
-        // ironforge_errors_total 10
-        // ironforge_requests_total 100
+        // ironcore_errors_total 10
+        // ironcore_requests_total 100
 
         if condition.contains("error_rate") {
             // 计算错误率：errors / requests
-            let errors = self.extract_metric_value(metrics, "ironforge_errors_total");
-            let requests = self.extract_metric_value(metrics, "ironforge_requests_total");
+            let errors = self.extract_metric_value(metrics, "ironcore_errors_total");
+            let requests = self.extract_metric_value(metrics, "ironcore_requests_total");
 
             if requests > 0.0 {
                 let error_rate = errors / requests;
@@ -95,14 +95,14 @@ impl AlertManager {
             if condition.contains("p99") {
                 // 尝试提取 p99 分位数（需要解析 histogram buckets）
                 let p99_latency =
-                    self.extract_histogram_quantile(metrics, "ironforge_upstream_latency_ms", 0.99);
+                    self.extract_histogram_quantile(metrics, "ironcore_upstream_latency_ms", 0.99);
                 return p99_latency > threshold;
             } else {
                 // 回退到平均延迟
                 let latency_sum =
-                    self.extract_metric_value(metrics, "ironforge_upstream_latency_ms_sum");
+                    self.extract_metric_value(metrics, "ironcore_upstream_latency_ms_sum");
                 let request_count =
-                    self.extract_metric_value(metrics, "ironforge_upstream_requests_total");
+                    self.extract_metric_value(metrics, "ironcore_upstream_requests_total");
 
                 if request_count > 0.0 {
                     let avg_latency = latency_sum / request_count;
@@ -111,7 +111,7 @@ impl AlertManager {
             }
         } else if condition.contains("database_health") {
             // 检查数据库健康状态
-            let health = self.extract_metric_value(metrics, "ironforge_database_health");
+            let health = self.extract_metric_value(metrics, "ironcore_database_health");
             return health <= threshold;
         }
 
