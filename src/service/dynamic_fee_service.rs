@@ -235,7 +235,7 @@ impl DynamicFeeService {
             // TON费用通常通过getAddressInformation获取账户信息，然后计算
             // 简化实现：使用固定基础费用 + 动态调整
             match client
-                .get(&format!("{}/getAddressInformation", self.ton_api_url))
+                .get(format!("{}/getAddressInformation", self.ton_api_url))
                 .send()
                 .await
             {

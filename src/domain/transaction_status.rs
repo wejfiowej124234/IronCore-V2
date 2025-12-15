@@ -94,6 +94,7 @@ impl TransactionStatus {
     }
 
     /// 从字符串解析（兼容旧数据）
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "created" => Self::Created,

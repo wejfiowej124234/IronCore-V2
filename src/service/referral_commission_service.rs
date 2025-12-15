@@ -1,7 +1,7 @@
 //! 返佣收入服务（Referral Commission Service）
 //! 生产级实现：追踪和管理来自支付服务商的返佣收入
 
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
@@ -21,15 +21,16 @@ pub enum CommissionStatus {
     Cancelled, // 已取消
 }
 
-impl ToString for CommissionStatus {
-    fn to_string(&self) -> String {
-        match self {
-            CommissionStatus::Pending => "pending".to_string(),
-            CommissionStatus::Confirmed => "confirmed".to_string(),
-            CommissionStatus::Paid => "paid".to_string(),
-            CommissionStatus::Failed => "failed".to_string(),
-            CommissionStatus::Cancelled => "cancelled".to_string(),
-        }
+impl fmt::Display for CommissionStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            CommissionStatus::Pending => "pending",
+            CommissionStatus::Confirmed => "confirmed",
+            CommissionStatus::Paid => "paid",
+            CommissionStatus::Failed => "failed",
+            CommissionStatus::Cancelled => "cancelled",
+        };
+        f.write_str(s)
     }
 }
 
@@ -145,6 +146,7 @@ impl ReferralCommissionService {
     ///     )
     ///     .await?;
     /// ```
+    #[allow(clippy::too_many_arguments)]
     pub async fn record_commission(
         &self,
         order_id: Uuid,

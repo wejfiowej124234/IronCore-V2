@@ -62,7 +62,7 @@ pub async fn get_network_config(
                 "polygon" => state.blockchain_config.polygon_rpc_url.clone(),
                 _ => {
                     // 对于其他链，尝试从环境变量获取
-                    std::env::var(&format!("{}_RPC_URL", chain_name.to_uppercase()))
+                    std::env::var(format!("{}_RPC_URL", chain_name.to_uppercase()))
                         .unwrap_or_else(|_| format!("https://{}.rpc.example.com", chain_name))
                 }
             };

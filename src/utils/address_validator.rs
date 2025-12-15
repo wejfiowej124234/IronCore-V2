@@ -199,7 +199,7 @@ impl AddressValidator {
             let parts: Vec<&str> = address.split(':').collect();
             if parts.len() == 2 {
                 // workchain应该是数字
-                if let Ok(_) = parts[0].parse::<i32>() {
+                if parts[0].parse::<i32>().is_ok() {
                     // address部分应该是64个hex字符
                     return Ok(
                         parts[1].len() == 64 && parts[1].chars().all(|c| c.is_ascii_hexdigit())

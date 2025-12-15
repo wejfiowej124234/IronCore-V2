@@ -87,14 +87,8 @@ pub async fn get_fiat_quote(
     )?;
 
     // 使用默认租户ID和用户ID（用于匿名查询）
-    let tenant_id = auth
-        .as_ref()
-        .map(|a| a.tenant_id)
-        .unwrap_or_else(|| Uuid::nil());
-    let user_id = auth
-        .as_ref()
-        .map(|a| a.user_id)
-        .unwrap_or_else(|| Uuid::nil());
+    let tenant_id = auth.as_ref().map(|a| a.tenant_id).unwrap_or_else(Uuid::nil);
+    let user_id = auth.as_ref().map(|a| a.user_id).unwrap_or_else(Uuid::nil);
 
     let quote = fiat_service
         .get_onramp_quote(
@@ -348,14 +342,8 @@ pub async fn get_withdraw_quote(
     )?;
 
     // 使用默认租户ID和用户ID（用于匿名查询）
-    let tenant_id = auth
-        .as_ref()
-        .map(|a| a.tenant_id)
-        .unwrap_or_else(|| Uuid::nil());
-    let user_id = auth
-        .as_ref()
-        .map(|a| a.user_id)
-        .unwrap_or_else(|| Uuid::nil());
+    let tenant_id = auth.as_ref().map(|a| a.tenant_id).unwrap_or_else(Uuid::nil);
+    let user_id = auth.as_ref().map(|a| a.user_id).unwrap_or_else(Uuid::nil);
     let user_info = auth
         .as_ref()
         .map(|a| format!("user_id={}", a.user_id))

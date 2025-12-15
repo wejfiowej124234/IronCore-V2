@@ -56,6 +56,7 @@ impl AuditService {
     }
 
     /// 记录审计事件
+    #[allow(clippy::too_many_arguments)]
     pub async fn log_event(
         &self,
         tenant_id: Uuid,
@@ -123,6 +124,7 @@ impl AuditService {
     }
 
     /// 查询审计日志
+    #[allow(clippy::too_many_arguments)]
     pub async fn get_audit_logs(
         &self,
         tenant_id: Option<Uuid>,

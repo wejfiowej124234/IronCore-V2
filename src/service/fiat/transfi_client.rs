@@ -10,7 +10,6 @@
 //! API文档: https://docs.transfi.com/
 
 use anyhow::{Context, Result};
-use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 /// TransFi客户端配置

@@ -75,6 +75,7 @@ impl NonCustodialBridgeService {
     /// 5. 生成目标链交易参数（unsigned）
     /// 6. 客户端签名目标链交易
     /// 7. 后端广播目标链交易
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_bridge_order(
         &self,
         user_id: Uuid,

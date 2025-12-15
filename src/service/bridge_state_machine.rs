@@ -42,6 +42,7 @@ impl BridgeState {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
         match s {
             "created" => Self::Created,
@@ -165,7 +166,10 @@ impl BridgeStateMachine {
         let mut timeout_ids = Vec::new();
         for row in rows {
             // 标记为超时
-            if let Ok(_) = Self::transition(row.0, BridgeState::Timeout, pool).await {
+            if Self::transition(row.0, BridgeState::Timeout, pool)
+                .await
+                .is_ok()
+            {
                 timeout_ids.push(row.0);
                 tracing::warn!("Bridge transaction timeout: {}", row.0);
             }

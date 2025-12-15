@@ -200,7 +200,7 @@ async fn test_rpc_failover() {
         )
         .bind("eth_test")
         .bind(url)
-        .bind(priority as i32)
+        .bind(priority)
         .bind(enabled)
         .execute(&state.pool)
         .await
@@ -379,7 +379,7 @@ async fn test_multi_chain_fee_calculation() {
         )
         .bind(rule_id)
         .bind(chain)
-        .bind(percent_bp as i32)
+        .bind(percent_bp)
         .bind(min_fee)
         .execute(&state.pool)
         .await

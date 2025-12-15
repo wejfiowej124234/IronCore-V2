@@ -19,7 +19,6 @@ pub struct ApiResponse<T> {
 
 /// 统一错误响应格式（已在 AppError 中实现）
 /// 错误响应格式：{ code: "error_code", message: "error_message", trace_id?: "trace_id" }
-
 impl<T> ApiResponse<T> {
     /// 创建成功响应
     pub fn success(data: T) -> Self {

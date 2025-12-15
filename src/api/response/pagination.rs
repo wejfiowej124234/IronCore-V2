@@ -46,7 +46,7 @@ impl PaginationParams {
     pub fn new(page: Option<u32>, page_size: Option<u32>) -> Self {
         Self {
             page: page.unwrap_or(1).max(1),
-            page_size: page_size.unwrap_or(20).min(100).max(1), // 限制在1-100之间
+            page_size: page_size.unwrap_or(20).clamp(1, 100), // 限制在1-100之间
         }
     }
 

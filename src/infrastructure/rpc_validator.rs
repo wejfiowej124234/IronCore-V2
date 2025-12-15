@@ -119,7 +119,7 @@ pub fn validate_rpc_response(json: &serde_json::Value) -> Result<()> {
     }
 
     // 检查是否有result字段
-    if !json.get("result").is_some() {
+    if json.get("result").is_none() {
         anyhow::bail!("Missing result field in RPC response");
     }
 

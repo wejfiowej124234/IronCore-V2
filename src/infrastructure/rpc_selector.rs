@@ -308,7 +308,7 @@ impl RpcSelector {
         }
         candidates
             .into_iter()
-            .min_by_key(|e| (e.priority as i64) * 100 + (e.avg_latency_ms as i64))
+            .min_by_key(|e| e.priority * 100 + e.avg_latency_ms)
             .cloned()
     }
 }
@@ -650,9 +650,9 @@ mod tests {
         // 评分 = priority * 100 + avg_latency_ms
         // 越低越好
 
-        let score1 = 1 * 100 + 50; // 150
+        let score1 = 100 + 50; // 150
         let score2 = 2 * 100 + 30; // 230
-        let score3 = 1 * 100 + 100; // 200
+        let score3 = 100 + 100; // 200
 
         assert!(
             score1 < score2,
@@ -661,7 +661,7 @@ mod tests {
         assert!(score1 < score3, "Lower latency wins with same priority");
 
         // 极端情况：高延迟低优先级 vs 低延迟高优先级
-        let low_priority_high_latency = 1 * 100 + 500; // 600
+        let low_priority_high_latency = 100 + 500; // 600
         let high_priority_low_latency = 5 * 100 + 10; // 510
 
         assert!(
@@ -691,7 +691,7 @@ mod tests {
 
         candidates
             .into_iter()
-            .min_by_key(|e| (e.priority as i64) * 100 + (e.avg_latency_ms as i64))
+            .min_by_key(|e| e.priority * 100 + e.avg_latency_ms)
             .cloned()
     }
 

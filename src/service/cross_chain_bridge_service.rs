@@ -128,13 +128,13 @@ impl CrossChainBridgeService {
         let bridge_fee = std::env::var("BRIDGE_FEE_PERCENTAGE")
             .ok()
             .and_then(|v| v.parse::<f64>().ok())
-            .filter(|&v| v >= 0.0 && v <= 1.0)
+            .filter(|&v| (0.0..=1.0).contains(&v))
             .unwrap_or(self.config.bridge_fee_percentage);
 
         let tx_fee = std::env::var("BRIDGE_TX_FEE_PERCENTAGE")
             .ok()
             .and_then(|v| v.parse::<f64>().ok())
-            .filter(|&v| v >= 0.0 && v <= 1.0)
+            .filter(|&v| (0.0..=1.0).contains(&v))
             .unwrap_or(self.config.transaction_fee_percentage);
 
         let total_fee_percentage = bridge_fee + tx_fee;

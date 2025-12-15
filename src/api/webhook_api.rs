@@ -433,7 +433,7 @@ async fn handle_usdt_asset_mapping(
         .bind(user_id)
         .bind("USDT")
         .bind(&chain)
-        .bind(&crypto_amount)
+        .bind(crypto_amount)
         .execute(&state.pool)
         .await
         .map_err(|e| format!("Failed to create asset mapping record: {}", e))?;
@@ -450,7 +450,7 @@ async fn handle_usdt_asset_mapping(
             let pool = state.pool.clone();
             let order_id_clone = order_id;
             let chain_clone = chain.clone();
-            let amount = crypto_amount.clone();
+            let amount = crypto_amount;
 
             tokio::spawn(async move {
                 if let Err(e) =
