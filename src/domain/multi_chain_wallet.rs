@@ -6,8 +6,10 @@ use anyhow::{Context, Result};
 use bip39::{Language, Mnemonic};
 use rand::RngCore;
 
-use crate::domain::chain_config::{ChainConfig, ChainRegistry};
-use crate::domain::derivation::DerivationStrategyFactory;
+use crate::domain::{
+    chain_config::{ChainConfig, ChainRegistry},
+    derivation::DerivationStrategyFactory,
+};
 
 /// 钱包创建请求
 #[derive(Debug, Clone)]
@@ -70,12 +72,12 @@ impl MultiChainWalletService {
     }
 
     /// 创建钱包（仅用于验证地址派生）
-    /// 
+    ///
     /// ⚠️ 非托管模式：后端不应生成助记词！
     /// 此函数仅保留用于：
     /// 1. 测试环境验证派生路径
     /// 2. 开发工具生成示例地址
-    /// 
+    ///
     /// # 生产环境使用
     /// 生产环境应使用 validate_address API，只接受客户端派生的地址
     ///
@@ -132,7 +134,7 @@ impl MultiChainWalletService {
     /// 批量创建多链钱包 (从同一个助记词)
     ///
     /// ⚠️ 非托管模式：后端不生成助记词
-    /// 
+    ///
     /// # 优势
     /// - 一个助记词管理多条链的钱包
     /// - 符合 BIP44 多币种标准
@@ -162,7 +164,7 @@ impl MultiChainWalletService {
             match self.create_wallet(request) {
                 Ok(mut response) => {
                     // ✅ 非托管模式：永不返回助记词
-                        response.mnemonic = None;
+                    response.mnemonic = None;
                     results.push(response);
                 }
                 Err(e) => {
@@ -290,7 +292,7 @@ mod tests {
 
         // 非托管模式：必须提供助记词（不能由后端生成）
         let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        
+
         let request = CreateWalletRequest {
             chain: "ETH".to_string(),
             mnemonic: Some(mnemonic.to_string()),
@@ -321,7 +323,7 @@ mod tests {
 
         // ETH 和 BSC 使用相同的 secp256k1 曲线，去重后只有 2 个
         assert_eq!(responses.len(), 2);
-        
+
         // 按曲线分组，顺序可能不固定，检查包含即可
         let symbols: Vec<String> = responses.iter().map(|r| r.chain.symbol.clone()).collect();
         assert!(symbols.contains(&"BNB".to_string()) || symbols.contains(&"ETH".to_string()));

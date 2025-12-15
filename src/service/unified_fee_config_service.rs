@@ -331,7 +331,7 @@ impl UnifiedFeeConfigService {
     ) -> Result<FeeConfig> {
         // 将 None 转换为 "global"
         let chain_str = chain.unwrap_or("global");
-        
+
         let row = sqlx::query_as::<_, FeeConfigRow>(
             "SELECT fee_type, chain, rate_percentage, min_fee_usd, max_fee_usd, 
                     fixed_fee_usd, enabled, description, updated_at
@@ -382,7 +382,7 @@ impl UnifiedFeeConfigService {
 #[derive(sqlx::FromRow)]
 struct FeeConfigRow {
     fee_type: String,
-    chain: String,  // 数据库中不再允许 NULL，使用 "global" 表示全局
+    chain: String, // 数据库中不再允许 NULL，使用 "global" 表示全局
     rate_percentage: f64,
     min_fee_usd: Option<f64>,
     max_fee_usd: Option<f64>,
@@ -406,7 +406,11 @@ impl From<FeeConfigRow> for FeeConfig {
 
         FeeConfig {
             fee_type,
-            chain: if row.chain == "global" { None } else { Some(row.chain) },
+            chain: if row.chain == "global" {
+                None
+            } else {
+                Some(row.chain)
+            },
             rate_percentage: row.rate_percentage,
             min_fee_usd: row.min_fee_usd,
             max_fee_usd: row.max_fee_usd,

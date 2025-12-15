@@ -323,12 +323,18 @@ async fn test_fee_cache_expiration() {
     // 第一次查询（从数据库）
     let fee_service = state.fee_service.clone();
     let start = std::time::Instant::now();
-    let result1 = fee_service.calculate_fee("btc", "transfer", 1.0).await.unwrap();
+    let result1 = fee_service
+        .calculate_fee("btc", "transfer", 1.0)
+        .await
+        .unwrap();
     let db_time = start.elapsed();
 
     // 第二次查询（从缓存）
     let start = std::time::Instant::now();
-    let result2 = fee_service.calculate_fee("btc", "transfer", 1.0).await.unwrap();
+    let result2 = fee_service
+        .calculate_fee("btc", "transfer", 1.0)
+        .await
+        .unwrap();
     let cache_time = start.elapsed();
 
     // 缓存应该更快
@@ -395,10 +401,18 @@ async fn test_multi_chain_fee_calculation() {
     // 测试每条链的费用计算
     let fee_service = state.fee_service.clone();
 
-    let eth_fee = fee_service.calculate_fee("eth", "transfer", 100.0).await.unwrap().unwrap();
+    let eth_fee = fee_service
+        .calculate_fee("eth", "transfer", 100.0)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(eth_fee.platform_fee, 0.5); // 100 * 0.5%
 
-    let bsc_fee = fee_service.calculate_fee("bsc", "transfer", 100.0).await.unwrap().unwrap();
+    let bsc_fee = fee_service
+        .calculate_fee("bsc", "transfer", 100.0)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(bsc_fee.platform_fee, 0.3); // 100 * 0.3%
 
     // 清理

@@ -146,12 +146,12 @@ impl RedisCtx {
         let reply: redis::Value = redis::cmd("SET")
             .arg(key)
             .arg(value)
-            .arg("NX")  // Only set if not exists
-            .arg("EX")  // Expire in seconds
+            .arg("NX") // Only set if not exists
+            .arg("EX") // Expire in seconds
             .arg(ttl.as_secs() as usize)
             .query_async(&mut conn)
             .await?;
-        
+
         // Redis returns "OK" on success, Nil if key exists
         if let Ok(status) = String::from_redis_value(&reply) {
             Ok(status.eq_ignore_ascii_case("OK"))

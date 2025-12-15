@@ -13,9 +13,7 @@
 //! - 并发50: < 30ms (p95)
 //! - 吞吐量: > 100 QPS
 
-use std::env;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{env, sync::Arc, time::Duration};
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use ironcore::service::fee_service::FeeService;
@@ -29,9 +27,9 @@ const TX_TYPES: &[&str] = &["transfer", "contract_call", "swap"];
 
 #[derive(Debug, Clone, Copy)]
 enum AmountLevel {
-    Small,   // < 1 ETH
-    Medium,  // 1-100 ETH
-    Large,   // 100-10000 ETH
+    Small,     // < 1 ETH
+    Medium,    // 1-100 ETH
+    Large,     // 100-10000 ETH
     VeryLarge, // > 10000 ETH
 }
 
@@ -44,7 +42,7 @@ impl AmountLevel {
             Self::VeryLarge => 50000.0,
         }
     }
-    
+
     fn name(&self) -> &'static str {
         match self {
             Self::Small => "small_0.1",
@@ -138,11 +136,7 @@ fn bench_fee_multi_chain(c: &mut Criterion) {
                 b.iter(|| {
                     rt.block_on(async {
                         let result = service
-                            .calculate_fee(
-                                black_box(chain),
-                                black_box("transfer"),
-                                black_box(1.0),
-                            )
+                            .calculate_fee(black_box(chain), black_box("transfer"), black_box(1.0))
                             .await;
                         black_box(result);
                     })
@@ -216,9 +210,7 @@ fn bench_cache_performance(c: &mut Criterion) {
         b.iter(|| {
             rt.block_on(async {
                 for _ in 0..100 {
-                    let result = service
-                        .calculate_fee("ethereum", "transfer", 1.0)
-                        .await;
+                    let result = service.calculate_fee("ethereum", "transfer", 1.0).await;
                     black_box(result);
                 }
             })

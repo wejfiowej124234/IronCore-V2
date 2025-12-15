@@ -11,36 +11,36 @@ use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct Wallet {
     pub id: Uuid,
-    pub tenant_id: Uuid,                    // ✅ 企业级：租户隔离
+    pub tenant_id: Uuid, // ✅ 企业级：租户隔离
     pub user_id: Uuid,
-    pub chain_id: i64,                      // ✅ 数字链ID (1=ETH, 56=BSC, 137=Polygon) - INT8/BIGINT
-    pub chain_symbol: Option<String>,       // ✅ 链符号 ("ETH", "BSC", "POLYGON")
+    pub chain_id: i64, // ✅ 数字链ID (1=ETH, 56=BSC, 137=Polygon) - INT8/BIGINT
+    pub chain_symbol: Option<String>, // ✅ 链符号 ("ETH", "BSC", "POLYGON")
     pub address: String,
-    pub pubkey: Option<String>,             // ✅ 公钥（非托管核心字段）
-    pub name: Option<String>,               // ✅ 钱包名称（对齐DB字段名）
-    pub derivation_path: Option<String>,    // ✅ BIP44派生路径
-    pub curve_type: Option<String>,         // ✅ 曲线类型 (secp256k1/ed25519)
-    pub account_index: i64,                 // ✅ 账户索引（默认0）- INT8/BIGINT
-    pub address_index: i64,                 // ✅ 地址索引（默认0）- INT8/BIGINT
-    pub policy_id: Option<Uuid>,            // ✅ 策略ID（企业级审批）
+    pub pubkey: Option<String>,          // ✅ 公钥（非托管核心字段）
+    pub name: Option<String>,            // ✅ 钱包名称（对齐DB字段名）
+    pub derivation_path: Option<String>, // ✅ BIP44派生路径
+    pub curve_type: Option<String>,      // ✅ 曲线类型 (secp256k1/ed25519)
+    pub account_index: i64,              // ✅ 账户索引（默认0）- INT8/BIGINT
+    pub address_index: i64,              // ✅ 地址索引（默认0）- INT8/BIGINT
+    pub policy_id: Option<Uuid>,         // ✅ 策略ID（企业级审批）
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
 /// 创建钱包参数（对齐数据库Schema）
 #[derive(Debug, Clone)]
 pub struct CreateWalletParams {
-    pub tenant_id: Uuid,                    // ✅ 租户ID（企业级必需）
+    pub tenant_id: Uuid, // ✅ 租户ID（企业级必需）
     pub user_id: Uuid,
-    pub chain_id: i64,                      // ✅ 数字链ID - INT8/BIGINT
-    pub chain_symbol: Option<String>,       // ✅ 链符号
+    pub chain_id: i64,                // ✅ 数字链ID - INT8/BIGINT
+    pub chain_symbol: Option<String>, // ✅ 链符号
     pub address: String,
-    pub pubkey: Option<String>,             // ✅ 公钥
-    pub name: Option<String>,               // ✅ 钱包名称
+    pub pubkey: Option<String>, // ✅ 公钥
+    pub name: Option<String>,   // ✅ 钱包名称
     pub derivation_path: Option<String>,
-    pub curve_type: Option<String>,         // ✅ 曲线类型
-    pub account_index: Option<i64>,         // ✅ 账户索引 - INT8/BIGINT
-    pub address_index: Option<i64>,         // ✅ 地址索引 - INT8/BIGINT
-    pub policy_id: Option<Uuid>,            // ✅ 策略ID
+    pub curve_type: Option<String>, // ✅ 曲线类型
+    pub account_index: Option<i64>, // ✅ 账户索引 - INT8/BIGINT
+    pub address_index: Option<i64>, // ✅ 地址索引 - INT8/BIGINT
+    pub policy_id: Option<Uuid>,    // ✅ 策略ID
 }
 
 #[derive(Debug, Clone)]
@@ -110,14 +110,28 @@ impl PgWalletRepository {
 #[async_trait]
 impl WalletRepository for PgWalletRepository {
     async fn find_by_id(&self, wallet_id: Uuid) -> Result<Option<Wallet>> {
-        let row = sqlx::query_as::<_, (
-            Uuid, Uuid, Uuid, i64, Option<String>, String, Option<String>, Option<String>,
-            Option<String>, Option<String>, i64, i64, Option<Uuid>,
-            chrono::DateTime<chrono::Utc>
-        )>(
+        let row = sqlx::query_as::<
+            _,
+            (
+                Uuid,
+                Uuid,
+                Uuid,
+                i64,
+                Option<String>,
+                String,
+                Option<String>,
+                Option<String>,
+                Option<String>,
+                Option<String>,
+                i64,
+                i64,
+                Option<Uuid>,
+                chrono::DateTime<chrono::Utc>,
+            ),
+        >(
             "SELECT id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
                     derivation_path, curve_type, account_index, address_index, policy_id, created_at
-             FROM wallets WHERE id = $1"
+             FROM wallets WHERE id = $1",
         )
         .bind(wallet_id)
         .fetch_optional(&self.pool)
@@ -125,26 +139,64 @@ impl WalletRepository for PgWalletRepository {
 
         Ok(row.map(
             |(
-                id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
-                derivation_path, curve_type, account_index, address_index, policy_id, created_at
+                id,
+                tenant_id,
+                user_id,
+                chain_id,
+                chain_symbol,
+                address,
+                pubkey,
+                name,
+                derivation_path,
+                curve_type,
+                account_index,
+                address_index,
+                policy_id,
+                created_at,
             )| {
                 Wallet {
-                    id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
-                    derivation_path, curve_type, account_index, address_index, policy_id, created_at
+                    id,
+                    tenant_id,
+                    user_id,
+                    chain_id,
+                    chain_symbol,
+                    address,
+                    pubkey,
+                    name,
+                    derivation_path,
+                    curve_type,
+                    account_index,
+                    address_index,
+                    policy_id,
+                    created_at,
                 }
             },
         ))
     }
 
     async fn find_by_address(&self, address: &str) -> Result<Option<Wallet>> {
-        let row = sqlx::query_as::<_, (
-            Uuid, Uuid, Uuid, i64, Option<String>, String, Option<String>, Option<String>,
-            Option<String>, Option<String>, i64, i64, Option<Uuid>,
-            chrono::DateTime<chrono::Utc>
-        )>(
+        let row = sqlx::query_as::<
+            _,
+            (
+                Uuid,
+                Uuid,
+                Uuid,
+                i64,
+                Option<String>,
+                String,
+                Option<String>,
+                Option<String>,
+                Option<String>,
+                Option<String>,
+                i64,
+                i64,
+                Option<Uuid>,
+                chrono::DateTime<chrono::Utc>,
+            ),
+        >(
             "SELECT id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
                     derivation_path, curve_type, account_index, address_index, policy_id, created_at
-             FROM wallets WHERE address = $1"
+             FROM wallets WHERE address = $1",
         )
         .bind(address)
         .fetch_optional(&self.pool)
@@ -152,12 +204,36 @@ impl WalletRepository for PgWalletRepository {
 
         Ok(row.map(
             |(
-                id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
-                derivation_path, curve_type, account_index, address_index, policy_id, created_at
+                id,
+                tenant_id,
+                user_id,
+                chain_id,
+                chain_symbol,
+                address,
+                pubkey,
+                name,
+                derivation_path,
+                curve_type,
+                account_index,
+                address_index,
+                policy_id,
+                created_at,
             )| {
                 Wallet {
-                    id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
-                    derivation_path, curve_type, account_index, address_index, policy_id, created_at
+                    id,
+                    tenant_id,
+                    user_id,
+                    chain_id,
+                    chain_symbol,
+                    address,
+                    pubkey,
+                    name,
+                    derivation_path,
+                    curve_type,
+                    account_index,
+                    address_index,
+                    policy_id,
+                    created_at,
                 }
             },
         ))
@@ -198,7 +274,7 @@ impl WalletRepository for PgWalletRepository {
             id: row.0,
             tenant_id: row.1,
             user_id: row.2,
-            chain_id: row.3,  // 已经是i64，不需要as转换
+            chain_id: row.3, // 已经是i64，不需要as转换
             chain_symbol: row.4,
             address: row.5,
             pubkey: row.6,
@@ -213,13 +289,11 @@ impl WalletRepository for PgWalletRepository {
     }
 
     async fn update_name(&self, wallet_id: Uuid, new_name: &str) -> Result<()> {
-        sqlx::query(
-            "UPDATE wallets SET name = $1 WHERE id = $2",
-        )
-        .bind(new_name)
-        .bind(wallet_id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("UPDATE wallets SET name = $1 WHERE id = $2")
+            .bind(new_name)
+            .bind(wallet_id)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -232,16 +306,30 @@ impl WalletRepository for PgWalletRepository {
     }
 
     async fn list_by_user(&self, user_id: Uuid) -> Result<Vec<Wallet>> {
-        let rows = sqlx::query_as::<_, (
-            Uuid, Uuid, Uuid, i64, Option<String>, String, Option<String>, Option<String>,
-            Option<String>, Option<String>, i64, i64, Option<Uuid>,
-            chrono::DateTime<chrono::Utc>
-        )>(
+        let rows = sqlx::query_as::<
+            _,
+            (
+                Uuid,
+                Uuid,
+                Uuid,
+                i64,
+                Option<String>,
+                String,
+                Option<String>,
+                Option<String>,
+                Option<String>,
+                Option<String>,
+                i64,
+                i64,
+                Option<Uuid>,
+                chrono::DateTime<chrono::Utc>,
+            ),
+        >(
             "SELECT id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
                     derivation_path, curve_type, account_index, address_index, policy_id, created_at
              FROM wallets 
              WHERE user_id = $1
-             ORDER BY created_at DESC"
+             ORDER BY created_at DESC",
         )
         .bind(user_id)
         .fetch_all(&self.pool)
@@ -251,12 +339,36 @@ impl WalletRepository for PgWalletRepository {
             .into_iter()
             .map(
                 |(
-                    id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
-                    derivation_path, curve_type, account_index, address_index, policy_id, created_at
+                    id,
+                    tenant_id,
+                    user_id,
+                    chain_id,
+                    chain_symbol,
+                    address,
+                    pubkey,
+                    name,
+                    derivation_path,
+                    curve_type,
+                    account_index,
+                    address_index,
+                    policy_id,
+                    created_at,
                 )| {
                     Wallet {
-                        id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
-                        derivation_path, curve_type, account_index, address_index, policy_id, created_at
+                        id,
+                        tenant_id,
+                        user_id,
+                        chain_id,
+                        chain_symbol,
+                        address,
+                        pubkey,
+                        name,
+                        derivation_path,
+                        curve_type,
+                        account_index,
+                        address_index,
+                        policy_id,
+                        created_at,
                     }
                 },
             )
@@ -265,16 +377,30 @@ impl WalletRepository for PgWalletRepository {
 
     async fn list_by_user_and_chain(&self, user_id: Uuid, chain_type: &str) -> Result<Vec<Wallet>> {
         // 注意：保留chain_type参数名以兼容调用方，但使用chain_symbol查询
-        let rows = sqlx::query_as::<_, (
-            Uuid, Uuid, Uuid, i64, Option<String>, String, Option<String>, Option<String>,
-            Option<String>, Option<String>, i64, i64, Option<Uuid>,
-            chrono::DateTime<chrono::Utc>
-        )>(
+        let rows = sqlx::query_as::<
+            _,
+            (
+                Uuid,
+                Uuid,
+                Uuid,
+                i64,
+                Option<String>,
+                String,
+                Option<String>,
+                Option<String>,
+                Option<String>,
+                Option<String>,
+                i64,
+                i64,
+                Option<Uuid>,
+                chrono::DateTime<chrono::Utc>,
+            ),
+        >(
             "SELECT id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
                     derivation_path, curve_type, account_index, address_index, policy_id, created_at
              FROM wallets 
              WHERE user_id = $1 AND chain_symbol = $2
-             ORDER BY created_at DESC"
+             ORDER BY created_at DESC",
         )
         .bind(user_id)
         .bind(chain_type)
@@ -285,12 +411,36 @@ impl WalletRepository for PgWalletRepository {
             .into_iter()
             .map(
                 |(
-                    id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
-                    derivation_path, curve_type, account_index, address_index, policy_id, created_at
+                    id,
+                    tenant_id,
+                    user_id,
+                    chain_id,
+                    chain_symbol,
+                    address,
+                    pubkey,
+                    name,
+                    derivation_path,
+                    curve_type,
+                    account_index,
+                    address_index,
+                    policy_id,
+                    created_at,
                 )| {
                     Wallet {
-                        id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
-                        derivation_path, curve_type, account_index, address_index, policy_id, created_at
+                        id,
+                        tenant_id,
+                        user_id,
+                        chain_id,
+                        chain_symbol,
+                        address,
+                        pubkey,
+                        name,
+                        derivation_path,
+                        curve_type,
+                        account_index,
+                        address_index,
+                        policy_id,
+                        created_at,
                     }
                 },
             )
@@ -328,7 +478,9 @@ impl WalletRepository for PgWalletRepository {
 
         Ok(WalletBalance {
             wallet_id,
-            chain_type: wallet.chain_symbol.unwrap_or_else(|| format!("chain_{}", wallet.chain_id)),
+            chain_type: wallet
+                .chain_symbol
+                .unwrap_or_else(|| format!("chain_{}", wallet.chain_id)),
             native_balance: "0.0".to_string(),
             tokens: vec![],
         })

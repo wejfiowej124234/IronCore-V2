@@ -68,7 +68,7 @@ pub async fn register(
         .set_if_not_exists(&lock_key, "locked", Duration::from_secs(10))
         .await
         .unwrap_or(false);
-    
+
     if !lock_acquired {
         return Err(anyhow!("Registration in progress, please try again"));
     }
@@ -80,12 +80,11 @@ pub async fn register(
     };
 
     // 双重检查：确保email不存在
-    let existing_user: Option<(Uuid,)> = sqlx::query_as(
-        "SELECT id FROM users WHERE email_cipher = $1 OR email = $1 LIMIT 1"
-    )
-    .bind(&email)
-    .fetch_optional(pool)
-    .await?;
+    let existing_user: Option<(Uuid,)> =
+        sqlx::query_as("SELECT id FROM users WHERE email_cipher = $1 OR email = $1 LIMIT 1")
+            .bind(&email)
+            .fetch_optional(pool)
+            .await?;
 
     if existing_user.is_some() {
         return Err(anyhow!("该邮箱已被注册，请使用其他邮箱或直接登录"));
@@ -132,7 +131,8 @@ pub async fn register(
     // 处理唯一约束冲突
     if let Err(e) = insert_result {
         let err_msg = e.to_string();
-        if err_msg.contains("unique") || err_msg.contains("duplicate") || err_msg.contains("已存在") {
+        if err_msg.contains("unique") || err_msg.contains("duplicate") || err_msg.contains("已存在")
+        {
             return Err(anyhow!("Email already registered"));
         }
         // 其他数据库错误

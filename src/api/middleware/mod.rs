@@ -9,8 +9,8 @@ pub mod trace_id;
 
 // ✅ 企业级新增中间件
 pub mod log_sanitizer_simple;
-pub mod risk_control;
-pub mod method_whitelist; // ✅ P0 Security: HTTP方法白名单
+pub mod method_whitelist;
+pub mod risk_control; // ✅ P0 Security: HTTP方法白名单
 
 // 别名
 pub use auth::{auth_middleware, extract_auth_info, AuthInfo};

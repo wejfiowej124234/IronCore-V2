@@ -11,11 +11,7 @@ type HmacSha256 = Hmac<Sha256>;
 /// Onramper Webhook签名验证
 /// 算法: HMAC-SHA256(secret, request_body)
 /// Header: X-Onramper-Signature
-pub fn verify_onramper_signature(
-    headers: &HeaderMap,
-    body: &str,
-    secret: &str,
-) -> Result<()> {
+pub fn verify_onramper_signature(headers: &HeaderMap, body: &str, secret: &str) -> Result<()> {
     let signature = headers
         .get("X-Onramper-Signature")
         .ok_or_else(|| anyhow!("Missing X-Onramper-Signature header"))?
@@ -25,13 +21,13 @@ pub fn verify_onramper_signature(
     let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
         .map_err(|e| anyhow!("Invalid HMAC key: {}", e))?;
     mac.update(body.as_bytes());
-    
+
     let expected_signature = hex::encode(mac.finalize().into_bytes());
-    
+
     if signature.to_lowercase() != expected_signature.to_lowercase() {
         return Err(anyhow!("Signature verification failed for Onramper"));
     }
-    
+
     Ok(())
 }
 
@@ -50,7 +46,7 @@ pub fn verify_transfi_signature(
         .ok_or_else(|| anyhow!("Missing X-TransFi-Signature header"))?
         .to_str()
         .map_err(|_| anyhow!("Invalid signature format"))?;
-    
+
     let timestamp = headers
         .get("X-TransFi-Timestamp")
         .ok_or_else(|| anyhow!("Missing X-TransFi-Timestamp header"))?
@@ -59,37 +55,34 @@ pub fn verify_transfi_signature(
 
     // 防重放攻击：检查时间戳（允许5分钟偏差）
     let now = chrono::Utc::now().timestamp();
-    let webhook_time: i64 = timestamp.parse()
+    let webhook_time: i64 = timestamp
+        .parse()
         .map_err(|_| anyhow!("Invalid timestamp value"))?;
-    
+
     if (now - webhook_time).abs() > 300 {
         return Err(anyhow!("Webhook timestamp expired (>5 minutes)"));
     }
 
     // 构造签名payload
     let payload = format!("{}{}{}{}", timestamp, method.to_uppercase(), path, body);
-    
+
     let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
         .map_err(|e| anyhow!("Invalid HMAC key: {}", e))?;
     mac.update(payload.as_bytes());
-    
+
     let expected_signature = hex::encode(mac.finalize().into_bytes());
-    
+
     if signature.to_lowercase() != expected_signature.to_lowercase() {
         return Err(anyhow!("Signature verification failed for TransFi"));
     }
-    
+
     Ok(())
 }
 
 /// Alchemy Pay Webhook签名验证
 /// 算法: HMAC-SHA256(secret, request_body)
 /// Header: X-Alchemy-Signature
-pub fn verify_alchemypay_signature(
-    headers: &HeaderMap,
-    body: &str,
-    secret: &str,
-) -> Result<()> {
+pub fn verify_alchemypay_signature(headers: &HeaderMap, body: &str, secret: &str) -> Result<()> {
     let signature = headers
         .get("X-Alchemy-Signature")
         .ok_or_else(|| anyhow!("Missing X-Alchemy-Signature header"))?
@@ -99,13 +92,13 @@ pub fn verify_alchemypay_signature(
     let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
         .map_err(|e| anyhow!("Invalid HMAC key: {}", e))?;
     mac.update(body.as_bytes());
-    
+
     let expected_signature = hex::encode(mac.finalize().into_bytes());
-    
+
     if signature.to_lowercase() != expected_signature.to_lowercase() {
         return Err(anyhow!("Signature verification failed for Alchemy Pay"));
     }
-    
+
     Ok(())
 }
 
@@ -118,19 +111,23 @@ pub fn verify_test_signature(headers: &HeaderMap, provider: &str) -> Result<()> 
         "alchemypay" => "X-Alchemy-Signature",
         _ => return Err(anyhow!("Unknown provider: {}", provider)),
     };
-    
+
     if headers.get(header_name).is_none() {
         return Err(anyhow!("Missing signature header: {}", header_name));
     }
-    
-    tracing::warn!("⚠️ [SECURITY] Test mode: Skipping signature verification for {}", provider);
+
+    tracing::warn!(
+        "⚠️ [SECURITY] Test mode: Skipping signature verification for {}",
+        provider
+    );
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use axum::http::HeaderMap;
+
+    use super::*;
 
     #[test]
     fn test_onramper_signature() {
@@ -142,7 +139,7 @@ mod tests {
         let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).unwrap();
         mac.update(body.as_bytes());
         let signature = hex::encode(mac.finalize().into_bytes());
-        
+
         headers.insert("X-Onramper-Signature", signature.parse().unwrap());
 
         assert!(verify_onramper_signature(&headers, body, secret).is_ok());
@@ -202,10 +199,10 @@ mod tests {
         let secret = "test_secret";
         let method = "POST";
         let path = "/webhook";
-        
+
         // 使用6分钟前的时间戳（超过5分钟限制）
         let old_timestamp = (chrono::Utc::now().timestamp() - 360).to_string();
-        
+
         let payload = format!("{}{}{}{}", old_timestamp, method.to_uppercase(), path, body);
         let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).unwrap();
         mac.update(payload.as_bytes());

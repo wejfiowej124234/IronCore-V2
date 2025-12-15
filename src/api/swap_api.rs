@@ -123,7 +123,7 @@ pub async fn get_simple_swap_quote(
     if oneinch_service.api_key.is_none() {
         error!("1inch API Key 未配置，无法提供交换服务");
         return Err(AppError::internal(
-            "Swap功能暂时不可用，请联系管理员配置1inch API Key".to_string()
+            "Swap功能暂时不可用，请联系管理员配置1inch API Key".to_string(),
         ));
     }
 
@@ -353,20 +353,20 @@ pub async fn execute_simple_swap(
         id: Uuid::new_v4(),
         tenant_id: auth.tenant_id,
         user_id: auth.user_id,
-        wallet_id: Some(wallet.id),          // ✅ 修复：改为Option
-        chain: Some(req.network.clone()),     // ✅ 使用network作为chain（包装成Option）
+        wallet_id: Some(wallet.id),       // ✅ 修复：改为Option
+        chain: Some(req.network.clone()), // ✅ 使用network作为chain（包装成Option）
         network: req.network.clone(),
         from_token: req.from_token.clone(),
         to_token: req.to_token.clone(),
         from_amount: from_amount_decimal,
         to_amount: Some(to_amount_decimal),
-        to_amount_min: None,                  // ✅ 新增
+        to_amount_min: None, // ✅ 新增
         slippage: Some(slippage_decimal),
         swap_id: swap_id.clone(),
         tx_hash: None,
-        wallet_address: Some(wallet.address.clone()),  // ✅ 新增
+        wallet_address: Some(wallet.address.clone()), // ✅ 新增
         status: "pending".to_string(),
-        fiat_order_id: None,                  // ✅ 新增
+        fiat_order_id: None, // ✅ 新增
         gas_used: None,
         confirmations: 0,
         metadata: Some(serde_json::json!({

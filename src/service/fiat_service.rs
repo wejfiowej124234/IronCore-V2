@@ -9,11 +9,10 @@ use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
-use crate::service::provider_service::ProviderService;
-use crate::service::price_service::PriceService;
-use crate::service::fiat::{
-    OnramperClient, 
-    TransFiClient,
+use crate::service::{
+    fiat::{OnramperClient, TransFiClient},
+    price_service::PriceService,
+    provider_service::ProviderService,
 };
 
 /// 法币订单状态
@@ -118,19 +117,19 @@ pub struct FiatService {
     provider_service: Arc<ProviderService>,
     price_service: Arc<PriceService>, // ✅ 生产级：真实价格服务
     onramper_client: Option<OnramperClient>, // ✅ 生产级：Onramper API客户端
-    transfi_client: Option<TransFiClient>,   // ✅ 生产级：TransFi API客户端
+    transfi_client: Option<TransFiClient>, // ✅ 生产级：TransFi API客户端
 }
 
 impl FiatService {
     pub fn new(
-        pool: PgPool, 
+        pool: PgPool,
         price_service: Arc<PriceService>,
         onramper_api_key: Option<String>,
         transfi_api_key: Option<String>,
         transfi_secret: Option<String>,
     ) -> Result<Self> {
         let provider_service = Arc::new(ProviderService::new(pool.clone()));
-        
+
         // 初始化Onramper客户端
         let onramper_client = if let Some(api_key) = onramper_api_key {
             match OnramperClient::new(&api_key) {
@@ -147,24 +146,25 @@ impl FiatService {
             tracing::warn!("⚠️ 未配置ONRAMPER_API_KEY，Onramper功能不可用");
             None
         };
-        
+
         // 初始化TransFi客户端
-        let transfi_client = if let (Some(api_key), Some(secret)) = (transfi_api_key, transfi_secret) {
-            match TransFiClient::new(&api_key, &secret) {
-                Ok(client) => {
-                    tracing::info!("✅ TransFi客户端初始化成功");
-                    Some(client)
+        let transfi_client =
+            if let (Some(api_key), Some(secret)) = (transfi_api_key, transfi_secret) {
+                match TransFiClient::new(&api_key, &secret) {
+                    Ok(client) => {
+                        tracing::info!("✅ TransFi客户端初始化成功");
+                        Some(client)
+                    }
+                    Err(e) => {
+                        tracing::warn!("⚠️ TransFi客户端初始化失败: {}", e);
+                        None
+                    }
                 }
-                Err(e) => {
-                    tracing::warn!("⚠️ TransFi客户端初始化失败: {}", e);
-                    None
-                }
-            }
-        } else {
-            tracing::warn!("⚠️ 未配置TRANSFI_API_KEY/SECRET，TransFi功能不可用");
-            None
-        };
-        
+            } else {
+                tracing::warn!("⚠️ 未配置TRANSFI_API_KEY/SECRET，TransFi功能不可用");
+                None
+            };
+
         Ok(Self {
             pool,
             provider_service,
@@ -205,13 +205,19 @@ impl FiatService {
         }
 
         // 1. 获取可用服务商
-        let providers = self.provider_service.get_enabled_providers().await.context("Failed to fetch enabled providers from database")?;
+        let providers = self
+            .provider_service
+            .get_enabled_providers()
+            .await
+            .context("Failed to fetch enabled providers from database")?;
 
         tracing::info!("[FiatService] Found {} enabled providers", providers.len());
 
         if providers.is_empty() {
             tracing::error!("[FiatService] No enabled providers found in fiat.providers table. Please run migration 0033_update_fiat_providers_optimization.sql");
-            return Err(anyhow::anyhow!("没有可用的支付服务商，请联系管理员配置支付服务商"));
+            return Err(anyhow::anyhow!(
+                "没有可用的支付服务商，请联系管理员配置支付服务商"
+            ));
         }
 
         // 2. 检测用户国家并过滤服务商
@@ -223,23 +229,41 @@ impl FiatService {
 
         // 🎯 3层聚合架构智能路由（2025企业级优化）
         // Step 1: 检查是否为中国地区 + 微信/支付宝支付
-        let is_china_payment = self.is_china_region(&user_country) && 
-                              (payment_method == "alipay" || payment_method == "wechat_pay");
-        
+        let is_china_payment = self.is_china_region(&user_country)
+            && (payment_method == "alipay" || payment_method == "wechat_pay");
+
         if is_china_payment {
-            tracing::info!("[FiatService] 🇨🇳 China payment detected, prioritizing China-specialized providers");
+            tracing::info!(
+                "[FiatService] 🇨🇳 China payment detected, prioritizing China-specialized providers"
+            );
             // 中国支付专用通道（3层架构 - 主力2-3）：
             // TransFi(优先级90) - 2024新增支付宝/微信，费率1.5%-3.5%
             // AlchemyPay(优先级85) - Binance/OKX合作，支付宝+微信OTC
-            return self.route_to_china_providers(amount, currency, token, payment_method).await;
+            return self
+                .route_to_china_providers(amount, currency, token, payment_method)
+                .await;
         }
 
         // Step 2: 🎯 优先尝试Onramper聚合器（3层架构 - 主力1，优先级100）
         // Onramper聚合25+ ramps，覆盖全球95%用户，自动选最优通道
-        if let Some(onramper) = providers.iter().find(|p| p.name == "onramper" && p.is_enabled) {
+        if let Some(onramper) = providers
+            .iter()
+            .find(|p| p.name == "onramper" && p.is_enabled)
+        {
             tracing::info!("[FiatService] 🎯 Routing to Onramper aggregator (priority 100, covers 95% scenarios)");
-            if let Ok(quote) = self.fetch_provider_quote(onramper, &amount.to_string(), currency, token, payment_method).await {
-                tracing::info!("[FiatService] ✅ Onramper aggregator success - 聚合25+ ramps已完成最优选择");
+            if let Ok(quote) = self
+                .fetch_provider_quote(
+                    onramper,
+                    &amount.to_string(),
+                    currency,
+                    token,
+                    payment_method,
+                )
+                .await
+            {
+                tracing::info!(
+                    "[FiatService] ✅ Onramper aggregator success - 聚合25+ ramps已完成最优选择"
+                );
                 return Ok(quote.1);
             }
             tracing::warn!("[FiatService] ⚠️ Onramper aggregator unavailable, falling back to 4 direct providers");
@@ -249,10 +273,13 @@ impl FiatService {
         // 企业级兜底架构：主力2-3 + 兜底1-2
         let healthy_providers: Vec<_> = providers
             .into_iter()
-            .filter(|p| p.health_status == "healthy" && p.name != "onramper")  // 排除已尝试的聚合器
+            .filter(|p| p.health_status == "healthy" && p.name != "onramper") // 排除已尝试的聚合器
             .collect();
 
-        tracing::info!("[FiatService] Found {} healthy direct providers for fallback", healthy_providers.len());
+        tracing::info!(
+            "[FiatService] Found {} healthy direct providers for fallback",
+            healthy_providers.len()
+        );
 
         // 然后检查国家支持（顺序执行避免并发问题）
         let mut supported_providers = Vec::new();
@@ -262,38 +289,67 @@ impl FiatService {
                 .check_country_support(&p.name, &user_country)
                 .await
                 .unwrap_or(false);
-            
+
             if is_supported {
-                tracing::info!("[FiatService] Provider {} supports country {}", p.name, user_country);
+                tracing::info!(
+                    "[FiatService] Provider {} supports country {}",
+                    p.name,
+                    user_country
+                );
                 supported_providers.push(p);
             } else if user_country == "UNKNOWN" {
                 // 如果无法检测国家，允许尝试
-                tracing::warn!("[FiatService] Country unknown, allowing provider {} to attempt", p.name);
+                tracing::warn!(
+                    "[FiatService] Country unknown, allowing provider {} to attempt",
+                    p.name
+                );
                 supported_providers.push(p);
             } else {
-                tracing::debug!("[FiatService] Provider {} does not support country {}", p.name, user_country);
+                tracing::debug!(
+                    "[FiatService] Provider {} does not support country {}",
+                    p.name,
+                    user_country
+                );
             }
         }
 
         if supported_providers.is_empty() {
-            tracing::error!("[FiatService] No providers support user country: {}", user_country);
-            return Err(anyhow::anyhow!("没有支持您所在国家的支付服务商，当前国家: {}", user_country));
+            tracing::error!(
+                "[FiatService] No providers support user country: {}",
+                user_country
+            );
+            return Err(anyhow::anyhow!(
+                "没有支持您所在国家的支付服务商，当前国家: {}",
+                user_country
+            ));
         }
 
-        tracing::info!("[FiatService] {} providers support user country", supported_providers.len());
+        tracing::info!(
+            "[FiatService] {} providers support user country",
+            supported_providers.len()
+        );
 
         // 3. 顺序获取所有服务商报价（真实API调用）
         let mut results = Vec::new();
         let amount_str = amount.to_string();
         for provider in &supported_providers {
-            tracing::info!("[FiatService] Fetching quote from provider: {}", provider.name);
+            tracing::info!(
+                "[FiatService] Fetching quote from provider: {}",
+                provider.name
+            );
             let result = self
                 .fetch_provider_quote(provider, &amount_str, currency, token, payment_method)
                 .await;
-            
+
             match &result {
-                Ok((name, _)) => tracing::info!("[FiatService] Successfully fetched quote from {}", name),
-                Err(e) => tracing::warn!("[FiatService] Failed to fetch quote from {}: {}", provider.name, e),
+                Ok((name, _)) => {
+                    tracing::info!("[FiatService] Successfully fetched quote from {}", name)
+                }
+                Err(e) => tracing::warn!(
+                    "[FiatService] Failed to fetch quote from {}: {}",
+                    provider.name,
+                    e
+                ),
             }
             results.push(result);
         }
@@ -305,7 +361,12 @@ impl FiatService {
             if let Ok((provider_name, quote)) = result {
                 if let Some((_, ref current_best)) = best_quote {
                     if quote.fee_percentage < current_best.fee_percentage {
-                        tracing::info!("[FiatService] Provider {} has better rate: {}% vs {}%", provider_name, quote.fee_percentage, current_best.fee_percentage);
+                        tracing::info!(
+                            "[FiatService] Provider {} has better rate: {}% vs {}%",
+                            provider_name,
+                            quote.fee_percentage,
+                            current_best.fee_percentage
+                        );
                         best_quote = Some((provider_name, quote));
                     }
                 } else {
@@ -322,9 +383,16 @@ impl FiatService {
 
         match &best_quote {
             Some((provider, quote)) => {
-                tracing::info!("[FiatService] Best quote from {}: {} {} for {} {}, fee: {}%", 
-                    provider, quote.crypto_amount, token, quote.fiat_amount, currency, quote.fee_percentage);
-            },
+                tracing::info!(
+                    "[FiatService] Best quote from {}: {} {} for {} {}, fee: {}%",
+                    provider,
+                    quote.crypto_amount,
+                    token,
+                    quote.fiat_amount,
+                    currency,
+                    quote.fee_percentage
+                );
+            }
             None => {
                 tracing::error!("[FiatService] No valid quotes received from any provider");
             }
@@ -470,35 +538,29 @@ impl FiatService {
         // ✅ 生产级：从真实价格服务获取代币到稳定币汇率
         let token_to_stable_rate = match self.price_service.get_price_decimal(token).await {
             Ok(price) => {
-                tracing::info!(
-                    "✅ 从CoinGecko获取实时价格: {} = ${} USDT",
-                    token, price
-                );
+                tracing::info!("✅ 从CoinGecko获取实时价格: {} = ${} USDT", token, price);
                 price
             }
             Err(e) => {
-                tracing::error!(
-                    "❌ 无法从价格服务获取{}价格: {}，拒绝服务",
-                    token, e
-                );
-                return Err(anyhow!(
-                    "无法获取{}实时价格，请稍后重试", 
-                    token
-                ));
+                tracing::error!("❌ 无法从价格服务获取{}价格: {}，拒绝服务", token, e);
+                return Err(anyhow!("无法获取{}实时价格，请稍后重试", token));
             }
         };
 
         let stablecoin_amount = amount * token_to_stable_rate;
 
         // ✅ 生产级：从Kraken API获取USDT/USD实时汇率（动态）
-        let stable_to_fiat_rate = self.fetch_usdt_fiat_rate(fiat_currency).await
+        let stable_to_fiat_rate = self
+            .fetch_usdt_fiat_rate(fiat_currency)
+            .await
             .unwrap_or_else(|e| {
                 tracing::warn!("⚠️ Kraken API不可用，使用固定汇率1.0: {}", e);
                 Decimal::from_str("1.0").unwrap()
             });
         tracing::info!(
             "✅ Kraken实时汇率: 1 USDT = ${} {}",
-            stable_to_fiat_rate, fiat_currency
+            stable_to_fiat_rate,
+            fiat_currency
         );
 
         let fiat_amount = stablecoin_amount * stable_to_fiat_rate;
@@ -509,22 +571,26 @@ impl FiatService {
 
         // ✅ 生产级费用分解（真实API动态获取）
         // 1. 交换手续费: 从1inch API获取ETH→USDT的真实Gas+滑点
-        let swap_fee = self.fetch_swap_fee(token, stablecoin_amount, chain).await
+        let swap_fee = self
+            .fetch_swap_fee(token, stablecoin_amount, chain)
+            .await
             .unwrap_or_else(|e| {
                 tracing::warn!("⚠️ 1inch API不可用，使用保守估算: {}", e);
                 stablecoin_amount * Decimal::from_str("0.01").unwrap() // 1%保守估算
             });
-        
+
         // 2. 提现手续费: 从Banxa/MoonPay API获取真实报价
-        let withdrawal_fee = self.fetch_withdrawal_fee(fiat_amount, fiat_currency).await
+        let withdrawal_fee = self
+            .fetch_withdrawal_fee(fiat_amount, fiat_currency)
+            .await
             .unwrap_or_else(|e| {
                 tracing::warn!("⚠️ Banxa API不可用，使用保守估算: {}", e);
                 fiat_amount * Decimal::from_str("0.025").unwrap() // 2.5%保守估算
             });
-        
+
         // 总费用 = 交换费 + 提现费
         let calculated_total_fee = swap_fee + withdrawal_fee;
-        
+
         // 使用计算出的总费用（更准确）
         let fee_amount = calculated_total_fee;
 
@@ -545,7 +611,7 @@ impl FiatService {
             withdrawal_fee,
             estimated_arrival: "1-3 business days".to_string(),
             quote_expires_at: Utc::now() + chrono::Duration::minutes(30),
-            min_amount: Decimal::from_str("10.0").unwrap(),    // $10 最小提现
+            min_amount: Decimal::from_str("10.0").unwrap(), // $10 最小提现
             max_amount: Decimal::from_str("50000.0").unwrap(), // $50,000 最大提现
             quote_id,
         })
@@ -813,29 +879,34 @@ impl FiatService {
     ) -> Result<(String, OnrampQuote)> {
         // ✅ 生产级：真实API对接
         // 根据provider.name路由到不同的支付服务商
-        
+
         tracing::info!(
             "🌐 调用真实支付API: provider={}, amount={} {}, token={}",
-            _provider.name, _amount, _currency, _token
+            _provider.name,
+            _amount,
+            _currency,
+            _token
         );
-        
+
         let amount_decimal = Decimal::from_str(_amount)?;
-        
+
         // 根据provider路由到真实API
         match _provider.name.to_lowercase().as_str() {
             "onramper" | "ramp" | "moonpay" | "transak" => {
                 // 使用Onramper聚合器（支持25+支付服务商）
                 if let Some(client) = &self.onramper_client {
-                    use crate::service::fiat::onramper_client::{QuoteParams};
-                    
-                    let quote_result = client.get_quote(QuoteParams {
-                        fiat_currency: _currency.to_string(),
-                        crypto_currency: _token.to_string(),
-                        amount: amount_decimal,
-                        payment_method: _payment_method.to_string(),
-                        country: "US".to_string(), // 默认美国，可从用户IP推导
-                    }).await;
-                    
+                    use crate::service::fiat::onramper_client::QuoteParams;
+
+                    let quote_result = client
+                        .get_quote(QuoteParams {
+                            fiat_currency: _currency.to_string(),
+                            crypto_currency: _token.to_string(),
+                            amount: amount_decimal,
+                            payment_method: _payment_method.to_string(),
+                            country: "US".to_string(), // 默认美国，可从用户IP推导
+                        })
+                        .await;
+
                     match quote_result {
                         Ok(onramper_quote) => {
                             // 转换Onramper报价格式到内部格式
@@ -844,20 +915,27 @@ impl FiatService {
                             let fee_amount = Decimal::from_str(&onramper_quote.total_fee)
                                 .context("Invalid fee amount")?;
                             let exchange_rate = crypto_amount / amount_decimal;
-                            
+
                             tracing::info!(
                                 "✅ Onramper报价成功: {} {} → {} {}, 费用 {} {}",
-                                amount_decimal, _currency, crypto_amount, _token, fee_amount, _currency
+                                amount_decimal,
+                                _currency,
+                                crypto_amount,
+                                _token,
+                                fee_amount,
+                                _currency
                             );
-                            
+
                             return Ok((_provider.name.clone(), OnrampQuote {
                                 fiat_amount: amount_decimal,
                                 crypto_amount,
                                 exchange_rate,
                                 fee_amount,
                                 fee_percentage: (fee_amount / amount_decimal) * Decimal::from(100),
-                                estimated_arrival: format!("{} minutes", 
-                                    onramper_quote.estimated_arrival_time_minutes.unwrap_or(30)),
+                                estimated_arrival: format!(
+                                    "{} minutes",
+                                    onramper_quote.estimated_arrival_time_minutes.unwrap_or(30)
+                                ),
                                 quote_expires_at: Utc::now() + chrono::Duration::minutes(15),
                                 min_amount: Decimal::from_str("10.0").unwrap(),
                                 max_amount: Decimal::from_str("50000.0").unwrap(),
@@ -873,34 +951,40 @@ impl FiatService {
                     return Err(anyhow!("Onramper客户端未配置，无法获取报价"));
                 }
             }
-            
+
             "transfi" => {
                 // 中国市场专用（支付宝/微信）
                 if let Some(client) = &self.transfi_client {
-                    use crate::service::fiat::transfi_client::{TransFiQuoteRequest};
-                    
-                    let quote_result = client.get_quote(TransFiQuoteRequest {
-                        source_currency: _currency.to_string(),
-                        target_currency: _token.to_string(),
-                        amount: _amount.to_string(),
-                        payment_method: _payment_method.to_string(),
-                        country_code: "CN".to_string(), // 默认中国
-                    }).await;
-                    
+                    use crate::service::fiat::transfi_client::TransFiQuoteRequest;
+
+                    let quote_result = client
+                        .get_quote(TransFiQuoteRequest {
+                            source_currency: _currency.to_string(),
+                            target_currency: _token.to_string(),
+                            amount: _amount.to_string(),
+                            payment_method: _payment_method.to_string(),
+                            country_code: "CN".to_string(), // 默认中国
+                        })
+                        .await;
+
                     match quote_result {
                         Ok(transfi_quote) => {
                             let crypto_amount = Decimal::from_str(&transfi_quote.target_amount)
                                 .context("Invalid crypto amount")?;
-                            let fee_amount = Decimal::from_str(&transfi_quote.fee)
-                                .context("Invalid fee")?;
+                            let fee_amount =
+                                Decimal::from_str(&transfi_quote.fee).context("Invalid fee")?;
                             let exchange_rate = Decimal::from_str(&transfi_quote.exchange_rate)
                                 .context("Invalid exchange rate")?;
-                            
+
                             tracing::info!(
                                 "✅ TransFi报价成功: {} {} → {} {}, 费用 {}",
-                                amount_decimal, _currency, crypto_amount, _token, fee_amount
+                                amount_decimal,
+                                _currency,
+                                crypto_amount,
+                                _token,
+                                fee_amount
                             );
-                            
+
                             return Ok((_provider.name.clone(), OnrampQuote {
                                 fiat_amount: amount_decimal,
                                 crypto_amount,
@@ -908,7 +992,8 @@ impl FiatService {
                                 fee_amount,
                                 fee_percentage: (fee_amount / amount_decimal) * Decimal::from(100),
                                 estimated_arrival: "Instant".to_string(),
-                                quote_expires_at: Utc::now() + chrono::Duration::seconds(transfi_quote.valid_for_seconds),
+                                quote_expires_at: Utc::now()
+                                    + chrono::Duration::seconds(transfi_quote.valid_for_seconds),
                                 min_amount: Decimal::from_str("10.0").unwrap(),
                                 max_amount: Decimal::from_str("50000.0").unwrap(),
                                 quote_id: transfi_quote.quote_id,
@@ -923,7 +1008,7 @@ impl FiatService {
                     return Err(anyhow!("TransFi客户端未配置，无法获取报价"));
                 }
             }
-            
+
             _ => {
                 tracing::warn!("⚠️ 不支持的支付服务商: {}", _provider.name);
                 return Err(anyhow!("不支持的支付服务商: {}", _provider.name));
@@ -940,29 +1025,38 @@ impl FiatService {
         // ✅ 生产级：真实API创建订单
         tracing::info!(
             "🌐 调用真实支付API创建订单: provider={}, quote_id={}",
-            provider, _quote.quote_id
+            provider,
+            _quote.quote_id
         );
-        
+
         // 根据provider路由到真实API
         match provider.to_lowercase().as_str() {
             "onramper" | "ramp" | "moonpay" | "transak" => {
                 // 使用Onramper聚合器
                 if let Some(client) = &self.onramper_client {
-                    use crate::service::fiat::onramper_client::{OrderParams};
-                    
-                    let order_result = client.create_order(OrderParams {
-                        quote_id: _quote.quote_id.clone(),
-                        wallet_address: _order.wallet_address.clone().unwrap_or_default(),
-                        email: None, // 从用户profile获取
-                        return_url: Some(format!("https://ironforge.io/orders/{}/complete", _order.id)),
-                        webhook_url: Some(format!("https://api.ironforge.io/webhooks/onramper")),
-                    }).await;
-                    
+                    use crate::service::fiat::onramper_client::OrderParams;
+
+                    let order_result = client
+                        .create_order(OrderParams {
+                            quote_id: _quote.quote_id.clone(),
+                            wallet_address: _order.wallet_address.clone().unwrap_or_default(),
+                            email: None, // 从用户profile获取
+                            return_url: Some(format!(
+                                "https://ironforge.io/orders/{}/complete",
+                                _order.id
+                            )),
+                            webhook_url: Some(format!(
+                                "https://api.ironforge.io/webhooks/onramper"
+                            )),
+                        })
+                        .await;
+
                     match order_result {
                         Ok(onramper_order) => {
                             tracing::info!(
                                 "✅ Onramper订单创建成功: order_id={}, payment_url={}",
-                                onramper_order.order_id, onramper_order.payment_url
+                                onramper_order.order_id,
+                                onramper_order.payment_url
                             );
                             return Ok(onramper_order.payment_url);
                         }
@@ -975,29 +1069,36 @@ impl FiatService {
                     return Err(anyhow!("Onramper客户端未配置，无法创建订单"));
                 }
             }
-            
+
             "transfi" => {
                 // 中国市场专用
                 if let Some(client) = &self.transfi_client {
-                    use crate::service::fiat::transfi_client::{TransFiOrderRequest, TransFiUserInfo};
-                    
-                    let order_result = client.create_order(TransFiOrderRequest {
-                        quote_id: _quote.quote_id.clone(),
-                        wallet_address: _order.wallet_address.clone().unwrap_or_default(),
-                        user_info: TransFiUserInfo {
-                            user_id: _order.user_id.to_string(),
-                            email: None, // 从用户profile获取
-                            phone: None,
-                            name: None,
-                        },
-                        callback_url: Some(format!("https://api.ironforge.io/webhooks/transfi")),
-                    }).await;
-                    
+                    use crate::service::fiat::transfi_client::{
+                        TransFiOrderRequest, TransFiUserInfo,
+                    };
+
+                    let order_result = client
+                        .create_order(TransFiOrderRequest {
+                            quote_id: _quote.quote_id.clone(),
+                            wallet_address: _order.wallet_address.clone().unwrap_or_default(),
+                            user_info: TransFiUserInfo {
+                                user_id: _order.user_id.to_string(),
+                                email: None, // 从用户profile获取
+                                phone: None,
+                                name: None,
+                            },
+                            callback_url: Some(format!(
+                                "https://api.ironforge.io/webhooks/transfi"
+                            )),
+                        })
+                        .await;
+
                     match order_result {
                         Ok(transfi_order) => {
                             tracing::info!(
                                 "✅ TransFi订单创建成功: order_id={}, payment_url={}",
-                                transfi_order.order_id, transfi_order.payment_url
+                                transfi_order.order_id,
+                                transfi_order.payment_url
                             );
                             return Ok(transfi_order.payment_url);
                         }
@@ -1010,7 +1111,7 @@ impl FiatService {
                     return Err(anyhow!("TransFi客户端未配置，无法创建订单"));
                 }
             }
-            
+
             _ => {
                 tracing::warn!("⚠️ 不支持的支付服务商: {}", provider);
                 return Err(anyhow!("不支持的支付服务商: {}", provider));
@@ -1273,7 +1374,7 @@ impl FiatService {
     }
 
     /// 中国专用支付路由（微信/支付宝优化）
-    /// 
+    ///
     /// 优先级：TransFi (90) > Alchemy Pay (85) > Onramper聚合器
     async fn route_to_china_providers(
         &self,
@@ -1286,30 +1387,42 @@ impl FiatService {
 
         // 获取中国优化的服务商（按优先级排序）
         let china_providers = vec!["transfi", "alchemypay"];
-        
+
         for provider_name in china_providers {
             // 从provider_service获取配置
-            let provider_opt = self.provider_service
+            let provider_opt = self
+                .provider_service
                 .get_provider_by_name(provider_name)
                 .await
                 .ok();
 
             if let Some(provider) = provider_opt {
-                tracing::info!("[FiatService] Trying China provider: {} (priority: {})", provider.name, provider.priority);
-                
-                match self.fetch_provider_quote(
-                    &provider,
-                    &amount.to_string(),
-                    currency,
-                    token,
-                    payment_method,
-                ).await {
+                tracing::info!(
+                    "[FiatService] Trying China provider: {} (priority: {})",
+                    provider.name,
+                    provider.priority
+                );
+
+                match self
+                    .fetch_provider_quote(
+                        &provider,
+                        &amount.to_string(),
+                        currency,
+                        token,
+                        payment_method,
+                    )
+                    .await
+                {
                     Ok((name, quote)) => {
                         tracing::info!("[FiatService] ✅ China provider {} quote successful", name);
                         return Ok(quote);
                     }
                     Err(e) => {
-                        tracing::warn!("[FiatService] ⚠️ China provider {} failed: {}", provider.name, e);
+                        tracing::warn!(
+                            "[FiatService] ⚠️ China provider {} failed: {}",
+                            provider.name,
+                            e
+                        );
                         continue;
                     }
                 }
@@ -1317,12 +1430,25 @@ impl FiatService {
         }
 
         // 降级到Onramper聚合器（可能通过P2P支持）
-        tracing::warn!("[FiatService] All China providers failed, falling back to Onramper aggregator");
-        
+        tracing::warn!(
+            "[FiatService] All China providers failed, falling back to Onramper aggregator"
+        );
+
         if let Ok(provider) = self.provider_service.get_provider_by_name("onramper").await {
-            match self.fetch_provider_quote(&provider, &amount.to_string(), currency, token, payment_method).await {
+            match self
+                .fetch_provider_quote(
+                    &provider,
+                    &amount.to_string(),
+                    currency,
+                    token,
+                    payment_method,
+                )
+                .await
+            {
                 Ok((_, quote)) => {
-                    tracing::info!("[FiatService] ✅ Onramper fallback successful for China payment");
+                    tracing::info!(
+                        "[FiatService] ✅ Onramper fallback successful for China payment"
+                    );
                     return Ok(quote);
                 }
                 Err(e) => {
@@ -1347,18 +1473,17 @@ impl FiatService {
     ) -> Result<()> {
         tracing::info!(
             "[FiatService] update_order_status: order_id={}, new_status={:?}",
-            order_id, new_status
+            order_id,
+            new_status
         );
 
         // 1. 查询当前订单状态
-        let row = sqlx::query(
-            "SELECT id, status, provider_name FROM fiat.orders WHERE id = $1"
-        )
-        .bind(order_id)
-        .fetch_optional(&self.pool)
-        .await
-        .context("Failed to fetch order")?
-        .ok_or_else(|| anyhow!("Order not found: {}", order_id))?;
+        let row = sqlx::query("SELECT id, status, provider_name FROM fiat.orders WHERE id = $1")
+            .bind(order_id)
+            .fetch_optional(&self.pool)
+            .await
+            .context("Failed to fetch order")?
+            .ok_or_else(|| anyhow!("Order not found: {}", order_id))?;
 
         let current_status: String = row.try_get("status")?;
         let provider_name: String = row.try_get("provider_name")?;
@@ -1367,18 +1492,19 @@ impl FiatService {
         if !self.is_valid_status_transition(&current_status, &new_status.to_string()) {
             tracing::warn!(
                 "[FiatService] Invalid status transition: {} -> {:?} for order {}",
-                current_status, new_status, order_id
+                current_status,
+                new_status,
+                order_id
             );
             return Err(anyhow!(
                 "Invalid status transition: {} -> {:?}",
-                current_status, new_status
+                current_status,
+                new_status
             ));
         }
 
         // 3. 更新订单状态
-        let mut query_builder = sqlx::QueryBuilder::new(
-            "UPDATE fiat.orders SET status = "
-        );
+        let mut query_builder = sqlx::QueryBuilder::new("UPDATE fiat.orders SET status = ");
         query_builder.push_bind(new_status.to_string());
         query_builder.push(", updated_at = NOW()");
 
@@ -1393,14 +1519,18 @@ impl FiatService {
         }
 
         // 完成或失败时记录完成时间
-        if matches!(new_status, FiatOrderStatus::Completed | FiatOrderStatus::Failed) {
+        if matches!(
+            new_status,
+            FiatOrderStatus::Completed | FiatOrderStatus::Failed
+        ) {
             query_builder.push(", completed_at = NOW()");
         }
 
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(order_id);
 
-        let rows_affected = query_builder.build()
+        let rows_affected = query_builder
+            .build()
             .execute(&self.pool)
             .await
             .context("Failed to update order status")?
@@ -1412,7 +1542,10 @@ impl FiatService {
 
         tracing::info!(
             "[FiatService] ✅ Order {} status updated: {} -> {:?} by provider {}",
-            order_id, current_status, new_status, provider_name
+            order_id,
+            current_status,
+            new_status,
+            provider_name
         );
 
         // 4. 记录审计日志
@@ -1428,7 +1561,7 @@ impl FiatService {
 
         let _ = sqlx::query(
             "INSERT INTO fiat.audit_logs (order_id, action, details, created_at) 
-             VALUES ($1, $2, $3, NOW())"
+             VALUES ($1, $2, $3, NOW())",
         )
         .bind(order_id)
         .bind("webhook_status_update")
@@ -1463,7 +1596,7 @@ impl FiatService {
                     status, created_at, updated_at, completed_at, 
                     expires_at, user_wallet_address, target_chain
              FROM fiat.orders 
-             WHERE id = $1"
+             WHERE id = $1",
         )
         .bind(order_id)
         .fetch_optional(&self.pool)
@@ -1511,14 +1644,14 @@ impl FiatService {
         // Kraken公开API：https://api.kraken.com/0/public/Ticker
         let pair = format!("USDT{}", fiat_currency); // USDTUSD
         let url = format!("https://api.kraken.com/0/public/Ticker?pair={}", pair);
-        
+
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(10))
             .build()?;
-        
+
         let response = client.get(&url).send().await?;
         let json: serde_json::Value = response.json().await?;
-        
+
         // 解析Kraken响应格式：{"result": {"USDTZUSD": {"c": ["1.0001", "123.45"]}}}
         if let Some(result) = json.get("result") {
             if let Some(pair_data) = result.as_object().and_then(|o| o.values().next()) {
@@ -1530,7 +1663,7 @@ impl FiatService {
                 }
             }
         }
-        
+
         Err(anyhow!("Invalid Kraken API response format"))
     }
 
@@ -1543,73 +1676,86 @@ impl FiatService {
             "polygon" | "matic" => "137",
             _ => return Err(anyhow!("Unsupported chain: {}", chain)),
         };
-        
+
         let token_address = match token.to_uppercase().as_str() {
-            "ETH" => "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",  // ETH native
+            "ETH" => "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // ETH native
             "WETH" => "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "BNB" => "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",  // BNB native
+            "BNB" => "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // BNB native
             _ => return Err(anyhow!("Token not supported: {}", token)),
         };
-        
+
         let usdt_address = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // USDT on Ethereum
         let amount_wei = (amount * Decimal::from(1_000_000_000_000_000_000u64)).to_string();
-        
+
         let url = format!(
             "https://api.1inch.dev/swap/v5.2/{}/quote?src={}&dst={}&amount={}",
             chain_id, token_address, usdt_address, amount_wei
         );
-        
+
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(15))
             .build()?;
-        
-        let response = client.get(&url)
-            .header("Authorization", format!("Bearer {}", 
-                std::env::var("ONEINCH_API_KEY").unwrap_or_default()))
+
+        let response = client
+            .get(&url)
+            .header(
+                "Authorization",
+                format!(
+                    "Bearer {}",
+                    std::env::var("ONEINCH_API_KEY").unwrap_or_default()
+                ),
+            )
             .send()
             .await?;
-        
+
         let json: serde_json::Value = response.json().await?;
-        
+
         // 解析gas费用（单位：wei）
         if let Some(gas_price) = json.get("estimatedGas").and_then(|v| v.as_u64()) {
-            let gas_cost_eth = Decimal::from(gas_price) / Decimal::from(1_000_000_000_000_000_000u64);
+            let gas_cost_eth =
+                Decimal::from(gas_price) / Decimal::from(1_000_000_000_000_000_000u64);
             // 获取ETH价格转换为USD
             let eth_price = self.price_service.get_price_decimal("ETH").await?;
             let gas_cost_usd = gas_cost_eth * eth_price;
-            
+
             // 添加0.3%的DEX滑点费
             let slippage = amount * Decimal::from_str("0.003")?;
-            
+
             return Ok(gas_cost_usd + slippage);
         }
-        
+
         Err(anyhow!("Failed to parse 1inch gas estimate"))
     }
 
     /// ✅ 生产级：从Banxa API获取提现手续费报价
-    async fn fetch_withdrawal_fee(&self, fiat_amount: Decimal, fiat_currency: &str) -> Result<Decimal> {
+    async fn fetch_withdrawal_fee(
+        &self,
+        fiat_amount: Decimal,
+        fiat_currency: &str,
+    ) -> Result<Decimal> {
         // Banxa API: https://api.banxa.com/api/prices
         // 注意：Banxa需要API key，这里使用公开查询接口
-        
+
         let url = format!(
             "https://api.banxa.com/api/prices?source=USDT&target={}&payment_method=WORLDPAYBANKSEPA&blockchain=ETH",
             fiat_currency
         );
-        
+
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(10))
             .build()?;
-        
-        let response = client.get(&url)
+
+        let response = client
+            .get(&url)
             .header("Content-Type", "application/json")
             .send()
             .await?;
-        
+
         let json: serde_json::Value = response.json().await?;
-        
+
         // 解析Banxa费率：{"data": {"prices": [{"spot_price_fee": "2.5"}]}}
-        if let Some(prices) = json.get("data")
+        if let Some(prices) = json
+            .get("data")
             .and_then(|d| d.get("prices"))
             .and_then(|p| p.as_array())
             .and_then(|arr| arr.first())
@@ -1619,9 +1765,8 @@ impl FiatService {
                 return Ok(fiat_amount * rate);
             }
         }
-        
+
         // 如果API失败，返回2.5%保守估算
         Ok(fiat_amount * Decimal::from_str("0.025")?)
     }
 }
-

@@ -86,7 +86,8 @@ pub async fn estimate_gas(
     );
 
     // ✅ 企业级优化：使用 AppState 中的单例 GasEstimator，避免重复创建和配置读取
-    let estimate = state.gas_estimator
+    let estimate = state
+        .gas_estimator
         .estimate_gas(&query.chain, query.speed)
         .await
         .map_err(|e| {
@@ -144,7 +145,8 @@ pub async fn estimate_all_speeds(
     tracing::info!(chain=%query.chain, "estimating_all_speeds");
 
     // ✅ 企业级优化：使用 AppState 中的单例 GasEstimator，避免重复创建和配置读取
-    let estimates = state.gas_estimator
+    let estimates = state
+        .gas_estimator
         .estimate_all_speeds(&query.chain)
         .await
         .map_err(|e| {

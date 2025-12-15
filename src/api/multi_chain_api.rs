@@ -128,10 +128,16 @@ pub async fn create_multi_chain_wallets(
     tracing::info!("Received batch wallet creation request:");
     tracing::info!("  Wallets count: {}", req.wallets.len());
     for (i, w) in req.wallets.iter().enumerate() {
-        tracing::info!("  Wallet {}: chain={}, address={}, pubkey_len={}, name={:?}", 
-            i+1, w.chain, w.address, w.public_key.len(), w.name);
+        tracing::info!(
+            "  Wallet {}: chain={}, address={}, pubkey_len={}, name={:?}",
+            i + 1,
+            w.chain,
+            w.address,
+            w.public_key.len(),
+            w.name
+        );
     }
-    
+
     // ✅ 非托管模式：批量注册钱包（客户端已派生）
     if req.wallets.is_empty() || req.wallets.len() > 20 {
         return Err(AppError::bad_request("Wallets: 1-20 required".to_string()));
@@ -161,7 +167,7 @@ pub async fn create_multi_chain_wallets(
         // ✅ 企业级验证 2：公钥不能为空
         if wallet_info.public_key.is_empty() {
             return Err(AppError::bad_request(format!(
-                "Public key is required for chain {}", 
+                "Public key is required for chain {}",
                 wallet_info.chain
             )));
         }
@@ -418,27 +424,30 @@ fn verify_public_key_matches_address(
     address: &str,
 ) -> anyhow::Result<()> {
     use crate::utils::chain_normalizer;
-    
+
     let chain_normalized = chain_normalizer::normalize_chain_identifier(chain)?;
-    
+
     match chain_normalized.as_str() {
         // EVM 链：验证公钥派生的地址是否匹配
         "ethereum" | "bsc" | "polygon" | "arbitrum" | "optimism" | "avalanche" => {
             verify_evm_public_key(public_key_hex, address)
         }
-        
+
         // Solana：验证 Ed25519 公钥
         "solana" => verify_solana_public_key(public_key_hex, address),
-        
+
         // Bitcoin：验证 secp256k1 公钥
         "bitcoin" => verify_bitcoin_public_key(public_key_hex, address),
-        
+
         // TON：验证 Ed25519 公钥
         "ton" => verify_ton_public_key(public_key_hex, address),
-        
+
         _ => {
             // 其他链暂时跳过验证
-            tracing::warn!("Public key verification not implemented for chain: {}", chain_normalized);
+            tracing::warn!(
+                "Public key verification not implemented for chain: {}",
+                chain_normalized
+            );
             Ok(())
         }
     }
@@ -447,30 +456,33 @@ fn verify_public_key_matches_address(
 /// 验证 EVM 公钥（secp256k1）
 fn verify_evm_public_key(public_key_hex: &str, expected_address: &str) -> anyhow::Result<()> {
     use sha3::{Digest, Keccak256};
-    
+
     // 解码公钥
-    let pubkey_bytes = hex::decode(public_key_hex)
-        .map_err(|_| anyhow::anyhow!("Invalid hex public key"))?;
-    
+    let pubkey_bytes =
+        hex::decode(public_key_hex).map_err(|_| anyhow::anyhow!("Invalid hex public key"))?;
+
     // EVM 公钥应该是 65 字节（未压缩）或 130 个字符的 hex
     if pubkey_bytes.len() != 65 && pubkey_bytes.len() != 33 {
-        return Err(anyhow::anyhow!("Invalid EVM public key length: {}", pubkey_bytes.len()));
+        return Err(anyhow::anyhow!(
+            "Invalid EVM public key length: {}",
+            pubkey_bytes.len()
+        ));
     }
-    
+
     // 如果是压缩格式，跳过详细验证（需要解压缩）
     if pubkey_bytes.len() == 33 {
         tracing::warn!("Compressed EVM public key detected, skipping detailed verification");
         return Ok(());
     }
-    
+
     // Keccak256 哈希（跳过第一个字节 0x04）
     let mut hasher = Keccak256::new();
     hasher.update(&pubkey_bytes[1..]);
     let hash = hasher.finalize();
-    
+
     // 地址是哈希的最后 20 字节
     let derived_address = format!("0x{}", hex::encode(&hash[12..]));
-    
+
     // 比较地址（不区分大小写）
     if derived_address.to_lowercase() != expected_address.to_lowercase() {
         return Err(anyhow::anyhow!(
@@ -479,23 +491,26 @@ fn verify_evm_public_key(public_key_hex: &str, expected_address: &str) -> anyhow
             derived_address
         ));
     }
-    
+
     Ok(())
 }
 
 /// 验证 Solana 公钥（Ed25519）
 fn verify_solana_public_key(public_key_hex: &str, expected_address: &str) -> anyhow::Result<()> {
     // Solana 公钥应该是 32 字节（64 个字符的 hex）
-    let pubkey_bytes = hex::decode(public_key_hex)
-        .map_err(|_| anyhow::anyhow!("Invalid hex public key"))?;
-    
+    let pubkey_bytes =
+        hex::decode(public_key_hex).map_err(|_| anyhow::anyhow!("Invalid hex public key"))?;
+
     if pubkey_bytes.len() != 32 {
-        return Err(anyhow::anyhow!("Invalid Solana public key length: {}", pubkey_bytes.len()));
+        return Err(anyhow::anyhow!(
+            "Invalid Solana public key length: {}",
+            pubkey_bytes.len()
+        ));
     }
-    
+
     // Solana 地址就是公钥的 base58 编码
     let derived_address = bs58::encode(&pubkey_bytes).into_string();
-    
+
     if derived_address != expected_address {
         return Err(anyhow::anyhow!(
             "Solana public key does not match address. Expected: {}, Derived: {}",
@@ -503,20 +518,23 @@ fn verify_solana_public_key(public_key_hex: &str, expected_address: &str) -> any
             derived_address
         ));
     }
-    
+
     Ok(())
 }
 
 /// 验证 Bitcoin 公钥（secp256k1）
 fn verify_bitcoin_public_key(public_key_hex: &str, _expected_address: &str) -> anyhow::Result<()> {
     // Bitcoin 公钥可以是压缩格式（33 字节）或未压缩格式（65 字节）
-    let pubkey_bytes = hex::decode(public_key_hex)
-        .map_err(|_| anyhow::anyhow!("Invalid hex public key"))?;
-    
+    let pubkey_bytes =
+        hex::decode(public_key_hex).map_err(|_| anyhow::anyhow!("Invalid hex public key"))?;
+
     if pubkey_bytes.len() != 33 && pubkey_bytes.len() != 65 {
-        return Err(anyhow::anyhow!("Invalid Bitcoin public key length: {}", pubkey_bytes.len()));
+        return Err(anyhow::anyhow!(
+            "Invalid Bitcoin public key length: {}",
+            pubkey_bytes.len()
+        ));
     }
-    
+
     // Bitcoin 地址派生比较复杂（P2PKH, P2SH, Bech32），暂时只验证长度
     // TODO: 实现完整的 Bitcoin 地址派生验证
     tracing::debug!("Bitcoin public key basic validation passed");
@@ -526,23 +544,26 @@ fn verify_bitcoin_public_key(public_key_hex: &str, _expected_address: &str) -> a
 /// 验证 TON 公钥（Ed25519）
 fn verify_ton_public_key(public_key_hex: &str, expected_address: &str) -> anyhow::Result<()> {
     use sha2::{Digest, Sha256};
-    
+
     // TON 公钥应该是 32 字节（64 个字符的 hex）
-    let pubkey_bytes = hex::decode(public_key_hex)
-        .map_err(|_| anyhow::anyhow!("Invalid hex public key"))?;
-    
+    let pubkey_bytes =
+        hex::decode(public_key_hex).map_err(|_| anyhow::anyhow!("Invalid hex public key"))?;
+
     if pubkey_bytes.len() != 32 {
-        return Err(anyhow::anyhow!("Invalid TON public key length: {}", pubkey_bytes.len()));
+        return Err(anyhow::anyhow!(
+            "Invalid TON public key length: {}",
+            pubkey_bytes.len()
+        ));
     }
-    
+
     // TON 地址派生：workchain + hash(pubkey)
     let mut hasher = Sha256::new();
     hasher.update(&pubkey_bytes);
     let hash = hasher.finalize();
-    
+
     // TON raw address 格式：0:hex64
     let derived_address = format!("0:{}", hex::encode(&hash[..32]));
-    
+
     // 比较地址（TON 支持多种格式，这里只验证 raw 格式）
     if expected_address.starts_with("0:") || expected_address.starts_with("-1:") {
         if derived_address != expected_address {
@@ -556,7 +577,7 @@ fn verify_ton_public_key(public_key_hex: &str, expected_address: &str) -> anyhow
         // User-friendly 格式（EQ/UQ 开头），暂时跳过验证
         tracing::debug!("TON user-friendly address detected, skipping detailed verification");
     }
-    
+
     Ok(())
 }
 

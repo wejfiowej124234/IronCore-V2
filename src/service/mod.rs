@@ -17,8 +17,8 @@ pub mod dynamic_fee_service; // NEW: 动态费用计算服务
 pub mod fee_non_custodial_validator; // ✅ P2: 费用非托管验证器
 pub mod fee_service;
 pub mod fiat; // ✅ 生产级: 支付服务商客户端（Onramper, TransFi等）
-pub mod fiat_service;
 pub mod fiat_provider_seeder; // ✅ 法币服务商种子数据
+pub mod fiat_service;
 pub mod gas_estimation_service; // ✅ 统一Gas估算服务
 pub mod gas_estimation_service_enhanced; // ✅ 增强版Gas估算（多速度、拥堵检测）
 pub mod gas_estimator;

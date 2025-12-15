@@ -54,10 +54,17 @@ pub async fn get_fiat_quote(
     Query(query): Query<FiatQuoteQuery>,
 ) -> Result<axum::Json<crate::api::response::ApiResponse<FiatQuoteResponse>>, AppError> {
     // 记录请求详情（支持匿名和已认证用户）
-    let user_info = auth.as_ref().map(|a| format!("user_id={}", a.user_id)).unwrap_or_else(|| "anonymous".to_string());
+    let user_info = auth
+        .as_ref()
+        .map(|a| format!("user_id={}", a.user_id))
+        .unwrap_or_else(|| "anonymous".to_string());
     tracing::info!(
         "[FiatAPI] get_fiat_quote: {}, amount={}, currency={}, token={}, payment_method={}",
-        user_info, query.amount, query.currency, query.token, query.payment_method
+        user_info,
+        query.amount,
+        query.currency,
+        query.token,
+        query.payment_method
     );
 
     // ✅金额验证
@@ -80,8 +87,14 @@ pub async fn get_fiat_quote(
     )?;
 
     // 使用默认租户ID和用户ID（用于匿名查询）
-    let tenant_id = auth.as_ref().map(|a| a.tenant_id).unwrap_or_else(|| Uuid::nil());
-    let user_id = auth.as_ref().map(|a| a.user_id).unwrap_or_else(|| Uuid::nil());
+    let tenant_id = auth
+        .as_ref()
+        .map(|a| a.tenant_id)
+        .unwrap_or_else(|| Uuid::nil());
+    let user_id = auth
+        .as_ref()
+        .map(|a| a.user_id)
+        .unwrap_or_else(|| Uuid::nil());
 
     let quote = fiat_service
         .get_onramp_quote(
@@ -97,20 +110,38 @@ pub async fn get_fiat_quote(
         .await
         .map_err(|e| {
             let error_msg = e.to_string();
-            tracing::error!("[FiatAPI] get_fiat_quote failed: {}, error={}", user_info, error_msg);
-            
+            tracing::error!(
+                "[FiatAPI] get_fiat_quote failed: {}, error={}",
+                user_info,
+                error_msg
+            );
+
             // 企业级错误映射：将业务错误映射为4xx，避免统一返回500
-            if error_msg.contains("没有可用的支付服务商") || error_msg.contains("No available payment providers") {
-                convert_error(StatusCode::SERVICE_UNAVAILABLE, "法币充值服务暂时不可用，请稍后重试".to_string())
-            } else if error_msg.contains("没有支持您所在国家的支付服务商") || error_msg.contains("country") {
-                convert_error(StatusCode::FORBIDDEN, "您所在地区暂不支持此服务".to_string())
-            } else if error_msg.contains("无法获取报价") || error_msg.contains("Failed to fetch") {
+            if error_msg.contains("没有可用的支付服务商")
+                || error_msg.contains("No available payment providers")
+            {
+                convert_error(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "法币充值服务暂时不可用，请稍后重试".to_string(),
+                )
+            } else if error_msg.contains("没有支持您所在国家的支付服务商")
+                || error_msg.contains("country")
+            {
+                convert_error(
+                    StatusCode::FORBIDDEN,
+                    "您所在地区暂不支持此服务".to_string(),
+                )
+            } else if error_msg.contains("无法获取报价") || error_msg.contains("Failed to fetch")
+            {
                 convert_error(StatusCode::BAD_GATEWAY, "获取报价失败，请重试".to_string())
             } else if error_msg.contains("金额") || error_msg.contains("amount") {
                 convert_error(StatusCode::BAD_REQUEST, error_msg)
             } else {
                 // 对于未知错误，返回503而不是500，表示服务暂时不可用
-                convert_error(StatusCode::SERVICE_UNAVAILABLE, "服务暂时不可用，请稍后重试".to_string())
+                convert_error(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "服务暂时不可用，请稍后重试".to_string(),
+                )
             }
         })?;
 
@@ -203,22 +234,46 @@ pub async fn create_fiat_order(
         .await
         .map_err(|e| {
             let error_msg = e.to_string();
-            tracing::error!("[FiatAPI] create_fiat_order failed: user_id={}, error={}", auth.user_id, error_msg);
-            
+            tracing::error!(
+                "[FiatAPI] create_fiat_order failed: user_id={}, error={}",
+                auth.user_id,
+                error_msg
+            );
+
             // 企业级错误映射：将业务错误映射为4xx/5xx，避免统一返回500
-            if error_msg.contains("没有可用的支付服务商") || error_msg.contains("No available payment providers") {
-                convert_error(StatusCode::SERVICE_UNAVAILABLE, "法币充值服务暂时不可用，请稍后重试".to_string())
-            } else if error_msg.contains("没有支持您所在国家的支付服务商") || error_msg.contains("country") {
-                convert_error(StatusCode::FORBIDDEN, "您所在地区暂不支持此服务".to_string())
-            } else if error_msg.contains("无法创建订单") || error_msg.contains("Failed to create") {
+            if error_msg.contains("没有可用的支付服务商")
+                || error_msg.contains("No available payment providers")
+            {
+                convert_error(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "法币充值服务暂时不可用，请稍后重试".to_string(),
+                )
+            } else if error_msg.contains("没有支持您所在国家的支付服务商")
+                || error_msg.contains("country")
+            {
+                convert_error(
+                    StatusCode::FORBIDDEN,
+                    "您所在地区暂不支持此服务".to_string(),
+                )
+            } else if error_msg.contains("无法创建订单") || error_msg.contains("Failed to create")
+            {
                 convert_error(StatusCode::BAD_GATEWAY, "创建订单失败，请重试".to_string())
-            } else if error_msg.contains("金额") || error_msg.contains("amount") || error_msg.contains("Invalid") {
+            } else if error_msg.contains("金额")
+                || error_msg.contains("amount")
+                || error_msg.contains("Invalid")
+            {
                 convert_error(StatusCode::BAD_REQUEST, error_msg)
             } else if error_msg.contains("Failed to fetch enabled providers from database") {
-                convert_error(StatusCode::SERVICE_UNAVAILABLE, "服务暂时不可用，请稍后重试".to_string())
+                convert_error(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "服务暂时不可用，请稍后重试".to_string(),
+                )
             } else {
                 // 对于未知错误，返回503而不是500，表示服务暂时不可用
-                convert_error(StatusCode::SERVICE_UNAVAILABLE, "服务暂时不可用，请稍后重试".to_string())
+                convert_error(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "服务暂时不可用，请稍后重试".to_string(),
+                )
             }
         })?;
 
@@ -293,9 +348,18 @@ pub async fn get_withdraw_quote(
     )?;
 
     // 使用默认租户ID和用户ID（用于匿名查询）
-    let tenant_id = auth.as_ref().map(|a| a.tenant_id).unwrap_or_else(|| Uuid::nil());
-    let user_id = auth.as_ref().map(|a| a.user_id).unwrap_or_else(|| Uuid::nil());
-    let user_info = auth.as_ref().map(|a| format!("user_id={}", a.user_id)).unwrap_or_else(|| "anonymous".to_string());
+    let tenant_id = auth
+        .as_ref()
+        .map(|a| a.tenant_id)
+        .unwrap_or_else(|| Uuid::nil());
+    let user_id = auth
+        .as_ref()
+        .map(|a| a.user_id)
+        .unwrap_or_else(|| Uuid::nil());
+    let user_info = auth
+        .as_ref()
+        .map(|a| format!("user_id={}", a.user_id))
+        .unwrap_or_else(|| "anonymous".to_string());
 
     let quote = fiat_service
         .get_offramp_quote(
@@ -310,19 +374,37 @@ pub async fn get_withdraw_quote(
         .await
         .map_err(|e| {
             let error_msg = e.to_string();
-            tracing::error!("[FiatAPI] get_offramp_quote failed: {}, error={}", user_info, error_msg);
-            
+            tracing::error!(
+                "[FiatAPI] get_offramp_quote failed: {}, error={}",
+                user_info,
+                error_msg
+            );
+
             // 企业级错误映射
-            if error_msg.contains("没有可用的支付服务商") || error_msg.contains("No available payment providers") {
-                convert_error(StatusCode::SERVICE_UNAVAILABLE, "法币提现服务暂时不可用，请稍后重试".to_string())
-            } else if error_msg.contains("没有支持您所在国家的支付服务商") || error_msg.contains("country") {
-                convert_error(StatusCode::FORBIDDEN, "您所在地区暂不支持此服务".to_string())
-            } else if error_msg.contains("无法获取报价") || error_msg.contains("Failed to fetch") {
+            if error_msg.contains("没有可用的支付服务商")
+                || error_msg.contains("No available payment providers")
+            {
+                convert_error(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "法币提现服务暂时不可用，请稍后重试".to_string(),
+                )
+            } else if error_msg.contains("没有支持您所在国家的支付服务商")
+                || error_msg.contains("country")
+            {
+                convert_error(
+                    StatusCode::FORBIDDEN,
+                    "您所在地区暂不支持此服务".to_string(),
+                )
+            } else if error_msg.contains("无法获取报价") || error_msg.contains("Failed to fetch")
+            {
                 convert_error(StatusCode::BAD_GATEWAY, "获取报价失败，请重试".to_string())
             } else if error_msg.contains("金额") || error_msg.contains("amount") {
                 convert_error(StatusCode::BAD_REQUEST, error_msg)
             } else {
-                convert_error(StatusCode::SERVICE_UNAVAILABLE, "服务暂时不可用，请稍后重试".to_string())
+                convert_error(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "服务暂时不可用，请稍后重试".to_string(),
+                )
             }
         })?;
 
@@ -408,24 +490,51 @@ pub async fn create_withdraw_order(
         .await
         .map_err(|e| {
             let error_msg = e.to_string();
-            tracing::error!("[FiatAPI] create_withdraw_order failed: user_id={}, error={}", auth.user_id, error_msg);
-            
+            tracing::error!(
+                "[FiatAPI] create_withdraw_order failed: user_id={}, error={}",
+                auth.user_id,
+                error_msg
+            );
+
             // 企业级错误映射：将业务错误映射为4xx/5xx，避免统一返回500
-            if error_msg.contains("没有可用的支付服务商") || error_msg.contains("No available payment providers") {
-                convert_error(StatusCode::SERVICE_UNAVAILABLE, "法币提现服务暂时不可用，请稍后重试".to_string())
-            } else if error_msg.contains("没有支持您所在国家的支付服务商") || error_msg.contains("country") {
-                convert_error(StatusCode::FORBIDDEN, "您所在地区暂不支持此服务".to_string())
-            } else if error_msg.contains("无法创建订单") || error_msg.contains("Failed to create") {
-                convert_error(StatusCode::BAD_GATEWAY, "创建提现订单失败，请重试".to_string())
+            if error_msg.contains("没有可用的支付服务商")
+                || error_msg.contains("No available payment providers")
+            {
+                convert_error(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "法币提现服务暂时不可用，请稍后重试".to_string(),
+                )
+            } else if error_msg.contains("没有支持您所在国家的支付服务商")
+                || error_msg.contains("country")
+            {
+                convert_error(
+                    StatusCode::FORBIDDEN,
+                    "您所在地区暂不支持此服务".to_string(),
+                )
+            } else if error_msg.contains("无法创建订单") || error_msg.contains("Failed to create")
+            {
+                convert_error(
+                    StatusCode::BAD_GATEWAY,
+                    "创建提现订单失败，请重试".to_string(),
+                )
             } else if error_msg.contains("余额不足") || error_msg.contains("insufficient") {
                 convert_error(StatusCode::BAD_REQUEST, "余额不足".to_string())
-            } else if error_msg.contains("金额") || error_msg.contains("amount") || error_msg.contains("Invalid") {
+            } else if error_msg.contains("金额")
+                || error_msg.contains("amount")
+                || error_msg.contains("Invalid")
+            {
                 convert_error(StatusCode::BAD_REQUEST, error_msg)
             } else if error_msg.contains("Failed to fetch enabled providers from database") {
-                convert_error(StatusCode::SERVICE_UNAVAILABLE, "服务暂时不可用，请稍后重试".to_string())
+                convert_error(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "服务暂时不可用，请稍后重试".to_string(),
+                )
             } else {
                 // 对于未知错误，返回503而不是500，表示服务暂时不可用
-                convert_error(StatusCode::SERVICE_UNAVAILABLE, "服务暂时不可用，请稍后重试".to_string())
+                convert_error(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "服务暂时不可用，请稍后重试".to_string(),
+                )
             }
         })?;
 
@@ -490,8 +599,15 @@ pub async fn get_withdraw_order_status(
         if error_msg.contains("not found") {
             convert_error(StatusCode::NOT_FOUND, "订单不存在".to_string())
         } else {
-            tracing::error!("[FiatAPI] get_order_status failed: order_id={}, error={}", order_id, error_msg);
-            convert_error(StatusCode::SERVICE_UNAVAILABLE, "查询订单状态失败，请稍后重试".to_string())
+            tracing::error!(
+                "[FiatAPI] get_order_status failed: order_id={}, error={}",
+                order_id,
+                error_msg
+            );
+            convert_error(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "查询订单状态失败，请稍后重试".to_string(),
+            )
         }
     })?;
 
@@ -543,8 +659,15 @@ pub async fn get_fiat_order_status(
         if error_msg.contains("not found") {
             convert_error(StatusCode::NOT_FOUND, "订单不存在".to_string())
         } else {
-            tracing::error!("[FiatAPI] get_order_status failed: order_id={}, error={}", order_id, error_msg);
-            convert_error(StatusCode::SERVICE_UNAVAILABLE, "查询订单状态失败，请稍后重试".to_string())
+            tracing::error!(
+                "[FiatAPI] get_order_status failed: order_id={}, error={}",
+                order_id,
+                error_msg
+            );
+            convert_error(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "查询订单状态失败，请稍后重试".to_string(),
+            )
         }
     })?;
 
@@ -638,7 +761,7 @@ pub async fn list_onramp_orders(
         "SELECT id, status, fiat_amount, fiat_currency, crypto_amount, crypto_token, 
                 payment_method, created_at, updated_at, COUNT(*) OVER() as total
          FROM fiat.orders 
-         WHERE user_id = $1 AND tenant_id = $2 AND order_type = 'onramp'"
+         WHERE user_id = $1 AND tenant_id = $2 AND order_type = 'onramp'",
     );
 
     let mut param_count = 2;
@@ -652,9 +775,7 @@ pub async fn list_onramp_orders(
     sql.push_str(" OFFSET $");
     sql.push_str(&(param_count + 2).to_string());
 
-    let mut query_builder = sqlx::query(&sql)
-        .bind(auth.user_id)
-        .bind(auth.tenant_id);
+    let mut query_builder = sqlx::query(&sql).bind(auth.user_id).bind(auth.tenant_id);
 
     if let Some(ref status) = query.status {
         query_builder = query_builder.bind(status);
@@ -667,7 +788,10 @@ pub async fn list_onramp_orders(
         .await
         .map_err(|e| {
             tracing::error!("[FiatAPI] list_onramp_orders failed: error={}", e);
-            convert_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch orders".to_string())
+            convert_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to fetch orders".to_string(),
+            )
         })?;
 
     let total = if !rows.is_empty() {
@@ -681,13 +805,21 @@ pub async fn list_onramp_orders(
         .map(|row| OrderListItem {
             order_id: row.get::<Uuid, _>("id").to_string(),
             status: row.get("status"),
-            fiat_amount: row.get::<rust_decimal::Decimal, _>("fiat_amount").to_string(),
+            fiat_amount: row
+                .get::<rust_decimal::Decimal, _>("fiat_amount")
+                .to_string(),
             fiat_currency: row.get("fiat_currency"),
-            crypto_amount: row.get::<rust_decimal::Decimal, _>("crypto_amount").to_string(),
+            crypto_amount: row
+                .get::<rust_decimal::Decimal, _>("crypto_amount")
+                .to_string(),
             crypto_token: row.get("crypto_token"),
             payment_method: row.get("payment_method"),
-            created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
-            updated_at: row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at").to_rfc3339(),
+            created_at: row
+                .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+                .to_rfc3339(),
+            updated_at: row
+                .get::<chrono::DateTime<chrono::Utc>, _>("updated_at")
+                .to_rfc3339(),
         })
         .collect();
 
@@ -713,7 +845,7 @@ pub async fn list_offramp_orders(
         "SELECT id, status, fiat_amount, fiat_currency, crypto_amount, crypto_token, 
                 payment_method, created_at, updated_at, COUNT(*) OVER() as total
          FROM fiat.orders 
-         WHERE user_id = $1 AND tenant_id = $2 AND order_type = 'offramp'"
+         WHERE user_id = $1 AND tenant_id = $2 AND order_type = 'offramp'",
     );
 
     let mut param_count = 2;
@@ -727,9 +859,7 @@ pub async fn list_offramp_orders(
     sql.push_str(" OFFSET $");
     sql.push_str(&(param_count + 2).to_string());
 
-    let mut query_builder = sqlx::query(&sql)
-        .bind(auth.user_id)
-        .bind(auth.tenant_id);
+    let mut query_builder = sqlx::query(&sql).bind(auth.user_id).bind(auth.tenant_id);
 
     if let Some(ref status) = query.status {
         query_builder = query_builder.bind(status);
@@ -742,7 +872,10 @@ pub async fn list_offramp_orders(
         .await
         .map_err(|e| {
             tracing::error!("[FiatAPI] list_offramp_orders failed: error={}", e);
-            convert_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch orders".to_string())
+            convert_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to fetch orders".to_string(),
+            )
         })?;
 
     let total = if !rows.is_empty() {
@@ -756,13 +889,21 @@ pub async fn list_offramp_orders(
         .map(|row| OrderListItem {
             order_id: row.get::<Uuid, _>("id").to_string(),
             status: row.get("status"),
-            fiat_amount: row.get::<rust_decimal::Decimal, _>("fiat_amount").to_string(),
+            fiat_amount: row
+                .get::<rust_decimal::Decimal, _>("fiat_amount")
+                .to_string(),
             fiat_currency: row.get("fiat_currency"),
-            crypto_amount: row.get::<rust_decimal::Decimal, _>("crypto_amount").to_string(),
+            crypto_amount: row
+                .get::<rust_decimal::Decimal, _>("crypto_amount")
+                .to_string(),
             crypto_token: row.get("crypto_token"),
             payment_method: row.get("payment_method"),
-            created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
-            updated_at: row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at").to_rfc3339(),
+            created_at: row
+                .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+                .to_rfc3339(),
+            updated_at: row
+                .get::<chrono::DateTime<chrono::Utc>, _>("updated_at")
+                .to_rfc3339(),
         })
         .collect();
 
@@ -796,7 +937,7 @@ pub async fn onramper_webhook(
     // 1. 验证签名
     let webhook_secret = std::env::var("ONRAMPER_WEBHOOK_SECRET")
         .unwrap_or_else(|_| "test_onramper_webhook_secret".to_string());
-    
+
     if let Err(e) = crate::security::webhook_verifier::verify_onramper_signature(
         &headers,
         &body,
@@ -810,11 +951,12 @@ pub async fn onramper_webhook(
     }
 
     // 2. 解析payload
-    let payload: OnramperWebhookPayload = serde_json::from_str(&body)
-        .map_err(|e| convert_error(
+    let payload: OnramperWebhookPayload = serde_json::from_str(&body).map_err(|e| {
+        convert_error(
             StatusCode::BAD_REQUEST,
             format!("Invalid webhook payload: {}", e),
-        ))?;
+        )
+    })?;
 
     // 3. 映射状态
     let order_status = match payload.status.as_str() {
@@ -825,11 +967,12 @@ pub async fn onramper_webhook(
     };
 
     // 4. 更新订单
-    let order_id = Uuid::from_str(&payload.order_id)
-        .map_err(|_| convert_error(
+    let order_id = Uuid::from_str(&payload.order_id).map_err(|_| {
+        convert_error(
             StatusCode::BAD_REQUEST,
             "Invalid order ID format".to_string(),
-        ))?;
+        )
+    })?;
 
     let fiat_service = FiatService::new(
         state.pool.clone(),
@@ -846,12 +989,17 @@ pub async fn onramper_webhook(
             Some(serde_json::to_value(&payload).unwrap()),
         )
         .await
-        .map_err(|e| convert_error(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to update order: {}", e),
-        ))?;
+        .map_err(|e| {
+            convert_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to update order: {}", e),
+            )
+        })?;
 
-    tracing::info!("[FiatAPI] ✅ Onramper webhook processed: order_id={}", order_id);
+    tracing::info!(
+        "[FiatAPI] ✅ Onramper webhook processed: order_id={}",
+        order_id
+    );
     success_response(())
 }
 
@@ -876,7 +1024,7 @@ pub async fn transfi_webhook(
     // 1. 验证签名
     let webhook_secret = std::env::var("TRANSFI_WEBHOOK_SECRET")
         .unwrap_or_else(|_| "test_transfi_webhook_secret".to_string());
-    
+
     if let Err(e) = crate::security::webhook_verifier::verify_transfi_signature(
         &headers,
         &body,
@@ -892,11 +1040,12 @@ pub async fn transfi_webhook(
     }
 
     // 2. 解析payload
-    let payload: TransFiWebhookPayload = serde_json::from_str(&body)
-        .map_err(|e| convert_error(
+    let payload: TransFiWebhookPayload = serde_json::from_str(&body).map_err(|e| {
+        convert_error(
             StatusCode::BAD_REQUEST,
             format!("Invalid webhook payload: {}", e),
-        ))?;
+        )
+    })?;
 
     // 3. 映射状态
     let order_status = match payload.status.as_str() {
@@ -907,11 +1056,12 @@ pub async fn transfi_webhook(
     };
 
     // 4. 更新订单
-    let order_id = Uuid::from_str(&payload.order_id)
-        .map_err(|_| convert_error(
+    let order_id = Uuid::from_str(&payload.order_id).map_err(|_| {
+        convert_error(
             StatusCode::BAD_REQUEST,
             "Invalid order ID format".to_string(),
-        ))?;
+        )
+    })?;
 
     let fiat_service = FiatService::new(
         state.pool.clone(),
@@ -928,12 +1078,17 @@ pub async fn transfi_webhook(
             Some(serde_json::to_value(&payload).unwrap()),
         )
         .await
-        .map_err(|e| convert_error(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to update order: {}", e),
-        ))?;
+        .map_err(|e| {
+            convert_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to update order: {}", e),
+            )
+        })?;
 
-    tracing::info!("[FiatAPI] ✅ TransFi webhook processed: order_id={}", order_id);
+    tracing::info!(
+        "[FiatAPI] ✅ TransFi webhook processed: order_id={}",
+        order_id
+    );
     success_response(())
 }
 
@@ -959,7 +1114,7 @@ pub async fn alchemypay_webhook(
     // 1. 验证签名
     let webhook_secret = std::env::var("ALCHEMYPAY_WEBHOOK_SECRET")
         .unwrap_or_else(|_| "test_alchemy_webhook_secret".to_string());
-    
+
     if let Err(e) = crate::security::webhook_verifier::verify_alchemypay_signature(
         &headers,
         &body,
@@ -973,11 +1128,12 @@ pub async fn alchemypay_webhook(
     }
 
     // 2. 解析payload
-    let payload: AlchemyPayWebhookPayload = serde_json::from_str(&body)
-        .map_err(|e| convert_error(
+    let payload: AlchemyPayWebhookPayload = serde_json::from_str(&body).map_err(|e| {
+        convert_error(
             StatusCode::BAD_REQUEST,
             format!("Invalid webhook payload: {}", e),
-        ))?;
+        )
+    })?;
 
     // 3. 映射状态
     let order_status = match payload.status.as_str() {
@@ -988,11 +1144,12 @@ pub async fn alchemypay_webhook(
     };
 
     // 4. 更新订单
-    let order_id = Uuid::from_str(&payload.order_no)
-        .map_err(|_| convert_error(
+    let order_id = Uuid::from_str(&payload.order_no).map_err(|_| {
+        convert_error(
             StatusCode::BAD_REQUEST,
             "Invalid order ID format".to_string(),
-        ))?;
+        )
+    })?;
 
     let fiat_service = FiatService::new(
         state.pool.clone(),
@@ -1009,12 +1166,17 @@ pub async fn alchemypay_webhook(
             Some(serde_json::to_value(&payload).unwrap()),
         )
         .await
-        .map_err(|e| convert_error(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to update order: {}", e),
-        ))?;
+        .map_err(|e| {
+            convert_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to update order: {}", e),
+            )
+        })?;
 
-    tracing::info!("[FiatAPI] ✅ Alchemy Pay webhook processed: order_id={}", order_id);
+    tracing::info!(
+        "[FiatAPI] ✅ Alchemy Pay webhook processed: order_id={}",
+        order_id
+    );
     success_response(())
 }
 

@@ -1,16 +1,13 @@
 //! Bitcoin API - Bitcoin特定功能
 //! 提供Bitcoin链的特殊功能，如费率估算
 
+use std::sync::Arc;
+
 use axum::{extract::State, routing::get, Json, Router};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use utoipa::ToSchema;
 
-use crate::{
-    api::response::success_response,
-    app_state::AppState,
-    error::AppError,
-};
+use crate::{api::response::success_response, app_state::AppState, error::AppError};
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Request/Response Models
@@ -57,10 +54,10 @@ pub async fn get_fee_estimates(
     // TODO: 实际实现中，应该从Bitcoin节点或费率估算服务获取
     // 目前返回合理的默认值
     let estimate = BitcoinFeeEstimate {
-        fast_fee: 50,      // ~10分钟确认
-        medium_fee: 25,    // ~30分钟确认
-        slow_fee: 10,      // ~1小时确认
-        minimum_fee: 1,    // 最低中继费率
+        fast_fee: 50,   // ~10分钟确认
+        medium_fee: 25, // ~30分钟确认
+        slow_fee: 10,   // ~1小时确认
+        minimum_fee: 1, // 最低中继费率
     };
 
     success_response(estimate)

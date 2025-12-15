@@ -1,0 +1,34 @@
+[advisories]
+# 允许特定的 CVE，因为它们是维护相关的警告而非直接安全漏洞
+# 或者等待上游库的更新
+
+ignore = [
+    # RUSTSEC-2024-0436: paste is unmaintained (used via sqlx)
+    # paste 是 sqlx 的深层依赖，但不会直接影响我们的代码
+    # 等待 sqlx 升级或切换到 sqlx 的维护分支
+    { name = "paste", version = "<2.0", crate = "paste", reason = "unmaintained but low risk, used transitively via sqlx" },
+    
+    # RUSTSEC-2024-0370: proc-macro-error is unmaintained (used via utoipa)
+    # utoipa 的维护者正在解决此问题
+    { name = "proc-macro-error", version = "<2.0", crate = "proc-macro-error", reason = "unmaintained but low risk, used transitively via utoipa" },
+    
+    # RUSTSEC-2025-0010: ring 0.16 is unmaintained (used via ethers + reqwest)
+    # ethers 正在计划升级到 ring 0.17，或者可以手动更新
+    { name = "ring", version = "<0.17", crate = "ring", reason = "maintainer migration, ethers ecosystem working on upgrade" },
+]
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 OR MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-DFS-2016",
+]
+
+[bans]
+# 不允许明显的重复依赖
+multiple-versions = "warn"
+wildcards = "warn"

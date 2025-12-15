@@ -21,10 +21,10 @@ pub struct NonCustodialWallet {
     pub derivation_path: Option<String>,
     /// 曲线类型（可公开）
     pub curve_type: Option<String>,
-    pub name: Option<String>,                 // ✅ 改为Option（与SQL一致）
-    pub account_index: i64,                   // ✅ 新增 - INT8/BIGINT
-    pub address_index: i64,                   // ✅ 新增 - INT8/BIGINT
-    pub policy_id: Option<Uuid>,              // ✅ 新增
+    pub name: Option<String>,    // ✅ 改为Option（与SQL一致）
+    pub account_index: i64,      // ✅ 新增 - INT8/BIGINT
+    pub address_index: i64,      // ✅ 新增 - INT8/BIGINT
+    pub policy_id: Option<Uuid>, // ✅ 新增
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -66,7 +66,7 @@ impl From<NonCustodialWallet> for WalletResponse {
             address: wallet.address,
             public_key: wallet.public_key,
             derivation_path: wallet.derivation_path,
-            name: wallet.name.unwrap_or_else(|| "Unnamed Wallet".to_string()),  // ✅ 修复
+            name: wallet.name.unwrap_or_else(|| "Unnamed Wallet".to_string()), // ✅ 修复
             created_at: wallet.created_at.to_rfc3339(),
         }
     }

@@ -1,10 +1,11 @@
 // 交易数据访问 Repository
 
+use std::str::FromStr;
+
 use anyhow::Result;
 use async_trait::async_trait;
 use rust_decimal::Decimal;
 use sqlx::{PgPool, Row};
-use std::str::FromStr;
 use uuid::Uuid;
 
 // ============ 领域模型 ============
@@ -12,24 +13,24 @@ use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct Transaction {
     pub id: Uuid,
-    pub tenant_id: Option<Uuid>,              // ✅ 新增
+    pub tenant_id: Option<Uuid>, // ✅ 新增
     pub user_id: Uuid,
-    pub wallet_id: Option<Uuid>,              // ✅ 改为Option
-    pub chain: Option<String>,                // ✅ 统一使用chain字段
-    pub tx_hash: Option<String>,              // ✅ 改为Option
-    pub tx_type: String, // send / receive / swap / approve
-    pub status: String,  // pending / confirmed / failed
+    pub wallet_id: Option<Uuid>, // ✅ 改为Option
+    pub chain: Option<String>,   // ✅ 统一使用chain字段
+    pub tx_hash: Option<String>, // ✅ 改为Option
+    pub tx_type: String,         // send / receive / swap / approve
+    pub status: String,          // pending / confirmed / failed
     pub from_address: String,
     pub to_address: String,
-    pub amount: Option<String>,               // ✅ 改为Option
+    pub amount: Option<String>, // ✅ 改为Option
     pub token_symbol: Option<String>,
     /// Gas费用：区块链网络收取的交易执行费用（gas_used * gas_price）
     /// 注意：这不是平台服务费，平台服务费在fee_audit表的platform_fee字段中
     pub gas_fee: Option<String>,
     pub nonce: Option<i64>,
-    pub metadata: Option<serde_json::Value>,  // ✅ 新增
+    pub metadata: Option<serde_json::Value>, // ✅ 新增
     pub created_at: chrono::DateTime<chrono::Utc>,
-    pub updated_at: chrono::DateTime<chrono::Utc>,  // ✅ 新增
+    pub updated_at: chrono::DateTime<chrono::Utc>, // ✅ 新增
     pub confirmed_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
@@ -124,7 +125,7 @@ impl TransactionRepository for PgTransactionRepository {
         #[derive(sqlx::FromRow)]
         struct TransactionRow {
             id: Uuid,
-            tenant_id: Option<Uuid>,     // ✅ 匹配 Transaction 结构
+            tenant_id: Option<Uuid>, // ✅ 匹配 Transaction 结构
             user_id: Uuid,
             wallet_id: Uuid,
             chain: String,
@@ -132,8 +133,8 @@ impl TransactionRepository for PgTransactionRepository {
             tx_type: String,
             status: String,
             from_address: String,
-            to_address: String,           // ✅ 必填字段
-            amount: String,               // Decimal as TEXT
+            to_address: String, // ✅ 必填字段
+            amount: String,     // Decimal as TEXT
             token_symbol: Option<String>,
             gas_fee: Option<String>,
             nonce: Option<i64>,
@@ -142,7 +143,7 @@ impl TransactionRepository for PgTransactionRepository {
             updated_at: chrono::DateTime<chrono::Utc>,
             confirmed_at: Option<chrono::DateTime<chrono::Utc>>,
         }
-        
+
         let row = sqlx::query_as::<_, TransactionRow>(
             r#"SELECT id, tenant_id, user_id, wallet_id, chain, tx_hash, 
                     tx_type, status, from_address, to_address, amount::TEXT as amount, token_symbol, 
@@ -157,14 +158,14 @@ impl TransactionRepository for PgTransactionRepository {
             id: r.id,
             tenant_id: r.tenant_id,
             user_id: r.user_id,
-            wallet_id: Some(r.wallet_id),  // ✅ 包装为 Option
-            chain: Some(r.chain),           // ✅ 包装为 Option
-            tx_hash: Some(r.tx_hash),       // ✅ 包装为 Option
+            wallet_id: Some(r.wallet_id), // ✅ 包装为 Option
+            chain: Some(r.chain),         // ✅ 包装为 Option
+            tx_hash: Some(r.tx_hash),     // ✅ 包装为 Option
             tx_type: r.tx_type,
             status: r.status,
             from_address: r.from_address,
             to_address: r.to_address,
-            amount: Some(r.amount),         // ✅ 包装为 Option
+            amount: Some(r.amount), // ✅ 包装为 Option
             token_symbol: r.token_symbol,
             gas_fee: r.gas_fee,
             nonce: r.nonce,
@@ -197,7 +198,7 @@ impl TransactionRepository for PgTransactionRepository {
             updated_at: chrono::DateTime<chrono::Utc>,
             confirmed_at: Option<chrono::DateTime<chrono::Utc>>,
         }
-        
+
         let row = sqlx::query_as::<_, TransactionRow>(
             r#"SELECT id, tenant_id, user_id, wallet_id, chain, tx_hash, 
                     tx_type, status, from_address, to_address, amount::TEXT as amount, token_symbol, 
@@ -233,7 +234,7 @@ impl TransactionRepository for PgTransactionRepository {
     async fn create(&self, params: CreateTransactionParams) -> Result<Transaction> {
         let tx_id = Uuid::new_v4();
         let now = chrono::Utc::now();
-        
+
         // 将 String 解析为 Decimal
         let amount_decimal = Decimal::from_str(&params.amount)?;
 
@@ -355,7 +356,7 @@ impl TransactionRepository for PgTransactionRepository {
             updated_at: chrono::DateTime<chrono::Utc>,
             confirmed_at: Option<chrono::DateTime<chrono::Utc>>,
         }
-        
+
         let rows = sqlx::query_as::<_, TransactionRow>(
             r#"SELECT id, tenant_id, user_id, wallet_id, chain, tx_hash, tx_type, status, 
                     from_address, to_address, amount::TEXT as amount, token_symbol, gas_fee, nonce, metadata,
@@ -423,7 +424,7 @@ impl TransactionRepository for PgTransactionRepository {
             updated_at: chrono::DateTime<chrono::Utc>,
             confirmed_at: Option<chrono::DateTime<chrono::Utc>>,
         }
-        
+
         let rows = sqlx::query_as::<_, TransactionRow>(
             r#"SELECT id, tenant_id, user_id, wallet_id, chain, tx_hash, tx_type, status, 
                     from_address, to_address, amount::TEXT as amount, token_symbol, gas_fee, nonce, metadata,

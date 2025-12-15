@@ -14,20 +14,20 @@ pub struct SwapTransaction {
     pub id: Uuid,
     pub tenant_id: Uuid,
     pub user_id: Uuid,
-    pub wallet_id: Option<Uuid>,              // ✅ 改为Option
-    pub chain: Option<String>,                // ✅ 新增
+    pub wallet_id: Option<Uuid>, // ✅ 改为Option
+    pub chain: Option<String>,   // ✅ 新增
     pub network: String,
     pub from_token: String,
     pub to_token: String,
     pub from_amount: Decimal,
     pub to_amount: Option<Decimal>,
-    pub to_amount_min: Option<Decimal>,       // ✅ 新增（滑点保护）
+    pub to_amount_min: Option<Decimal>, // ✅ 新增（滑点保护）
     pub slippage: Option<Decimal>,
     pub swap_id: String,
     pub tx_hash: Option<String>,
-    pub wallet_address: Option<String>,       // ✅ 新增
+    pub wallet_address: Option<String>, // ✅ 新增
     pub status: String,
-    pub fiat_order_id: Option<Uuid>,          // ✅ 新增
+    pub fiat_order_id: Option<Uuid>, // ✅ 新增
     pub gas_used: Option<String>,
     pub confirmations: i32,
     pub metadata: Option<serde_json::Value>,

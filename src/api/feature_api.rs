@@ -1,16 +1,13 @@
 //! Feature Flags API - 功能开关管理
 //! 允许前端查询后端功能是否启用
 
+use std::{collections::HashMap, sync::Arc};
+
 use axum::{extract::State, routing::get, Json, Router};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
 use utoipa::ToSchema;
 
-use crate::{
-    api::response::success_response,
-    app_state::AppState,
-    error::AppError,
-};
+use crate::{api::response::success_response, app_state::AppState, error::AppError};
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Request/Response Models
@@ -49,7 +46,7 @@ pub async fn get_features(
     State(_state): State<Arc<AppState>>,
 ) -> Result<Json<crate::api::response::ApiResponse<FeatureFlags>>, AppError> {
     let mut features = HashMap::new();
-    
+
     // 核心功能（当前都已启用）
     features.insert("multi_chain_wallets".to_string(), true);
     features.insert("evm_chains".to_string(), true);
@@ -59,14 +56,14 @@ pub async fn get_features(
     features.insert("fiat_onramp".to_string(), true);
     features.insert("swap".to_string(), true);
     features.insert("bridge".to_string(), true);
-    
+
     // 高级功能（部分启用）
     features.insert("audit_logs".to_string(), true);
     features.insert("reconciliation".to_string(), true);
     features.insert("withdrawal_review".to_string(), true);
     features.insert("webhooks".to_string(), true);
     features.insert("country_restrictions".to_string(), true);
-    
+
     // 未来功能（暂未启用）
     features.insert("solana_support".to_string(), false);
     features.insert("cosmos_support".to_string(), false);

@@ -1,5 +1,5 @@
 //! 生产级性能基准测试 - RPC Selector
-//! 
+//!
 //! 测试场景:
 //! 1. 单链端点选择性能（p50/p95/p99延迟）
 //! 2. 多链轮询性能（模拟真实负载）
@@ -12,9 +12,7 @@
 //! - 并发100: < 20ms (p95)
 //! - 缓存命中: < 1ms
 
-use std::env;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{env, sync::Arc, time::Duration};
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use ironcore::infrastructure::rpc_selector::RpcSelector;
@@ -61,18 +59,14 @@ fn bench_single_chain_selection(c: &mut Criterion) {
     group.measurement_time(Duration::from_secs(10));
 
     for chain in CHAINS {
-        group.bench_with_input(
-            BenchmarkId::new("select", chain),
-            chain,
-            |b, &chain| {
-                b.iter(|| {
-                    rt.block_on(async {
-                        let result = selector.select(black_box(chain)).await;
-                        black_box(result);
-                    })
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("select", chain), chain, |b, &chain| {
+            b.iter(|| {
+                rt.block_on(async {
+                    let result = selector.select(black_box(chain)).await;
+                    black_box(result);
+                })
+            });
+        });
     }
     group.finish();
 }
@@ -120,9 +114,7 @@ fn bench_concurrent_load(c: &mut Criterion) {
                 for i in 0..CONCURRENT_LOW {
                     let s = selector.clone();
                     let chain = CHAINS[i % CHAINS.len()];
-                    handles.push(tokio::spawn(async move {
-                        s.select(chain).await
-                    }));
+                    handles.push(tokio::spawn(async move { s.select(chain).await }));
                 }
                 let results = futures::future::join_all(handles).await;
                 black_box(results);
@@ -139,9 +131,7 @@ fn bench_concurrent_load(c: &mut Criterion) {
                 for i in 0..CONCURRENT_MED {
                     let s = selector.clone();
                     let chain = CHAINS[i % CHAINS.len()];
-                    handles.push(tokio::spawn(async move {
-                        s.select(chain).await
-                    }));
+                    handles.push(tokio::spawn(async move { s.select(chain).await }));
                 }
                 let results = futures::future::join_all(handles).await;
                 black_box(results);
@@ -158,9 +148,7 @@ fn bench_concurrent_load(c: &mut Criterion) {
                 for i in 0..CONCURRENT_HIGH {
                     let s = selector.clone();
                     let chain = CHAINS[i % CHAINS.len()];
-                    handles.push(tokio::spawn(async move {
-                        s.select(chain).await
-                    }));
+                    handles.push(tokio::spawn(async move { s.select(chain).await }));
                 }
                 let results = futures::future::join_all(handles).await;
                 black_box(results);
@@ -193,7 +181,7 @@ fn bench_cache_performance(c: &mut Criterion) {
     // 热缓存 - 重复使用同一个 selector
     let selector = Arc::new(RpcSelector::new(pool));
     rt.block_on(warmup_cache(&selector));
-    
+
     group.throughput(Throughput::Elements(1000));
     group.bench_function("hot_cache_1000_hits", |b| {
         b.iter(|| {

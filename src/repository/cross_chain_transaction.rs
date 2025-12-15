@@ -56,8 +56,12 @@ pub trait CrossChainTransactionRepository: Send + Sync {
     async fn find_by_user(&self, user_id: Uuid) -> Result<Vec<CrossChainTransaction>>;
     async fn update_status(&self, id: Uuid, status: String, progress: i64) -> Result<()>;
     async fn update_source_tx(&self, id: Uuid, tx_hash: String, confirmations: i64) -> Result<()>;
-    async fn update_destination_tx(&self, id: Uuid, tx_hash: String, confirmations: i64)
-        -> Result<()>;
+    async fn update_destination_tx(
+        &self,
+        id: Uuid,
+        tx_hash: String,
+        confirmations: i64,
+    ) -> Result<()>;
 }
 
 // ============ PostgreSQL 实现 ============
@@ -86,7 +90,7 @@ impl CrossChainTransactionRepository for PgCrossChainTransactionRepository {
                 status, progress_percentage, signed_source_tx,
                 created_at, updated_at
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-            "#
+            "#,
         )
         .bind(id)
         .bind(params.user_id)
@@ -98,7 +102,7 @@ impl CrossChainTransactionRepository for PgCrossChainTransactionRepository {
         .bind(&params.token_symbol)
         .bind(params.amount)
         .bind("SourcePending")
-        .bind(0i64)  // progress_percentage 初始值为0
+        .bind(0i64) // progress_percentage 初始值为0
         .bind(&params.signed_source_tx)
         .bind(now)
         .bind(now)
@@ -120,7 +124,7 @@ impl CrossChainTransactionRepository for PgCrossChainTransactionRepository {
                    created_at, updated_at, completed_at
             FROM cross_chain_transactions
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -142,7 +146,7 @@ impl CrossChainTransactionRepository for PgCrossChainTransactionRepository {
             FROM cross_chain_transactions
             WHERE user_id = $1
             ORDER BY created_at DESC
-            "#
+            "#,
         )
         .bind(user_id)
         .fetch_all(&self.pool)
@@ -164,7 +168,7 @@ impl CrossChainTransactionRepository for PgCrossChainTransactionRepository {
             UPDATE cross_chain_transactions
             SET status = $1, progress_percentage = $2, updated_at = $3, completed_at = $4
             WHERE id = $5
-            "#
+            "#,
         )
         .bind(&status)
         .bind(progress)
@@ -183,7 +187,7 @@ impl CrossChainTransactionRepository for PgCrossChainTransactionRepository {
             UPDATE cross_chain_transactions
             SET source_tx_hash = $1, source_confirmations = $2, updated_at = NOW()
             WHERE id = $3
-            "#
+            "#,
         )
         .bind(&tx_hash)
         .bind(confirmations)
@@ -205,7 +209,7 @@ impl CrossChainTransactionRepository for PgCrossChainTransactionRepository {
             UPDATE cross_chain_transactions
             SET destination_tx_hash = $1, destination_confirmations = $2, updated_at = NOW()
             WHERE id = $3
-            "#
+            "#,
         )
         .bind(&tx_hash)
         .bind(confirmations)
@@ -216,4 +220,3 @@ impl CrossChainTransactionRepository for PgCrossChainTransactionRepository {
         Ok(())
     }
 }
-

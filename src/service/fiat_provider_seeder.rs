@@ -58,13 +58,28 @@ pub async fn seed_providers(pool: &PgPool) -> Result<()> {
             "11111111-1111-1111-1111-111111111111",
             "onramper",
             "Onramper",
-            100,  // 最高优先级
-            0.5,  // 聚合器费率最优
+            100, // 最高优先级
+            0.5, // 聚合器费率最优
             3.5,
             "https://api.onramper.com",
             "https://webhook.onramper.com",
-            vec!["US", "GB", "EU", "CA", "AU", "JP", "KR", "SG", "HK", "TW", "CN", "IN", "BR", "MX", "RU", "ZA", "AE", "TR", "ID", "TH", "VN", "PH", "MY"],  // 全球95%覆盖
-            vec!["credit_card", "debit_card", "bank_transfer", "apple_pay", "google_pay", "wechat_pay", "alipay", "sepa", "pix", "upi", "faster_payments"],  // 聚合25+ ramps
+            vec![
+                "US", "GB", "EU", "CA", "AU", "JP", "KR", "SG", "HK", "TW", "CN", "IN", "BR", "MX",
+                "RU", "ZA", "AE", "TR", "ID", "TH", "VN", "PH", "MY",
+            ], // 全球95%覆盖
+            vec![
+                "credit_card",
+                "debit_card",
+                "bank_transfer",
+                "apple_pay",
+                "google_pay",
+                "wechat_pay",
+                "alipay",
+                "sepa",
+                "pix",
+                "upi",
+                "faster_payments",
+            ], // 聚合25+ ramps
         ),
         // ✅ 主力2: TransFi - 中国特化优先级90
         (
@@ -72,12 +87,25 @@ pub async fn seed_providers(pool: &PgPool) -> Result<()> {
             "transfi",
             "TransFi",
             90,
-            1.5,  // 新兴市场低费率
+            1.5, // 新兴市场低费率
             3.5,
             "https://api.transfi.com",
             "https://webhook.transfi.com",
-            vec!["CN", "HK", "TW", "SG", "MY", "TH", "VN", "ID", "PH", "IN", "BR", "MX", "AR", "TR", "ZA", "AE", "RU"],  // 新兴市场专注
-            vec!["alipay", "wechat_pay", "bank_transfer", "credit_card", "debit_card", "pix", "upi", "paytm", "gcash"],  // 2024新增支付宝/微信
+            vec![
+                "CN", "HK", "TW", "SG", "MY", "TH", "VN", "ID", "PH", "IN", "BR", "MX", "AR", "TR",
+                "ZA", "AE", "RU",
+            ], // 新兴市场专注
+            vec![
+                "alipay",
+                "wechat_pay",
+                "bank_transfer",
+                "credit_card",
+                "debit_card",
+                "pix",
+                "upi",
+                "paytm",
+                "gcash",
+            ], // 2024新增支付宝/微信
         ),
         // ✅ 主力3: Alchemy Pay - Web3优化优先级85
         (
@@ -85,25 +113,48 @@ pub async fn seed_providers(pool: &PgPool) -> Result<()> {
             "alchemypay",
             "Alchemy Pay",
             85,
-            2.0,  // DeFi友好费率
+            2.0, // DeFi友好费率
             4.0,
             "https://api.alchemypay.org",
             "https://webhook.alchemypay.org",
-            vec!["CN", "US", "GB", "EU", "CA", "AU", "JP", "KR", "SG", "HK", "TW", "IN", "TH", "VN", "ID", "PH"],  // Web3核心市场
-            vec!["alipay", "wechat_pay", "credit_card", "debit_card", "bank_transfer", "apple_pay", "google_pay", "binance_pay", "okx_pay"],  // Binance/OKX合作
+            vec![
+                "CN", "US", "GB", "EU", "CA", "AU", "JP", "KR", "SG", "HK", "TW", "IN", "TH", "VN",
+                "ID", "PH",
+            ], // Web3核心市场
+            vec![
+                "alipay",
+                "wechat_pay",
+                "credit_card",
+                "debit_card",
+                "bank_transfer",
+                "apple_pay",
+                "google_pay",
+                "binance_pay",
+                "okx_pay",
+            ], // Binance/OKX合作
         ),
         // ✅ 兜底1: Ramp Network - 欧美兜底优先级70
         (
             "44444444-4444-4444-4444-444444444444",
             "ramp",
             "Ramp Network",
-            70,  // 降低优先级作为兜底
-            0.49,  // 费率最低
+            70,   // 降低优先级作为兜底
+            0.49, // 费率最低
             2.9,
             "https://api.ramp.network",
             "https://webhook.ramp.network",
-            vec!["US", "GB", "EU", "CA", "AU", "CH", "NO", "SE", "DK", "FI", "NL", "BE", "AT", "IE", "ES", "IT", "PT", "FR", "DE"],  // 欧美专注
-            vec!["bank_transfer", "sepa", "instant_sepa", "ach", "open_banking", "faster_payments"],  // 欧美银行转账专家
+            vec![
+                "US", "GB", "EU", "CA", "AU", "CH", "NO", "SE", "DK", "FI", "NL", "BE", "AT", "IE",
+                "ES", "IT", "PT", "FR", "DE",
+            ], // 欧美专注
+            vec![
+                "bank_transfer",
+                "sepa",
+                "instant_sepa",
+                "ach",
+                "open_banking",
+                "faster_payments",
+            ], // 欧美银行转账专家
         ),
         // ✅ 兜底2: MoonPay - 全球兜底优先级60
         (
@@ -111,19 +162,43 @@ pub async fn seed_providers(pool: &PgPool) -> Result<()> {
             "moonpay",
             "MoonPay",
             60,  // 最后兜底
-            1.0,  // 品牌信任
+            1.0, // 品牌信任
             4.5,
             "https://api.moonpay.com",
             "https://webhook.moonpay.com",
-            vec!["US", "GB", "EU", "CA", "AU", "NZ", "JP", "KR", "SG", "HK", "TW", "IN", "BR", "MX", "ZA", "AE", "CH", "NO", "SE", "DK", "FI"],  // 全球品牌覆盖
-            vec!["credit_card", "debit_card", "bank_transfer", "apple_pay", "google_pay", "samsung_pay", "sepa", "pix"],  // 全球主流支付
+            vec![
+                "US", "GB", "EU", "CA", "AU", "NZ", "JP", "KR", "SG", "HK", "TW", "IN", "BR", "MX",
+                "ZA", "AE", "CH", "NO", "SE", "DK", "FI",
+            ], // 全球品牌覆盖
+            vec![
+                "credit_card",
+                "debit_card",
+                "bank_transfer",
+                "apple_pay",
+                "google_pay",
+                "samsung_pay",
+                "sepa",
+                "pix",
+            ], // 全球主流支付
         ),
     ];
 
     let mut _success_count = 0;
     let mut failed = Vec::new();
 
-    for (uuid, name, display_name, priority, fee_min, fee_max, api_url, webhook_url, countries, payment_methods) in &providers {
+    for (
+        uuid,
+        name,
+        display_name,
+        priority,
+        fee_min,
+        fee_max,
+        api_url,
+        webhook_url,
+        countries,
+        payment_methods,
+    ) in &providers
+    {
         match sqlx::query(
             r#"
             INSERT INTO fiat.providers (
@@ -171,32 +246,44 @@ pub async fn seed_providers(pool: &PgPool) -> Result<()> {
         .bind(&countries)
         .bind(&payment_methods)
         .execute(pool)
-        .await {
+        .await
+        {
             Ok(_) => {
                 tracing::info!("✅ Inserted provider: {} ({})", display_name, name);
                 _success_count += 1;
-            },
+            }
             Err(e) => {
-                tracing::error!("❌ Failed to insert provider {} ({}): {:?}", display_name, name, e);
+                tracing::error!(
+                    "❌ Failed to insert provider {} ({}): {:?}",
+                    display_name,
+                    name,
+                    e
+                );
                 failed.push(name);
             }
         }
     }
 
     // 强制验证5个providers全部插入成功
-    let final_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM fiat.providers WHERE is_enabled = true")
-        .fetch_one(pool)
-        .await?;
+    let final_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM fiat.providers WHERE is_enabled = true")
+            .fetch_one(pool)
+            .await?;
 
     if final_count < 5 {
         let error = format!(
             "CRITICAL: Only {}/{} providers inserted successfully. Failed: {:?}",
-            final_count, providers.len(), failed
+            final_count,
+            providers.len(),
+            failed
         );
         tracing::error!("❌ {}", error);
         return Err(anyhow::anyhow!(error));
     }
 
-    tracing::info!("🎉 Successfully inserted {} payment providers (MoonPay, Simplex, Transak, Ramp, Banxa)", final_count);
+    tracing::info!(
+        "🎉 Successfully inserted {} payment providers (MoonPay, Simplex, Transak, Ramp, Banxa)",
+        final_count
+    );
     Ok(())
 }

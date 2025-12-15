@@ -123,13 +123,12 @@ pub async fn auth_middleware(
 
     // 验证Token（移除Redis Session检查，因为JWT本身已足够安全）
     // Redis Session检查会导致刚登录的用户立即401，因为Session可能还未完全同步
-    let claims = crate::infrastructure::jwt::verify_token(token)
-        .map_err(|e| AppError {
-            code: crate::error::AppErrorCode::Unauthorized,
-            message: format!("Invalid token: {}", e),
-            status: StatusCode::UNAUTHORIZED,
-            trace_id: None,
-        })?;
+    let claims = crate::infrastructure::jwt::verify_token(token).map_err(|e| AppError {
+        code: crate::error::AppErrorCode::Unauthorized,
+        message: format!("Invalid token: {}", e),
+        status: StatusCode::UNAUTHORIZED,
+        trace_id: None,
+    })?;
 
     // ✅ 生产环境：租户ID验证已启用
     // 验证租户ID匹配（如果启用了 API Key 验证）

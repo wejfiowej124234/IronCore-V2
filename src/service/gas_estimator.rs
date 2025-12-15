@@ -306,8 +306,18 @@ impl GasEstimator {
         // 检查是否为EVM链（包括 L2）
         let is_evm = matches!(
             chain.to_lowercase().as_str(),
-            "ethereum" | "eth" | "bsc" | "binance" | "polygon" | "matic" 
-            | "arbitrum" | "arb" | "optimism" | "op" | "avalanche" | "avax"
+            "ethereum"
+                | "eth"
+                | "bsc"
+                | "binance"
+                | "polygon"
+                | "matic"
+                | "arbitrum"
+                | "arb"
+                | "optimism"
+                | "op"
+                | "avalanche"
+                | "avax"
         );
 
         if !is_evm {

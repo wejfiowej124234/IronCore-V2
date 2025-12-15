@@ -13,13 +13,13 @@ pub struct User {
     pub id: Uuid,
     pub tenant_id: Uuid,
     pub email_cipher: String,
-    pub email: Option<String>,                // ✅ 新增（开发环境）
+    pub email: Option<String>, // ✅ 新增（开发环境）
     pub phone_cipher: Option<String>,
-    pub phone: Option<String>,                // ✅ 新增（开发环境）
+    pub phone: Option<String>, // ✅ 新增（开发环境）
     pub role: String,
-    pub status: String,                       // ✅ 新增
+    pub status: String, // ✅ 新增
     pub password_hash: String,
-    pub kyc_status: String,                   // ✅ 新增
+    pub kyc_status: String, // ✅ 新增
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -74,14 +74,26 @@ impl PgUserRepository {
 #[async_trait]
 impl UserRepository for PgUserRepository {
     async fn find_by_id(&self, user_id: Uuid) -> Result<Option<User>> {
-        let row = sqlx::query_as::<_, (
-            Uuid, Uuid, String, Option<String>, Option<String>, Option<String>, 
-            String, String, String, String,
-            chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>
-        )>(
+        let row = sqlx::query_as::<
+            _,
+            (
+                Uuid,
+                Uuid,
+                String,
+                Option<String>,
+                Option<String>,
+                Option<String>,
+                String,
+                String,
+                String,
+                String,
+                chrono::DateTime<chrono::Utc>,
+                chrono::DateTime<chrono::Utc>,
+            ),
+        >(
             "SELECT id, tenant_id, email_cipher, email, phone_cipher, phone, 
                     role, status, password_hash, kyc_status, created_at, updated_at
-             FROM users WHERE id = $1"
+             FROM users WHERE id = $1",
         )
         .bind(user_id)
         .fetch_optional(&self.pool)
@@ -121,14 +133,26 @@ impl UserRepository for PgUserRepository {
     }
 
     async fn find_by_email(&self, email: &str) -> Result<Option<User>> {
-        let row = sqlx::query_as::<_, (
-            Uuid, Uuid, String, Option<String>, Option<String>, Option<String>, 
-            String, String, String, String,
-            chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>
-        )>(
+        let row = sqlx::query_as::<
+            _,
+            (
+                Uuid,
+                Uuid,
+                String,
+                Option<String>,
+                Option<String>,
+                Option<String>,
+                String,
+                String,
+                String,
+                String,
+                chrono::DateTime<chrono::Utc>,
+                chrono::DateTime<chrono::Utc>,
+            ),
+        >(
             "SELECT id, tenant_id, email_cipher, email, phone_cipher, phone, 
                     role, status, password_hash, kyc_status, created_at, updated_at
-             FROM users WHERE email_cipher = $1"
+             FROM users WHERE email_cipher = $1",
         )
         .bind(email)
         .fetch_optional(&self.pool)
@@ -172,7 +196,7 @@ impl UserRepository for PgUserRepository {
 
         // 使用RETURNING子句，CockroachDB完全支持，避免额外的查询
         let row = sqlx::query_as::<_, (
-            Uuid, Uuid, String, Option<String>, Option<String>, Option<String>, 
+            Uuid, Uuid, String, Option<String>, Option<String>, Option<String>,
             String, String, String, String, chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>
         )>(
             "INSERT INTO users (id, tenant_id, email_cipher, phone_cipher, role, password_hash)
@@ -238,7 +262,7 @@ impl UserRepository for PgUserRepository {
 
     async fn list_by_tenant(&self, tenant_id: Uuid, limit: i64, offset: i64) -> Result<Vec<User>> {
         let rows = sqlx::query_as::<_, (
-            Uuid, Uuid, String, Option<String>, Option<String>, Option<String>, 
+            Uuid, Uuid, String, Option<String>, Option<String>, Option<String>,
             String, String, String, String, chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>
         )>(
             "SELECT id, tenant_id, email_cipher, email, phone_cipher, phone, role, status, password_hash, kyc_status, created_at, updated_at

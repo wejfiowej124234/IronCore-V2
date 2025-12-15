@@ -1,12 +1,10 @@
 //! Public Configuration API
 //! 前端获取后端公共配置（token过期时间、服务器时间等）
 
-use axum::{
-    extract::State,
-    Json,
-};
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+
+use axum::{extract::State, Json};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     api::response::{success_response, ApiResponse},
@@ -18,16 +16,16 @@ use crate::{
 pub struct PublicConfigResponse {
     /// JWT Token过期时间（秒）
     pub token_expiry_secs: u64,
-    
+
     /// Refresh Token过期时间（秒）
     pub refresh_token_expiry_secs: u64,
-    
+
     /// 服务器当前时间戳（秒）- 用于前后端时钟同步
     pub server_time: i64,
-    
+
     /// API版本
     pub api_version: String,
-    
+
     /// 支持的区块链网络
     pub supported_chains: Vec<ChainInfo>,
 }
@@ -40,9 +38,9 @@ pub struct ChainInfo {
 }
 
 /// GET /api/v1/config/public - 获取公共配置
-/// 
+///
 /// **无需认证**：此接口公开可访问，前端可在登录前调用
-/// 
+///
 /// 用途：
 /// - 前端同步token过期时间配置
 /// - 前后端时钟校准（防止客户端时间不准导致token验证失败）
@@ -59,11 +57,11 @@ pub async fn get_public_config(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<ApiResponse<PublicConfigResponse>>, crate::error::AppError> {
     let now = chrono::Utc::now().timestamp();
-    
+
     // 从配置中读取JWT配置
     let token_expiry = state.config.jwt.token_expiry_secs;
     let refresh_expiry = state.config.jwt.refresh_token_expiry_secs;
-    
+
     // 构造支持的区块链列表
     let supported_chains = vec![
         ChainInfo {
@@ -97,7 +95,7 @@ pub async fn get_public_config(
             name: "Polygon Amoy Testnet".to_string(),
         },
     ];
-    
+
     let response = PublicConfigResponse {
         token_expiry_secs: token_expiry,
         refresh_token_expiry_secs: refresh_expiry,
@@ -105,14 +103,14 @@ pub async fn get_public_config(
         api_version: env!("CARGO_PKG_VERSION").to_string(),
         supported_chains,
     };
-    
+
     success_response(response)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_public_config_serialization() {
         let config = PublicConfigResponse {
@@ -120,15 +118,13 @@ mod tests {
             refresh_token_expiry_secs: 2592000,
             server_time: 1733478000,
             api_version: "0.1.0".to_string(),
-            supported_chains: vec![
-                ChainInfo {
-                    chain_id: 1,
-                    symbol: "ETH".to_string(),
-                    name: "Ethereum Mainnet".to_string(),
-                },
-            ],
+            supported_chains: vec![ChainInfo {
+                chain_id: 1,
+                symbol: "ETH".to_string(),
+                name: "Ethereum Mainnet".to_string(),
+            }],
         };
-        
+
         let json = serde_json::to_string(&config).unwrap();
         assert!(json.contains("token_expiry_secs"));
         assert!(json.contains("3600"));

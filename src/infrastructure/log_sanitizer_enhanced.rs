@@ -25,7 +25,7 @@ enum RedactionStrategy {
     PartialShow(usize),         // 显示前N个字符
     PrefixSuffix(usize, usize), // 显示前缀和后缀
     #[allow(dead_code)]
-    HashRedact,                 // 替换为哈希值
+    HashRedact, // 替换为哈希值
 }
 
 /// 日志脱敏器

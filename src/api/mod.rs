@@ -33,10 +33,9 @@ use crate::{
             get_tx_broadcast, get_tx_broadcast_by_tx_hash, get_tx_history, get_user, get_wallet,
             healthz, list_api_keys, list_approvals, list_policies, list_tenants, list_tx,
             list_tx_broadcasts, list_users, list_wallets, login, logout, openapi_yaml,
-            refresh_token, register, reset_password, set_password,
-            simple_list_transactions, simple_send_transaction, tx_status,
-            update_api_key_status, update_approval_status, update_policy, update_tenant,
-            update_tx_broadcast, update_tx_status, update_user,
+            refresh_token, register, reset_password, set_password, simple_list_transactions,
+            simple_send_transaction, tx_status, update_api_key_status, update_approval_status,
+            update_policy, update_tenant, update_tx_broadcast, update_tx_status, update_user,
         },
         middleware::{rate_limit_middleware, trace_id_middleware},
     },
@@ -80,8 +79,8 @@ pub mod swap_api;
 pub mod token_api;
 pub mod token_detection_api; // NEW: 代币检测 API
 pub mod transaction_accelerate_api; // ✅ M项优化: RBF交易加速API
-pub mod user_api; // ✅ 用户信息与KYC状态API
 pub mod transaction_sign_required_middleware; // ✅ P1: 交易签名强制中间件
+pub mod user_api; // ✅ 用户信息与KYC状态API
 pub mod wallet_batch_create_api; // ✅ 非托管批量创建钱包API
 pub mod wallet_unlock_api; // ✅ P0: 钱包解锁API（双锁机制）
 pub mod wallet_unlock_verify_api; // ✅ B项增强: 双锁机制后端验证
@@ -238,7 +237,10 @@ pub fn routes(state: Arc<AppState>) -> Router {
     // 公开路由（不需要认证）
     let public_routes = Router::new()
         // ✅ 企业级标准 V1：认证 API
-        .route("/api/v1/auth/register", post(register).options(preflight_ok))
+        .route(
+            "/api/v1/auth/register",
+            post(register).options(preflight_ok),
+        )
         .route("/api/v1/auth/login", post(login).options(preflight_ok))
         .route(
             "/api/v1/auth/refresh",
@@ -388,7 +390,7 @@ pub fn routes(state: Arc<AppState>) -> Router {
             axum::routing::get(handlers::wallet_transactions_public).options(preflight_ok),
         )
         // ✅ 系统健康检查（必须在middleware之前定义，才能被middleware包裹）
-        .route("/health", get(api_health))          // 简短别名，兼容测试脚本
+        .route("/health", get(api_health)) // 简短别名，兼容测试脚本
         .route("/api/health", get(api_health))
         .route("/healthz", get(healthz))
         .layer(
@@ -396,7 +398,7 @@ pub fn routes(state: Arc<AppState>) -> Router {
                 .layer(from_fn(middleware::method_whitelist_middleware)) // ✅ P0 Security: 最先应用
                 .layer(from_fn(trace_id_middleware))
                 .layer(from_fn(add_cors_headers))
-                .layer(from_fn(add_security_headers))  // ✅ P1修复：添加安全头
+                .layer(from_fn(add_security_headers)) // ✅ P1修复：添加安全头
                 .layer(from_fn(add_response_time_header))
                 .layer(from_fn(trace_log))
                 .layer(from_fn(set_request_id)),
@@ -671,7 +673,10 @@ pub fn routes(state: Arc<AppState>) -> Router {
         // 注意：Bearer Token已提供足够保护，CSRF是可选的
         // .layer(from_fn_with_state(state.clone(), csrf_middleware_with_state))
         // 应用认证中间件
-        .layer(from_fn_with_state(state.clone(), middleware::jwt_extractor::jwt_extractor_middleware))
+        .layer(from_fn_with_state(
+            state.clone(),
+            middleware::jwt_extractor::jwt_extractor_middleware,
+        ))
         // 安全与观测中间件
         .layer(
             ServiceBuilder::new()
@@ -694,7 +699,7 @@ async fn preflight_ok() -> Response {
     // 🔧 开发环境：允许localhost和127.0.0.1，生产环境：从环境变量读取
     let allow_origins = std::env::var("CORS_ALLOW_ORIGINS")
         .unwrap_or_else(|_| "http://localhost:8080,http://127.0.0.1:8080,http://localhost:8081,http://127.0.0.1:8081".into());
-    
+
     (
         StatusCode::OK,
         [
@@ -710,14 +715,19 @@ async fn preflight_ok() -> Response {
 
 async fn add_cors_headers(req: Request, next: axum::middleware::Next) -> Response {
     // 🔧 获取请求来源，动态返回对应的CORS头（需要clone，因为req会被移动）
-    let origin = req.headers()
+    let origin = req
+        .headers()
         .get("origin")
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string())
         .unwrap_or_default();
-    
-    tracing::info!("🌐 CORS middleware - origin: '{}', path: {}", origin, req.uri().path());
-    
+
+    tracing::info!(
+        "🌐 CORS middleware - origin: '{}', path: {}",
+        origin,
+        req.uri().path()
+    );
+
     // Capture requested headers for preflight reflection
     let requested_headers = req
         .headers()
@@ -727,16 +737,20 @@ async fn add_cors_headers(req: Request, next: axum::middleware::Next) -> Respons
 
     let mut resp = next.run(req).await;
     let headers = resp.headers_mut();
-    
+
     // 🔧 允许的origins列表（开发环境默认值）
     let allow_origins = std::env::var("CORS_ALLOW_ORIGINS")
         .unwrap_or_else(|_| "http://localhost:8080,http://127.0.0.1:8080,http://localhost:8081,http://127.0.0.1:8081".into());
-    
+
     // ✅ 修复：检查请求origin是否在允许列表中，否则使用origin本身（开发环境）
     let allowed_origin = if allow_origins == "*" {
         "*".to_string()
-    } else if !origin.is_empty() && allow_origins.split(',').any(|allowed| allowed.trim() == origin) {
-        origin.clone()  // 返回实际请求的origin
+    } else if !origin.is_empty()
+        && allow_origins
+            .split(',')
+            .any(|allowed| allowed.trim() == origin)
+    {
+        origin.clone() // 返回实际请求的origin
     } else if !origin.is_empty() {
         // ✅ 开发环境：如果origin不在列表但存在，也允许（用于本地开发）
         origin.clone()
@@ -744,7 +758,7 @@ async fn add_cors_headers(req: Request, next: axum::middleware::Next) -> Respons
         // 无origin时使用第一个配置的origin
         allow_origins.split(',').next().unwrap_or("*").to_string()
     };
-    
+
     // ✅ 修复：确保CORS头正确设置
     if let Ok(val) = HeaderValue::from_str(&allowed_origin) {
         headers.insert(ACCESS_CONTROL_ALLOW_ORIGIN, val);
@@ -777,10 +791,10 @@ async fn add_security_headers(req: Request, next: axum::middleware::Next) -> Res
     let path = req.uri().path().to_string();
     let mut resp = next.run(req).await;
     let headers = resp.headers_mut();
-    
+
     // 调试日志
     tracing::debug!("🔒 add_security_headers called for path: {}", path);
-    
+
     headers.insert(X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
     headers.insert(X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
     headers.insert(REFERRER_POLICY, HeaderValue::from_static("no-referrer"));
@@ -817,7 +831,7 @@ async fn set_request_id(mut req: Request, next: axum::middleware::Next) -> Respo
         HeaderValue::from_str(&req_id).unwrap_or(HeaderValue::from_static("gen-failed")),
     );
     let mut resp = next.run(req).await;
-    
+
     // ✅ 修复：确保X-Request-ID返回给客户端
     resp.headers_mut().insert(
         "x-request-id",

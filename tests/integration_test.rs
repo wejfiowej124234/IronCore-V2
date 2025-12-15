@@ -2,7 +2,7 @@
 //!
 //! 测试覆盖：
 //! - ✅ 基础设施组件（数据库、Redis、ImmuDB）
-//! - ✅ 配置加载和验证  
+//! - ✅ 配置加载和验证
 //! - ✅ 安全功能（密码哈希、加密、JWT）
 //! - ✅ 监控和指标
 //! - ✅ 错误处理和边界条件
@@ -76,7 +76,7 @@ async fn create_test_app_state() -> Arc<AppState> {
 async fn test_health_check() {
     let state = create_test_app_state().await;
     assert!(!state.pool.is_closed(), "Database pool should be active");
-    
+
     let ping_result = state.redis.clone().ping().await;
     assert!(ping_result.is_ok(), "Redis should be connected");
 }
@@ -94,11 +94,9 @@ async fn test_database_connection() {
         .await;
 
     assert!(pool.is_ok(), "Database connection should succeed");
-    
+
     if let Ok(pool) = pool {
-        let result: Result<(i32,), _> = sqlx::query_as("SELECT 1")
-            .fetch_one(&pool)
-            .await;
+        let result: Result<(i32,), _> = sqlx::query_as("SELECT 1").fetch_one(&pool).await;
         assert!(result.is_ok(), "Simple query should succeed");
     }
 }
@@ -117,9 +115,12 @@ async fn test_config_loading() {
 
     let config = ironcore::config::Config::from_env();
     assert!(config.is_ok(), "Config loading should succeed");
-    
+
     let cfg = config.unwrap();
-    assert!(cfg.jwt.secret.len() >= 32, "JWT secret should be at least 32 chars");
+    assert!(
+        cfg.jwt.secret.len() >= 32,
+        "JWT secret should be at least 32 chars"
+    );
 }
 
 /// Test 2.2: 配置验证
@@ -133,11 +134,17 @@ async fn test_config_validation() {
     }
 
     let config = ironcore::config::Config::from_env().unwrap();
-    assert!(config.validate().is_ok(), "Valid config should pass validation");
+    assert!(
+        config.validate().is_ok(),
+        "Valid config should pass validation"
+    );
 
     let mut invalid_config = config.clone();
     invalid_config.jwt.secret = "short".to_string();
-    assert!(invalid_config.validate().is_err(), "Invalid config should fail validation");
+    assert!(
+        invalid_config.validate().is_err(),
+        "Invalid config should fail validation"
+    );
 }
 
 // ============ 监控和指标测试 ============
@@ -151,8 +158,14 @@ async fn test_metrics_endpoint() {
     metrics::count_err("test_endpoint");
 
     let output = metrics::render_prometheus();
-    assert!(output.contains("ironcore_requests_total"), "Should contain request counter");
-    assert!(output.contains("ironcore_errors_total"), "Should contain error counter");
+    assert!(
+        output.contains("ironcore_requests_total"),
+        "Should contain request counter"
+    );
+    assert!(
+        output.contains("ironcore_errors_total"),
+        "Should contain error counter"
+    );
     assert!(output.contains("# TYPE"), "Should have TYPE declarations");
     assert!(output.contains("# HELP"), "Should have HELP text");
 }
@@ -169,9 +182,15 @@ async fn test_password_hashing() {
 
     assert!(hash.starts_with("$argon2"), "Should use Argon2");
     assert!(hash.len() > 50, "Hash should be sufficiently long");
-    assert!(password::verify_password(password, &hash).unwrap(), "Correct password should verify");
-    assert!(!password::verify_password("wrong_password", &hash).unwrap(), "Wrong password should fail");
-    
+    assert!(
+        password::verify_password(password, &hash).unwrap(),
+        "Correct password should verify"
+    );
+    assert!(
+        !password::verify_password("wrong_password", &hash).unwrap(),
+        "Wrong password should fail"
+    );
+
     let hash2 = password::hash_password(password).unwrap();
     assert_ne!(hash, hash2, "Each hash should have unique salt");
 }
@@ -200,8 +219,15 @@ async fn test_jwt_token() {
     let claims = jwt::verify_token(&token).unwrap();
     assert_eq!(claims.sub, user_id.to_string(), "User ID should match");
     assert_eq!(claims.role, role, "Role should match");
-    assert_eq!(claims.tenant_id, tenant_id.to_string(), "Tenant ID should match");
-    assert!(claims.exp as i64 > chrono::Utc::now().timestamp(), "Token should not be expired");
+    assert_eq!(
+        claims.tenant_id,
+        tenant_id.to_string(),
+        "Tenant ID should match"
+    );
+    assert!(
+        claims.exp as i64 > chrono::Utc::now().timestamp(),
+        "Token should not be expired"
+    );
 }
 
 /// Test 4.3: JWT 无效 token 拒绝
@@ -219,12 +245,13 @@ async fn test_jwt_invalid_token() {
     let invalid_token = "invalid.token.format";
     let result = jwt::verify_token(invalid_token);
     assert!(result.is_err(), "Invalid token should be rejected");
-    
+
     let valid_token = jwt::generate_token(
         uuid::Uuid::new_v4(),
         uuid::Uuid::new_v4(),
         "user".to_string(),
-    ).unwrap();
+    )
+    .unwrap();
     let tampered = valid_token.replace('a', "b");
     let result = jwt::verify_token(&tampered);
     assert!(result.is_err(), "Tampered token should be rejected");
@@ -239,18 +266,29 @@ async fn test_encryption() {
     let data = b"Hello, World! This is a test message.";
 
     let encrypted = encryption::encrypt_data(data, key).unwrap();
-    assert_ne!(encrypted.as_slice(), data, "Encrypted should differ from plaintext");
+    assert_ne!(
+        encrypted.as_slice(),
+        data,
+        "Encrypted should differ from plaintext"
+    );
     assert!(encrypted.len() > data.len(), "Encrypted should be longer");
 
     let decrypted = encryption::decrypt_data(&encrypted, key).unwrap();
-    assert_eq!(decrypted.as_slice(), data, "Decrypted should match original");
-    
+    assert_eq!(
+        decrypted.as_slice(),
+        data,
+        "Decrypted should match original"
+    );
+
     let wrong_key = b"wrong_key_32_bytes_long_exactly1";
     let result = encryption::decrypt_data(&encrypted, wrong_key);
     assert!(result.is_err(), "Wrong key should fail decryption");
-    
+
     let encrypted2 = encryption::encrypt_data(data, key).unwrap();
-    assert_ne!(encrypted, encrypted2, "Each encryption should use unique nonce");
+    assert_ne!(
+        encrypted, encrypted2,
+        "Each encryption should use unique nonce"
+    );
 }
 
 // ============ 错误处理和边界测试 ============
@@ -281,11 +319,12 @@ async fn test_boundary_values() {
 #[tokio::test]
 async fn test_concurrent_operations() {
     use std::sync::Arc;
+
     use tokio::sync::Mutex;
-    
+
     let counter = Arc::new(Mutex::new(0));
     let mut handles = vec![];
-    
+
     for _ in 0..10 {
         let counter_clone = counter.clone();
         let handle = tokio::spawn(async move {
@@ -296,11 +335,11 @@ async fn test_concurrent_operations() {
         });
         handles.push(handle);
     }
-    
+
     for handle in handles {
         handle.await.unwrap();
     }
-    
+
     let final_count = *counter.lock().await;
     assert_eq!(final_count, 1000, "Concurrent operations should be safe");
 }

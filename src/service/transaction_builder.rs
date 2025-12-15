@@ -502,7 +502,7 @@ mod tests {
             chain: "SOL".to_string(),
             from: "11111111111111111111111111111112".to_string(), // 有效的Base58
             to: "4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi".to_string(), // 有效的Base58
-            amount: "1000000000".to_string(), // 1 SOL
+            amount: "1000000000".to_string(),                     // 1 SOL
             data: None,
             gas_price: None,
             gas_limit: None,

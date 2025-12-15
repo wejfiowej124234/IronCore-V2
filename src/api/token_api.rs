@@ -211,7 +211,10 @@ pub async fn get_token_balance(
     axum::extract::Path(token_address): axum::extract::Path<String>,
     Query(query): Query<TokenBalanceQuery>,
 ) -> Result<axum::Json<crate::api::response::ApiResponse<TokenBalanceResponse>>, AppError> {
-    info!("收到代币余额请求: token={}, wallet={}, chain={}", token_address, query.address, query.chain);
+    info!(
+        "收到代币余额请求: token={}, wallet={}, chain={}",
+        token_address, query.address, query.chain
+    );
 
     // 转换网络名称为chain_id
     let chain_id = network_to_chain_id(&query.chain).ok_or_else(|| {

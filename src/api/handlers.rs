@@ -213,7 +213,8 @@ pub async fn api_fees(
     };
 
     // 获取实时Gas价格（使用normal速度档位）
-    let gas_estimate = st.gas_estimator
+    let gas_estimate = st
+        .gas_estimator
         .estimate_gas(chain_name, crate::service::gas_estimator::GasSpeed::Normal)
         .await
         .map_err(|e| {
@@ -1145,7 +1146,7 @@ pub async fn list_wallets(
     // 从JWT token获取tenant_id和user_id，不接受查询参数
     let page_size = q.page_size.min(100).max(1); // 1-100条
     let offset = (q.page.max(1) - 1) * page_size; // 分页偏移
-    
+
     let wallets = service::wallets::list_wallets_by_user(
         &st.pool,
         auth_info.tenant_id, // 从JWT获取
@@ -2753,29 +2754,28 @@ pub async fn register(
 
     // 1. Validate email format with strict regex to prevent SQL injection
     use regex::Regex;
-    
+
     // 严格的邮箱验证正则表达式
     let email_regex = Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
         .expect("Invalid email regex");
-    
+
     if !email_regex.is_match(&req.email) {
         return Err(AppError::bad_request("Invalid email format"));
     }
-    
+
     // 额外检查：拒绝包含SQL注入关键字或特殊字符
     let email_upper = req.email.to_uppercase();
     let forbidden_patterns = [
-        "'", "\"", ";", "--", "/*", "*/", 
-        " OR ", " AND ", " SELECT ", " INSERT ", 
-        " UPDATE ", " DELETE ", " DROP ", " UNION "
+        "'", "\"", ";", "--", "/*", "*/", " OR ", " AND ", " SELECT ", " INSERT ", " UPDATE ",
+        " DELETE ", " DROP ", " UNION ",
     ];
-    
+
     for pattern in forbidden_patterns.iter() {
         if email_upper.contains(pattern) || req.email.contains(pattern) {
             return Err(AppError::bad_request("Email contains illegal characters"));
         }
     }
-    
+
     // 长度限制
     if req.email.len() > 255 {
         return Err(AppError::bad_request("Email is too long"));
@@ -3654,7 +3654,7 @@ pub struct RefreshTokenReq {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct RefreshTokenResp {
-    pub access_token: String,  // ✅ 统一字段名，与login/register一致
+    pub access_token: String, // ✅ 统一字段名，与login/register一致
     pub refresh_token: String,
     pub expires_in: u64,
 }
@@ -3685,7 +3685,7 @@ pub async fn refresh_token(
 
     // 企业级标准：使用统一响应格式
     success_response(RefreshTokenResp {
-        access_token: access_token.clone(),  // ✅ 修正字段名
+        access_token: access_token.clone(), // ✅ 修正字段名
         refresh_token: req.refresh_token,
         expires_in: 300, // 5分钟
     })

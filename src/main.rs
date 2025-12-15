@@ -24,7 +24,10 @@ async fn main() -> Result<()> {
                 }
                 // 同样设置JWT过期时间
                 if std::env::var("JWT_TOKEN_EXPIRY_SECS").is_err() {
-                    std::env::set_var("JWT_TOKEN_EXPIRY_SECS", config.jwt.token_expiry_secs.to_string());
+                    std::env::set_var(
+                        "JWT_TOKEN_EXPIRY_SECS",
+                        config.jwt.token_expiry_secs.to_string(),
+                    );
                 }
                 Some(config)
             }
@@ -97,7 +100,8 @@ async fn main() -> Result<()> {
         db: std::env::var("IMMU_DB").unwrap_or_else(|_| "defaultdb".to_string()),
     });
 
-    let config_arc = Arc::new(loaded_config.unwrap_or_else(|| ironcore::config::Config::from_env().unwrap()));
+    let config_arc =
+        Arc::new(loaded_config.unwrap_or_else(|| ironcore::config::Config::from_env().unwrap()));
     let state = Arc::new(
         AppState::new(
             pool.clone(),
@@ -185,8 +189,8 @@ async fn main() -> Result<()> {
 
     // ✅ 10. 启动服务器
     // 尝试从config_arc获取bind_addr，否则使用默认值
-    let bind_addr = std::env::var("BIND_ADDR")
-        .unwrap_or_else(|_| config_arc.server.bind_addr.clone());
+    let bind_addr =
+        std::env::var("BIND_ADDR").unwrap_or_else(|_| config_arc.server.bind_addr.clone());
 
     let listener = tokio::net::TcpListener::bind(&bind_addr).await?;
 

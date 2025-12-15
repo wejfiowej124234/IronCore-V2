@@ -224,7 +224,7 @@ mod tests {
             "0x742d35cc6634c0532925a3b844bc9e7595f0beb6"
         )
         .unwrap());
-        
+
         // 有效地址（ETH 别名）
         assert!(
             AddressValidator::validate("ETH", "0x1234567890123456789012345678901234567890")
@@ -290,17 +290,9 @@ mod tests {
     fn test_chain_alias_support() {
         // 测试链别名支持（使用全小写地址避免checksum问题）
         let valid_addr_lower = "0x742d35cc6634c0532925a3b844bc9e7595f0beb6";
-        
-        assert!(
-            AddressValidator::validate("ETH", valid_addr_lower)
-                .unwrap()
-        );
-        assert!(
-            AddressValidator::validate("1", valid_addr_lower).unwrap()
-        );
-        assert!(
-            AddressValidator::validate("BSC", valid_addr_lower)
-                .unwrap()
-        );
+
+        assert!(AddressValidator::validate("ETH", valid_addr_lower).unwrap());
+        assert!(AddressValidator::validate("1", valid_addr_lower).unwrap());
+        assert!(AddressValidator::validate("BSC", valid_addr_lower).unwrap());
     }
 }

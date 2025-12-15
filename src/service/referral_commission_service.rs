@@ -1,23 +1,24 @@
 //! 返佣收入服务（Referral Commission Service）
 //! 生产级实现：追踪和管理来自支付服务商的返佣收入
 
+use std::str::FromStr;
+
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use std::str::FromStr;
 use uuid::Uuid;
 
 /// 返佣状态
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CommissionStatus {
-    Pending,    // 待确认（订单刚完成）
-    Confirmed,  // 服务商已确认
-    Paid,       // 已收到返佣
-    Failed,     // 失败（如订单退款）
-    Cancelled,  // 已取消
+    Pending,   // 待确认（订单刚完成）
+    Confirmed, // 服务商已确认
+    Paid,      // 已收到返佣
+    Failed,    // 失败（如订单退款）
+    Cancelled, // 已取消
 }
 
 impl ToString for CommissionStatus {
@@ -34,7 +35,7 @@ impl ToString for CommissionStatus {
 
 impl FromStr for CommissionStatus {
     type Err = anyhow::Error;
-    
+
     fn from_str(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
             "pending" => Ok(CommissionStatus::Pending),
@@ -125,22 +126,24 @@ impl ReferralCommissionService {
     }
 
     /// 记录返佣（订单完成时自动调用）
-    /// 
+    ///
     /// # 使用场景
     /// 当fiat_order状态变为completed时，自动计算并记录返佣
-    /// 
+    ///
     /// # 示例
     /// ```rust
-    /// let commission_id = service.record_commission(
-    ///     order_id,
-    ///     "offramp",
-    ///     user_id,
-    ///     "onramper",
-    ///     Some("onramper_12345"),
-    ///     Decimal::from_str("27225.00")?,  // 交易金额
-    ///     Decimal::from_str("544.50")?,    // 服务商费用
-    ///     Decimal::from_str("2.0")?,       // 服务商费率2%
-    /// ).await?;
+    /// let commission_id = service
+    ///     .record_commission(
+    ///         order_id,
+    ///         "offramp",
+    ///         user_id,
+    ///         "onramper",
+    ///         Some("onramper_12345"),
+    ///         Decimal::from_str("27225.00")?, // 交易金额
+    ///         Decimal::from_str("544.50")?,   // 服务商费用
+    ///         Decimal::from_str("2.0")?,      // 服务商费率2%
+    ///     )
+    ///     .await?;
     /// ```
     pub async fn record_commission(
         &self,
@@ -155,18 +158,18 @@ impl ReferralCommissionService {
     ) -> Result<Uuid> {
         // 1. 获取服务商返佣配置
         let config = self.get_provider_config(provider_name).await?;
-        
+
         if !config.is_active {
-            anyhow::bail!("Provider {} is not active for commission tracking", provider_name);
+            anyhow::bail!(
+                "Provider {} is not active for commission tracking",
+                provider_name
+            );
         }
 
         // 2. 计算返佣率（根据订单类型和月交易量）
-        let commission_rate = self.calculate_commission_rate(
-            &config,
-            order_type,
-            user_id,
-            transaction_amount,
-        ).await?;
+        let commission_rate = self
+            .calculate_commission_rate(&config, order_type, user_id, transaction_amount)
+            .await?;
 
         // 3. 计算返佣金额
         let commission_amount = transaction_amount * commission_rate / Decimal::from(100);
@@ -224,7 +227,10 @@ impl ReferralCommissionService {
     }
 
     /// 获取服务商返佣配置
-    pub async fn get_provider_config(&self, provider_name: &str) -> Result<ProviderCommissionConfig> {
+    pub async fn get_provider_config(
+        &self,
+        provider_name: &str,
+    ) -> Result<ProviderCommissionConfig> {
         let config = sqlx::query_as::<_, ProviderCommissionConfig>(
             r#"
             SELECT 
@@ -255,10 +261,12 @@ impl ReferralCommissionService {
     ) -> Result<Decimal> {
         // 1. 基础费率（根据订单类型）
         let base_rate = if order_type == "onramp" {
-            config.onramp_commission_rate
+            config
+                .onramp_commission_rate
                 .unwrap_or(config.default_commission_rate)
         } else {
-            config.offramp_commission_rate
+            config
+                .offramp_commission_rate
                 .unwrap_or(config.default_commission_rate)
         };
 
@@ -281,15 +289,23 @@ impl ReferralCommissionService {
         let total_volume = monthly_volume + transaction_amount;
 
         // 3. 应用阶梯费率
-        let tier_rate = if let (Some(tier3_vol), Some(tier3_rate)) = (config.tier3_volume, config.tier3_rate) {
-            if total_volume >= tier3_vol {
-                tier3_rate
-            } else if let (Some(tier2_vol), Some(tier2_rate)) = (config.tier2_volume, config.tier2_rate) {
-                if total_volume >= tier2_vol {
-                    tier2_rate
-                } else if let (Some(tier1_vol), Some(tier1_rate)) = (config.tier1_volume, config.tier1_rate) {
-                    if total_volume >= tier1_vol {
-                        tier1_rate
+        let tier_rate =
+            if let (Some(tier3_vol), Some(tier3_rate)) = (config.tier3_volume, config.tier3_rate) {
+                if total_volume >= tier3_vol {
+                    tier3_rate
+                } else if let (Some(tier2_vol), Some(tier2_rate)) =
+                    (config.tier2_volume, config.tier2_rate)
+                {
+                    if total_volume >= tier2_vol {
+                        tier2_rate
+                    } else if let (Some(tier1_vol), Some(tier1_rate)) =
+                        (config.tier1_volume, config.tier1_rate)
+                    {
+                        if total_volume >= tier1_vol {
+                            tier1_rate
+                        } else {
+                            base_rate
+                        }
                     } else {
                         base_rate
                     }
@@ -298,16 +314,17 @@ impl ReferralCommissionService {
                 }
             } else {
                 base_rate
-            }
-        } else {
-            base_rate
-        };
+            };
 
         Ok(tier_rate)
     }
 
     /// 确认返佣（服务商Webhook回调）
-    pub async fn confirm_commission(&self, commission_id: Uuid, payment_reference: Option<String>) -> Result<()> {
+    pub async fn confirm_commission(
+        &self,
+        commission_id: Uuid,
+        payment_reference: Option<String>,
+    ) -> Result<()> {
         sqlx::query(
             r#"
             UPDATE revenue.referral_commissions
@@ -356,7 +373,11 @@ impl ReferralCommissionService {
     }
 
     /// 获取月度收入汇总
-    pub async fn get_monthly_summary(&self, year: i32, month: u32) -> Result<Vec<MonthlyRevenueSummary>> {
+    pub async fn get_monthly_summary(
+        &self,
+        year: i32,
+        month: u32,
+    ) -> Result<Vec<MonthlyRevenueSummary>> {
         let summaries = sqlx::query_as::<_, MonthlyRevenueSummary>(
             r#"
             SELECT * FROM revenue.monthly_revenue_summary
@@ -434,7 +455,7 @@ mod tests {
         let service = ReferralCommissionService::new(pool);
 
         let config = service.get_provider_config("onramper").await.unwrap();
-        
+
         // 小额交易：使用默认费率
         let rate = service
             .calculate_commission_rate(

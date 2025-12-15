@@ -1,20 +1,17 @@
 //! Country Support API - 国家支持查询
 //! 查询不同服务商对各国家的支持情况
 
+use std::sync::Arc;
+
 use axum::{
     extract::{Path, Query, State},
     routing::get,
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use utoipa::ToSchema;
 
-use crate::{
-    api::response::success_response,
-    app_state::AppState,
-    error::AppError,
-};
+use crate::{api::response::success_response, app_state::AppState, error::AppError};
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Request/Response Models

@@ -26,7 +26,7 @@ pub struct JwtAuthContext {
 /// 将认证上下文注入到 request extensions 中
 /// ✅ 修复：添加Redis Session检查，确保登出后token失效
 pub async fn jwt_extractor_middleware(
-    State(_state): State<Arc<AppState>>,  // ✅ 保留参数以支持未来的Session检查功能
+    State(_state): State<Arc<AppState>>, // ✅ 保留参数以支持未来的Session检查功能
     mut req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
@@ -49,11 +49,17 @@ pub async fn jwt_extractor_middleware(
             StatusCode::UNAUTHORIZED
         })?;
 
-    tracing::debug!("JWT middleware: Found Authorization header, length={}", auth_header.len());
+    tracing::debug!(
+        "JWT middleware: Found Authorization header, length={}",
+        auth_header.len()
+    );
 
     // 检查格式：Bearer <token>
     if !auth_header.starts_with("Bearer ") {
-        tracing::warn!("JWT middleware: Invalid Authorization header format for {}", path);
+        tracing::warn!(
+            "JWT middleware: Invalid Authorization header format for {}",
+            path
+        );
         return Err(StatusCode::UNAUTHORIZED);
     }
 
@@ -67,7 +73,7 @@ pub async fn jwt_extractor_middleware(
     })?;
 
     // ✅ 生产级修复：移除强制Session检查，提升系统可用性和性能
-    // 
+    //
     // **为什么移除Session检查？**
     // 1. JWT已提供足够安全性：签名验证 + 过期时间 + Claims完整性
     // 2. 前端Token同步不会创建Redis Session（Session仅在登录时创建）
@@ -110,9 +116,13 @@ pub async fn jwt_extractor_middleware(
     // 注入到 request extensions (注入两种类型以兼容不同的 handlers)
     req.extensions_mut().insert(auth_context);
     req.extensions_mut().insert(auth_info);
-    req.extensions_mut().insert(claims);  // 也注入原始 claims
+    req.extensions_mut().insert(claims); // 也注入原始 claims
 
-    tracing::debug!("JWT middleware: Successfully authenticated user_id={}, tenant_id={}", user_id, tenant_id);
+    tracing::debug!(
+        "JWT middleware: Successfully authenticated user_id={}, tenant_id={}",
+        user_id,
+        tenant_id
+    );
 
     // 继续处理请求
     Ok(next.run(req).await)

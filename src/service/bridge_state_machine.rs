@@ -79,18 +79,18 @@ impl BridgeStateMachine {
             | (DestTxBuilding, DestTxSubmitted)
             | (DestTxSubmitted, DestTxConfirmed)
             | (DestTxConfirmed, Completed)
-            
+
             // 失败分支
             | (SourceTxSubmitted, Failed)
             | (SourceTxConfirmed, Failed)
             | (DestTxBuilding, Failed)
             | (DestTxSubmitted, Failed)
-            
+
             // 超时分支
             | (SourceTxConfirmed, Timeout)
             | (EventDetected, Timeout)
             | (DestTxBuilding, Timeout)
-            
+
             // 退款分支
             | (Failed, Refunding)
             | (Timeout, Refunding)

@@ -42,9 +42,9 @@ impl Default for RetryConfig {
 pub enum RetryTransactionStatus {
     Pending,
     Confirmed,
-    Failed(String),          // 失败原因
+    Failed(String), // 失败原因
     Cancelled,
-    Replaced(String),        // 被新交易替换，包含新的 tx_hash
+    Replaced(String), // 被新交易替换，包含新的 tx_hash
 }
 
 /// 交易重试器

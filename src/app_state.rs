@@ -92,7 +92,9 @@ impl AppState {
         // ✅ 生产级：初始化价格服务（CoinGecko + Redis缓存）
         let price_service = Arc::new(crate::service::price_service::PriceService::new(
             pool.clone(),
-            Some(std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".to_string())),
+            Some(
+                std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".to_string()),
+            ),
         ));
         tracing::info!("✅ Price service initialized with CoinGecko API");
 

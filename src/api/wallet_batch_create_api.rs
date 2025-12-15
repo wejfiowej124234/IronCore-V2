@@ -149,16 +149,20 @@ pub async fn batch_create_wallets(
         wallets: results,
         failed: errors,
     };
-    
+
     // 🔍 调试：打印响应结构
-    tracing::info!("📤 Batch wallet response: success={}, wallets={}, failed={}", 
-        response.success, response.wallets.len(), response.failed.len());
-    
+    tracing::info!(
+        "📤 Batch wallet response: success={}, wallets={}, failed={}",
+        response.success,
+        response.wallets.len(),
+        response.failed.len()
+    );
+
     // 🔍 调试：打印完整JSON响应
     if let Ok(json) = serde_json::to_string_pretty(&response) {
         tracing::info!("📤 Full response JSON:\n{}", json);
     }
-    
+
     success_response(response)
 }
 
@@ -196,7 +200,8 @@ async fn create_single_wallet(
     }
 
     // 2.5. ✅ 企业级验证：公钥与地址匹配（非托管钱包安全核心）
-    if let Err(e) = verify_public_key_matches_address(&item.chain, &item.public_key, &item.address) {
+    if let Err(e) = verify_public_key_matches_address(&item.chain, &item.public_key, &item.address)
+    {
         return Err(WalletCreateError {
             chain: item.chain.clone(),
             address: item.address.clone(),
@@ -205,30 +210,30 @@ async fn create_single_wallet(
     }
 
     // 2.9 ✅ 优雅降级：确保tenant存在（自动修复数据库重建导致的孤立用户）
-    let tenant_exists: Option<(bool,)> = sqlx::query_as(
-        "SELECT EXISTS(SELECT 1 FROM tenants WHERE id = $1)"
-    )
-    .bind(tenant_id)
-    .fetch_optional(&state.pool)
-    .await
-    .map_err(|e| WalletCreateError {
-        chain: item.chain.clone(),
-        address: item.address.clone(),
-        error: format!("Database error checking tenant: {}", e),
-    })?;
+    let tenant_exists: Option<(bool,)> =
+        sqlx::query_as("SELECT EXISTS(SELECT 1 FROM tenants WHERE id = $1)")
+            .bind(tenant_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|e| WalletCreateError {
+                chain: item.chain.clone(),
+                address: item.address.clone(),
+                error: format!("Database error checking tenant: {}", e),
+            })?;
 
     if tenant_exists.is_none() || !tenant_exists.unwrap().0 {
         // Tenant不存在，自动创建（数据库重建场景）
         tracing::warn!(
             "⚠️ Tenant {} not found for user {}, auto-creating (database was likely rebuilt)",
-            tenant_id, user_id
+            tenant_id,
+            user_id
         );
-        
+
         let tenant_name = format!("Auto-Tenant-{}", &tenant_id.to_string()[..8]);
         let _ = sqlx::query(
             "INSERT INTO tenants (id, name, created_at, updated_at) 
              VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-             ON CONFLICT (id) DO NOTHING"
+             ON CONFLICT (id) DO NOTHING",
         )
         .bind(tenant_id)
         .bind(tenant_name)
@@ -239,19 +244,21 @@ async fn create_single_wallet(
             address: item.address.clone(),
             error: format!("Failed to auto-create tenant: {}", e),
         })?;
-        
+
         tracing::info!("✅ Auto-created tenant {} for user {}", tenant_id, user_id);
     }
 
     // 3. 检查地址是否已存在（使用Repository）
     let wallet_repo = PgWalletRepository::new(state.pool.clone());
-    
-    if let Some(_existing) = wallet_repo.find_by_address(&item.address).await
+
+    if let Some(_existing) = wallet_repo
+        .find_by_address(&item.address)
+        .await
         .map_err(|e| WalletCreateError {
             chain: item.chain.clone(),
             address: item.address.clone(),
             error: format!("Database error: {}", e),
-        })? 
+        })?
     {
         return Err(WalletCreateError {
             chain: item.chain.clone(),
@@ -261,12 +268,17 @@ async fn create_single_wallet(
     }
 
     // 4. ✅ 企业级：使用Repository创建钱包（DTO→Domain转换）
-    let wallet_name = item.name.clone()
+    let wallet_name = item
+        .name
+        .clone()
         .unwrap_or_else(|| format!("{} Wallet", item.chain));
 
     tracing::info!(
         "💾 准备创建钱包: user_id={}, address={}, pubkey={} ({}字节)",
-        user_id, item.address, &item.public_key[..20.min(item.public_key.len())], item.public_key.len()
+        user_id,
+        item.address,
+        &item.public_key[..20.min(item.public_key.len())],
+        item.public_key.len()
     );
 
     // ✅ DTO→Domain Model转换层
@@ -276,17 +288,19 @@ async fn create_single_wallet(
         chain_id,
         chain_symbol: Some(item.chain.to_uppercase()),
         address: item.address.clone(),
-        pubkey: Some(item.public_key.clone()),  // ✅ public_key → pubkey
+        pubkey: Some(item.public_key.clone()), // ✅ public_key → pubkey
         name: Some(wallet_name),
         derivation_path: item.derivation_path.clone(),
         curve_type: item.curve_type.clone(),
-        account_index: None,  // 使用默认0
-        address_index: None,  // 使用默认0
-        policy_id: None,      // 普通钱包无审批策略
+        account_index: None, // 使用默认0
+        address_index: None, // 使用默认0
+        policy_id: None,     // 普通钱包无审批策略
     };
 
     // ✅ 使用Repository创建（企业级最佳实践）
-    let wallet = wallet_repo.create(create_params).await
+    let wallet = wallet_repo
+        .create(create_params)
+        .await
         .map_err(|e| WalletCreateError {
             chain: item.chain.clone(),
             address: item.address.clone(),
@@ -295,7 +309,9 @@ async fn create_single_wallet(
 
     tracing::info!(
         "✅ 钱包创建成功: wallet_id={}, user_id={}, address={}",
-        wallet.id, wallet.user_id, wallet.address
+        wallet.id,
+        wallet.user_id,
+        wallet.address
     );
 
     Ok(WalletCreateResult {
@@ -361,27 +377,28 @@ fn validate_address_format(chain: &str, address: &str) -> Result<(), String> {
 }
 
 /// ✅ 企业级验证：验证公钥与地址的匹配关系
-/// 
+///
 /// # 为什么需要这个验证？
 /// 防止客户端发送错误的地址-公钥对，确保数据完整性
-fn verify_public_key_matches_address(chain: &str, public_key: &str, address: &str) -> Result<(), String> {
+fn verify_public_key_matches_address(
+    chain: &str,
+    public_key: &str,
+    address: &str,
+) -> Result<(), String> {
     let chain_normalized = chain.to_uppercase();
-    
+
     match chain_normalized.as_str() {
         "ETH" | "ETHEREUM" | "BSC" | "BINANCE" | "POLYGON" | "MATIC" => {
             verify_evm_public_key(public_key, address)
         }
-        "BTC" | "BITCOIN" => {
-            verify_bitcoin_public_key(public_key, address)
-        }
-        "SOL" | "SOLANA" => {
-            verify_solana_public_key(public_key, address)
-        }
-        "TON" => {
-            verify_ton_public_key(public_key, address)
-        }
+        "BTC" | "BITCOIN" => verify_bitcoin_public_key(public_key, address),
+        "SOL" | "SOLANA" => verify_solana_public_key(public_key, address),
+        "TON" => verify_ton_public_key(public_key, address),
         _ => {
-            tracing::warn!("Public key verification not implemented for chain: {}", chain);
+            tracing::warn!(
+                "Public key verification not implemented for chain: {}",
+                chain
+            );
             Ok(())
         }
     }
@@ -390,71 +407,91 @@ fn verify_public_key_matches_address(chain: &str, public_key: &str, address: &st
 /// 验证 EVM 公钥（secp256k1）
 fn verify_evm_public_key(public_key_hex: &str, expected_address: &str) -> Result<(), String> {
     use sha3::{Digest, Keccak256};
-    
-    let pubkey_bytes = hex::decode(public_key_hex)
-        .map_err(|_| "Invalid hex public key".to_string())?;
-    
+
+    let pubkey_bytes =
+        hex::decode(public_key_hex).map_err(|_| "Invalid hex public key".to_string())?;
+
     if pubkey_bytes.len() != 65 && pubkey_bytes.len() != 33 {
-        return Err(format!("Invalid EVM public key length: {} (expected 65 or 33)", pubkey_bytes.len()));
+        return Err(format!(
+            "Invalid EVM public key length: {} (expected 65 or 33)",
+            pubkey_bytes.len()
+        ));
     }
-    
+
     if pubkey_bytes.len() == 33 {
         tracing::warn!("Compressed EVM public key, skipping detailed verification");
         return Ok(());
     }
-    
+
     let mut hasher = Keccak256::new();
     hasher.update(&pubkey_bytes[1..]);
     let hash = hasher.finalize();
     let derived_address = format!("0x{}", hex::encode(&hash[12..]));
-    
+
     if derived_address.to_lowercase() != expected_address.to_lowercase() {
-        return Err(format!("Public key mismatch: expected {}, derived {}", expected_address, derived_address));
+        return Err(format!(
+            "Public key mismatch: expected {}, derived {}",
+            expected_address, derived_address
+        ));
     }
-    
+
     Ok(())
 }
 
 /// 验证 Bitcoin 公钥（secp256k1）
 fn verify_bitcoin_public_key(public_key_hex: &str, _expected_address: &str) -> Result<(), String> {
-    let pubkey_bytes = hex::decode(public_key_hex)
-        .map_err(|_| "Invalid hex public key".to_string())?;
-    
+    let pubkey_bytes =
+        hex::decode(public_key_hex).map_err(|_| "Invalid hex public key".to_string())?;
+
     if pubkey_bytes.len() != 33 && pubkey_bytes.len() != 65 {
-        return Err(format!("Invalid Bitcoin public key length: {}", pubkey_bytes.len()));
+        return Err(format!(
+            "Invalid Bitcoin public key length: {}",
+            pubkey_bytes.len()
+        ));
     }
-    
-    tracing::warn!("Bitcoin address derivation verification not fully implemented (requires Base58Check)");
+
+    tracing::warn!(
+        "Bitcoin address derivation verification not fully implemented (requires Base58Check)"
+    );
     Ok(())
 }
 
 /// 验证 Solana 公钥（Ed25519）
 fn verify_solana_public_key(public_key_hex: &str, expected_address: &str) -> Result<(), String> {
-    let pubkey_bytes = hex::decode(public_key_hex)
-        .map_err(|_| "Invalid hex public key".to_string())?;
-    
+    let pubkey_bytes =
+        hex::decode(public_key_hex).map_err(|_| "Invalid hex public key".to_string())?;
+
     if pubkey_bytes.len() != 32 {
-        return Err(format!("Invalid Solana public key length: {}", pubkey_bytes.len()));
+        return Err(format!(
+            "Invalid Solana public key length: {}",
+            pubkey_bytes.len()
+        ));
     }
-    
+
     let derived_address = bs58::encode(&pubkey_bytes).into_string();
-    
+
     if derived_address != expected_address {
-        return Err(format!("Public key mismatch: expected {}, derived {}", expected_address, derived_address));
+        return Err(format!(
+            "Public key mismatch: expected {}, derived {}",
+            expected_address, derived_address
+        ));
     }
-    
+
     Ok(())
 }
 
 /// 验证 TON 公钥（Ed25519）
 fn verify_ton_public_key(public_key_hex: &str, _expected_address: &str) -> Result<(), String> {
-    let pubkey_bytes = hex::decode(public_key_hex)
-        .map_err(|_| "Invalid hex public key".to_string())?;
-    
+    let pubkey_bytes =
+        hex::decode(public_key_hex).map_err(|_| "Invalid hex public key".to_string())?;
+
     if pubkey_bytes.len() != 32 {
-        return Err(format!("Invalid TON public key length: {}", pubkey_bytes.len()));
+        return Err(format!(
+            "Invalid TON public key length: {}",
+            pubkey_bytes.len()
+        ));
     }
-    
+
     tracing::warn!("TON address derivation verification not fully implemented");
     Ok(())
 }

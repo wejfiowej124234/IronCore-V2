@@ -1,9 +1,10 @@
 //! 用户API - 获取用户信息和KYC状态
 
+use std::sync::Arc;
+
 use axum::{extract::State, Json};
 use chrono::Datelike;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 
 use crate::{
     api::{middleware::jwt_extractor::JwtAuthContext, response::success_response},
@@ -43,20 +44,21 @@ pub async fn get_kyc_status(
     struct UserKycRow {
         kyc_status: Option<String>,
     }
-    
-    let user = sqlx::query_as::<_, UserKycRow>(
-        "SELECT kyc_status FROM users WHERE id = $1"
-    )
-    .bind(auth.user_id)
-    .fetch_one(&state.pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("[UserAPI] Failed to fetch user kyc_status: {}", e);
-        AppError::database_error(e.to_string())
-    })?;
 
-    let kyc_status = user.kyc_status.unwrap_or_else(|| "unverified".to_string()).to_lowercase();
-    
+    let user = sqlx::query_as::<_, UserKycRow>("SELECT kyc_status FROM users WHERE id = $1")
+        .bind(auth.user_id)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("[UserAPI] Failed to fetch user kyc_status: {}", e);
+            AppError::database_error(e.to_string())
+        })?;
+
+    let kyc_status = user
+        .kyc_status
+        .unwrap_or_else(|| "unverified".to_string())
+        .to_lowercase();
+
     // 2. 企业级实现：根据KYC等级返回不同的限额
     let (daily_limit, monthly_limit) = match kyc_status.as_str() {
         "unverified" => (0.0, 0.0),
@@ -77,7 +79,7 @@ pub async fn get_kyc_status(
     struct TotalRow {
         total: Option<rust_decimal::Decimal>,
     }
-    
+
     let daily_used_result = sqlx::query_as::<_, TotalRow>(
         r#"
         SELECT COALESCE(SUM(fiat_amount), 0) as total
@@ -85,7 +87,7 @@ pub async fn get_kyc_status(
         WHERE user_id = $1 
           AND created_at >= $2
           AND status IN ('completed', 'processing', 'pending')
-        "#
+        "#,
     )
     .bind(auth.user_id)
     .bind(today_start)
@@ -93,11 +95,15 @@ pub async fn get_kyc_status(
     .await;
 
     let daily_used = match daily_used_result {
-        Ok(row) => row.total
+        Ok(row) => row
+            .total
             .map(|d| d.to_string().parse::<f64>().unwrap_or(0.0))
             .unwrap_or(0.0),
         Err(e) => {
-            tracing::warn!("[UserAPI] Failed to query daily usage, defaulting to 0: {}", e);
+            tracing::warn!(
+                "[UserAPI] Failed to query daily usage, defaulting to 0: {}",
+                e
+            );
             0.0
         }
     };
@@ -110,7 +116,7 @@ pub async fn get_kyc_status(
         .unwrap()
         .and_local_timezone(chrono::Utc)
         .unwrap();
-    
+
     let monthly_used_result = sqlx::query_as::<_, TotalRow>(
         r#"
         SELECT COALESCE(SUM(fiat_amount), 0) as total
@@ -118,7 +124,7 @@ pub async fn get_kyc_status(
         WHERE user_id = $1 
           AND created_at >= $2
           AND status IN ('completed', 'processing', 'pending')
-        "#
+        "#,
     )
     .bind(auth.user_id)
     .bind(month_start)
@@ -126,11 +132,15 @@ pub async fn get_kyc_status(
     .await;
 
     let monthly_used = match monthly_used_result {
-        Ok(row) => row.total
+        Ok(row) => row
+            .total
             .map(|d| d.to_string().parse::<f64>().unwrap_or(0.0))
             .unwrap_or(0.0),
         Err(e) => {
-            tracing::warn!("[UserAPI] Failed to query monthly usage, defaulting to 0: {}", e);
+            tracing::warn!(
+                "[UserAPI] Failed to query monthly usage, defaulting to 0: {}",
+                e
+            );
             0.0
         }
     };
@@ -162,9 +172,9 @@ pub async fn get_user_info(
         kyc_status: Option<String>,
         created_at: chrono::DateTime<chrono::Utc>,
     }
-    
+
     let user = sqlx::query_as::<_, UserInfoRow>(
-        "SELECT id, email, phone, kyc_status, created_at FROM users WHERE id = $1"
+        "SELECT id, email, phone, kyc_status, created_at FROM users WHERE id = $1",
     )
     .bind(auth.user_id)
     .fetch_one(&state.pool)

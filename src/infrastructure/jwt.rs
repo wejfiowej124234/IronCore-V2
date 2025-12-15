@@ -147,8 +147,7 @@ pub fn verify_token(token: &str) -> Result<Claims> {
     );
 
     // 验证user_id和tenant_id格式
-    Uuid::parse_str(&claims.sub)
-        .map_err(|e| anyhow!("Invalid user_id format in token: {}", e))?;
+    Uuid::parse_str(&claims.sub).map_err(|e| anyhow!("Invalid user_id format in token: {}", e))?;
     Uuid::parse_str(&claims.tenant_id)
         .map_err(|e| anyhow!("Invalid tenant_id format in token: {}", e))?;
 
@@ -159,7 +158,10 @@ pub fn verify_token(token: &str) -> Result<Claims> {
 fn get_jwt_secret() -> Result<String> {
     match std::env::var("JWT_SECRET") {
         Ok(secret) => {
-            tracing::debug!("JWT: using secret from env, len={}", secret.as_bytes().len());
+            tracing::debug!(
+                "JWT: using secret from env, len={}",
+                secret.as_bytes().len()
+            );
             Ok(secret)
         }
         Err(_) => Err(anyhow!("JWT_SECRET environment variable not set")),

@@ -119,7 +119,7 @@ pub struct PaymentGatewayConfig {
     // MoonPay 配置
     pub moonpay_api_key: String,
     pub moonpay_secret_key: String,
-    
+
     // Transak 配置
     pub transak_api_key: String,
     pub transak_environment: String, // "STAGING" or "PRODUCTION"
@@ -249,7 +249,7 @@ impl Default for PaymentGatewayConfig {
                 .unwrap_or_else(|_| "pk_test_placeholder".to_string()),
             moonpay_secret_key: std::env::var("MOONPAY_SECRET_KEY")
                 .unwrap_or_else(|_| "sk_test_placeholder".to_string()),
-            
+
             // Transak
             transak_api_key: std::env::var("TRANSAK_API_KEY")
                 .unwrap_or_else(|_| "placeholder_api_key".to_string()),

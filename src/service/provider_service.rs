@@ -15,9 +15,9 @@ pub struct ProviderConfig {
     pub id: Uuid,
     pub name: String,
     pub display_name: String,
-    pub provider_type: String,  // "aggregator" (聚合器) or "direct" (直连)
+    pub provider_type: String, // "aggregator" (聚合器) or "direct" (直连)
     pub is_enabled: bool,
-    pub priority: i64,  // CockroachDB uses INT8 by default
+    pub priority: i64, // CockroachDB uses INT8 by default
     pub fee_min_percent: rust_decimal::Decimal,
     pub fee_max_percent: rust_decimal::Decimal,
     pub api_url: String,
@@ -96,7 +96,7 @@ impl ProviderService {
     /// 获取所有启用的服务商
     pub async fn get_enabled_providers(&self) -> Result<Vec<ProviderConfig>> {
         tracing::info!("[ProviderService] Fetching enabled providers from database...");
-        
+
         let rows = sqlx::query(
             r#"
             SELECT 
@@ -113,13 +113,16 @@ impl ProviderService {
         .fetch_all(&self.pool)
         .await
         .context("Failed to fetch enabled providers")?;
-        
-        tracing::info!("[ProviderService] Fetched {} rows from database", rows.len());
+
+        tracing::info!(
+            "[ProviderService] Fetched {} rows from database",
+            rows.len()
+        );
 
         let mut providers = Vec::new();
         for (idx, row) in rows.iter().enumerate() {
             tracing::debug!("[ProviderService] Parsing row {}/{}", idx + 1, rows.len());
-            
+
             // 尝试多种方式解析TEXT[]数组：Vec<String> 或 Vec<Option<String>>
             let supported_countries: Vec<String> = row
                 .try_get::<Vec<String>, _>("supported_countries")
@@ -148,32 +151,64 @@ impl ProviderService {
                 Ok(ProviderConfig {
                     id: row.try_get("id").context("Failed to parse id")?,
                     name: row.try_get("name").context("Failed to parse name")?,
-                    display_name: row.try_get("display_name").context("Failed to parse display_name")?,
-                    provider_type: row.try_get("provider_type").unwrap_or_else(|_| "direct".to_string()),
-                    is_enabled: row.try_get("is_enabled").context("Failed to parse is_enabled")?,
-                    priority: row.try_get("priority").context("Failed to parse priority")?,
-                    fee_min_percent: row.try_get("fee_min_percent").context("Failed to parse fee_min_percent")?,
-                    fee_max_percent: row.try_get("fee_max_percent").context("Failed to parse fee_max_percent")?,
+                    display_name: row
+                        .try_get("display_name")
+                        .context("Failed to parse display_name")?,
+                    provider_type: row
+                        .try_get("provider_type")
+                        .unwrap_or_else(|_| "direct".to_string()),
+                    is_enabled: row
+                        .try_get("is_enabled")
+                        .context("Failed to parse is_enabled")?,
+                    priority: row
+                        .try_get("priority")
+                        .context("Failed to parse priority")?,
+                    fee_min_percent: row
+                        .try_get("fee_min_percent")
+                        .context("Failed to parse fee_min_percent")?,
+                    fee_max_percent: row
+                        .try_get("fee_max_percent")
+                        .context("Failed to parse fee_max_percent")?,
                     api_url: row.try_get("api_url").context("Failed to parse api_url")?,
-                    webhook_url: row.try_get("webhook_url").context("Failed to parse webhook_url")?,
-                    timeout_seconds: row.try_get("timeout_seconds").context("Failed to parse timeout_seconds")?,
+                    webhook_url: row
+                        .try_get("webhook_url")
+                        .context("Failed to parse webhook_url")?,
+                    timeout_seconds: row
+                        .try_get("timeout_seconds")
+                        .context("Failed to parse timeout_seconds")?,
                     supported_countries: supported_countries.clone(),
                     supported_payment_methods: supported_payment_methods.clone(),
-                    health_status: row.try_get("health_status").context("Failed to parse health_status")?,
-                    last_health_check: row.try_get("last_health_check").context("Failed to parse last_health_check")?,
-                    consecutive_failures: row.try_get("consecutive_failures").context("Failed to parse consecutive_failures")?,
-                    total_requests: row.try_get("total_requests").context("Failed to parse total_requests")?,
-                    successful_requests: row.try_get("successful_requests").context("Failed to parse successful_requests")?,
-                    average_response_time_ms: row.try_get("average_response_time_ms").context("Failed to parse average_response_time_ms")?,
+                    health_status: row
+                        .try_get("health_status")
+                        .context("Failed to parse health_status")?,
+                    last_health_check: row
+                        .try_get("last_health_check")
+                        .context("Failed to parse last_health_check")?,
+                    consecutive_failures: row
+                        .try_get("consecutive_failures")
+                        .context("Failed to parse consecutive_failures")?,
+                    total_requests: row
+                        .try_get("total_requests")
+                        .context("Failed to parse total_requests")?,
+                    successful_requests: row
+                        .try_get("successful_requests")
+                        .context("Failed to parse successful_requests")?,
+                    average_response_time_ms: row
+                        .try_get("average_response_time_ms")
+                        .context("Failed to parse average_response_time_ms")?,
                 })
             })() {
                 Ok(p) => p,
                 Err(e) => {
-                    tracing::error!("[ProviderService] Failed to parse provider row {}: {:?}", idx, e);
+                    tracing::error!(
+                        "[ProviderService] Failed to parse provider row {}: {:?}",
+                        idx,
+                        e
+                    );
                     continue; // 跳过这个provider，继续处理下一个
                 }
             };
-            
+
             providers.push(provider);
         }
 

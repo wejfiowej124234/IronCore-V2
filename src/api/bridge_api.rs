@@ -269,9 +269,9 @@ pub fn routes() -> axum::Router<Arc<crate::app_state::AppState>> {
     use axum::routing::{get, post};
 
     axum::Router::new()
-        .route("/quote", post(get_bridge_quote))  // ✅ 前端使用POST
-        .route("/assets", post(bridge_assets))    // ✅ 前端路径
-        .route("/transfer", post(bridge_assets))  // 兼容别名
-        .route("/:id", get(get_bridge_status))    // ✅ 前端路径
-        .route("/:id/status", get(get_bridge_status))  // 兼容别名
+        .route("/quote", post(get_bridge_quote)) // ✅ 前端使用POST
+        .route("/assets", post(bridge_assets)) // ✅ 前端路径
+        .route("/transfer", post(bridge_assets)) // 兼容别名
+        .route("/:id", get(get_bridge_status)) // ✅ 前端路径
+        .route("/:id/status", get(get_bridge_status)) // 兼容别名
 }
