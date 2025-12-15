@@ -16,6 +16,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
@@ -45,12 +46,21 @@ jobs:
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Format check
+        shell: bash
         run: cargo fmt --all -- --check
 
+      - name: Cargo fetch (locked)
+        shell: bash
+        run: cargo fetch --locked
+
       - name: Clippy lint
-        run: cargo clippy --locked --all-targets --all-features
+        shell: bash
+        run: |
+          rustup component add clippy
+          cargo clippy --locked --all-targets --all-features
 
       - name: Tests
+        shell: bash
         run: cargo test --locked --all-targets --all-features
 
   security-audit:
