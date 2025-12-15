@@ -17,6 +17,7 @@ jobs:
     timeout-minutes: 25
     env:
       RUSTFLAGS: ""
+      CARGO_ENCODED_RUSTFLAGS: ""
       RUSTDOCFLAGS: ""
     strategy:
       fail-fast: false
