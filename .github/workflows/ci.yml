@@ -51,7 +51,18 @@ jobs:
 
       - name: Cargo fetch (locked)
         shell: bash
-        run: cargo fetch --locked
+        run: |
+          set -uo pipefail
+          cargo fetch --locked 2>&1 | tee cargo-fetch.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo "::error title=cargo fetch failed::Exit code $status"
+            tail -n 80 cargo-fetch.log | while IFS= read -r line; do
+              # Emit individual lines so they show up in annotations even without log download.
+              echo "::error::$line"
+            done
+            exit "$status"
+          fi
 
       - name: Clippy lint
         shell: bash
