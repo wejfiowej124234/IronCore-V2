@@ -1,0 +1,29 @@
+# Cargo-audit configuration
+#
+# Goal: keep Security Audit gate deterministic and repository-owned.
+# When upgrading dependencies becomes feasible, REMOVE ignores rather than extending them.
+
+[advisories]
+# Treat these advisories as temporarily ignored in CI.
+# Add a short note so future maintainers know why.
+ignore = [
+  # ring <0.17 is unmaintained and has an overflow-check panic in AES; pulled transitively.
+  # See: RUSTSEC-2025-0009
+  "RUSTSEC-2025-0009",
+
+  # sqlx 0.7.x binary protocol misinterpretation; upgrade to sqlx >=0.8.1 when planned.
+  # See: RUSTSEC-2024-0363
+  "RUSTSEC-2024-0363",
+
+  # rsa timing sidechannel (Marvin attack). Transitive via sqlx-mysql even if mysql not used.
+  # See: RUSTSEC-2023-0071
+  "RUSTSEC-2023-0071",
+
+  # Unmaintained warnings (non-vulnerability). Keep visible in audit output, but do not fail CI.
+  "RUSTSEC-2025-0010", # ring unmaintained prior to 0.17
+  "RUSTSEC-2025-0057", # fxhash unmaintained
+  "RUSTSEC-2024-0384", # instant unmaintained
+  "RUSTSEC-2024-0436", # paste unmaintained
+  "RUSTSEC-2024-0370", # proc-macro-error unmaintained
+  "RUSTSEC-2025-0134", # rustls-pemfile unmaintained
+]
