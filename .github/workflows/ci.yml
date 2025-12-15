@@ -15,6 +15,9 @@ jobs:
     name: Gates (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
+    env:
+      RUSTFLAGS: ""
+      RUSTDOCFLAGS: ""
     strategy:
       fail-fast: false
       matrix:
