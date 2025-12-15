@@ -7,3 +7,4 @@ Local verification:
 
 Note:
 - Safe, mechanical lint cleanups + minimal targeted `#[allow]` where signature refactors would be risky.
+- This branch can be squashed on merge.
