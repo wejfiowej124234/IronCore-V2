@@ -225,7 +225,7 @@ async fn test_jwt_token() {
         "Tenant ID should match"
     );
     assert!(
-        claims.exp as i64 > chrono::Utc::now().timestamp(),
+        claims.exp > chrono::Utc::now().timestamp(),
         "Token should not be expired"
     );
 }
