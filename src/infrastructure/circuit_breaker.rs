@@ -79,7 +79,7 @@ impl CircuitBreaker {
         // 检查是否允许通过
         {
             let mut state = self.state.lock().unwrap();
-            
+
             match state.state {
                 CircuitState::Open => {
                     // 检查是否可以尝试恢复
@@ -111,7 +111,7 @@ impl CircuitBreaker {
     /// 成功回调
     fn on_success(&self) {
         let mut state = self.state.lock().unwrap();
-        
+
         match state.state {
             CircuitState::HalfOpen => {
                 state.success_count += 1;
@@ -132,10 +132,10 @@ impl CircuitBreaker {
     /// 失败回调
     fn on_failure(&self) {
         let mut state = self.state.lock().unwrap();
-        
+
         state.failure_count += 1;
         state.last_failure_time = Some(Instant::now());
-        
+
         if state.state == CircuitState::HalfOpen {
             // 半开状态失败，立即重新熔断
             state.state = CircuitState::Open;

@@ -274,7 +274,7 @@ impl PlatformAddressManager {
         let tx_id = Uuid::new_v4();
 
         let _ = sqlx::query(
-            "INSERT INTO platform_address_transactions 
+            "INSERT INTO platform_address_transactions
              (id, platform_address_id, tx_hash, tx_type, amount, from_address, to_address,
               fiat_order_id, status, created_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', CURRENT_TIMESTAMP)",
@@ -296,7 +296,7 @@ impl PlatformAddressManager {
     /// 确认交易
     pub async fn confirm_transaction(&self, tx_id: Uuid) -> Result<()> {
         let _ = sqlx::query(
-            "UPDATE platform_address_transactions 
+            "UPDATE platform_address_transactions
              SET status = 'confirmed', confirmed_at = CURRENT_TIMESTAMP
              WHERE id = $1",
         )

@@ -273,7 +273,7 @@ impl UnifiedFeeConfigService {
     /// 列出所有费率配置
     pub async fn list_all_configs(&self) -> Result<Vec<FeeConfig>> {
         let configs = sqlx::query_as::<_, FeeConfigRow>(
-            "SELECT fee_type, chain, rate_percentage, min_fee_usd, max_fee_usd, 
+            "SELECT fee_type, chain, rate_percentage, min_fee_usd, max_fee_usd,
                     fixed_fee_usd, enabled, description, updated_at
              FROM fee_configurations
              ORDER BY fee_type, chain",
@@ -333,7 +333,7 @@ impl UnifiedFeeConfigService {
         let chain_str = chain.unwrap_or("global");
 
         let row = sqlx::query_as::<_, FeeConfigRow>(
-            "SELECT fee_type, chain, rate_percentage, min_fee_usd, max_fee_usd, 
+            "SELECT fee_type, chain, rate_percentage, min_fee_usd, max_fee_usd,
                     fixed_fee_usd, enabled, description, updated_at
              FROM fee_configurations
              WHERE fee_type = $1 AND chain = $2
@@ -349,11 +349,11 @@ impl UnifiedFeeConfigService {
 
     async fn upsert_fee_config(&self, config: &FeeConfig) -> Result<()> {
         sqlx::query(
-            "INSERT INTO fee_configurations 
+            "INSERT INTO fee_configurations
              (fee_type, chain, rate_percentage, min_fee_usd, max_fee_usd, fixed_fee_usd, enabled, description, updated_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             ON CONFLICT (fee_type, chain) 
-             DO UPDATE SET 
+             ON CONFLICT (fee_type, chain)
+             DO UPDATE SET
                 rate_percentage = EXCLUDED.rate_percentage,
                 min_fee_usd = EXCLUDED.min_fee_usd,
                 max_fee_usd = EXCLUDED.max_fee_usd,

@@ -176,9 +176,9 @@ impl WithdrawalRiskControl {
     /// 获取用户24小时内的提现总额
     async fn get_daily_withdrawal_total(&self, user_id: Uuid) -> Result<f64> {
         let total: Option<f64> = sqlx::query_scalar(
-            "SELECT COALESCE(SUM(amount_usd), 0) 
-             FROM withdrawal_requests 
-             WHERE user_id = $1 
+            "SELECT COALESCE(SUM(amount_usd), 0)
+             FROM withdrawal_requests
+             WHERE user_id = $1
                AND status IN ('completed', 'pending')
                AND created_at > NOW() - INTERVAL '24 hours'",
         )
@@ -192,9 +192,9 @@ impl WithdrawalRiskControl {
     /// 获取用户最近N小时内的提现次数
     async fn get_recent_withdrawal_count(&self, user_id: Uuid, hours: i32) -> Result<i64> {
         let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) 
-             FROM withdrawal_requests 
-             WHERE user_id = $1 
+            "SELECT COUNT(*)
+             FROM withdrawal_requests
+             WHERE user_id = $1
                AND created_at > NOW() - INTERVAL '1 hour' * $2",
         )
         .bind(user_id)
@@ -208,8 +208,8 @@ impl WithdrawalRiskControl {
     /// 获取账户年龄（天数）
     async fn get_account_age_days(&self, user_id: Uuid) -> Result<i64> {
         let age: Option<i64> = sqlx::query_scalar(
-            "SELECT EXTRACT(DAY FROM NOW() - created_at)::BIGINT 
-             FROM users 
+            "SELECT EXTRACT(DAY FROM NOW() - created_at)::BIGINT
+             FROM users
              WHERE id = $1",
         )
         .bind(user_id)
@@ -223,7 +223,7 @@ impl WithdrawalRiskControl {
     async fn is_blacklisted_address(&self, address: &str) -> Result<bool> {
         let exists: bool = sqlx::query_scalar(
             "SELECT EXISTS(
-                SELECT 1 FROM address_blacklist 
+                SELECT 1 FROM address_blacklist
                 WHERE address = $1 AND is_active = true
             )",
         )
@@ -240,8 +240,8 @@ impl WithdrawalRiskControl {
         // 简化实现：检查是否有最近的安全告警
         let has_alerts: bool = sqlx::query_scalar(
             "SELECT EXISTS(
-                SELECT 1 FROM security_alerts 
-                WHERE user_id = $1 
+                SELECT 1 FROM security_alerts
+                WHERE user_id = $1
                   AND severity IN ('high', 'critical')
                   AND created_at > NOW() - INTERVAL '7 days'
                   AND status = 'open'
@@ -264,8 +264,8 @@ impl WithdrawalRiskControl {
         let log_id = Uuid::new_v4();
 
         sqlx::query(
-            "INSERT INTO withdrawal_risk_logs 
-             (id, user_id, tenant_id, amount_usd, chain, to_address, 
+            "INSERT INTO withdrawal_risk_logs
+             (id, user_id, tenant_id, amount_usd, chain, to_address,
               risk_level, allow, triggered_rules, suggestion, requires_manual_review, created_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())",
         )

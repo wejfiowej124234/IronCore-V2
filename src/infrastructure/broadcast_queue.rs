@@ -76,9 +76,9 @@ impl BroadcastQueue {
         tenant_id: Uuid,
     ) -> Result<Uuid> {
         let id = Uuid::new_v4();
-        
+
         let _ = sqlx::query(
-            "INSERT INTO broadcast_queue 
+            "INSERT INTO broadcast_queue
              (id, chain, signed_tx, user_id, tenant_id, retry_count, max_retries, status, created_at)
              VALUES ($1, $2, $3, $4, $5, 0, 3, 'pending', CURRENT_TIMESTAMP)"
         )
@@ -109,12 +109,12 @@ impl BroadcastQueue {
             next_retry_at: Option<DateTime<Utc>>,
             error_message: Option<String>,
         }
-        
+
         let rows = sqlx::query_as::<_, QueueRow>(
-            "SELECT id, chain, signed_tx, user_id, tenant_id, retry_count, max_retries, 
+            "SELECT id, chain, signed_tx, user_id, tenant_id, retry_count, max_retries,
                     status, created_at, next_retry_at, error_message
              FROM broadcast_queue
-             WHERE status = 'pending' 
+             WHERE status = 'pending'
                AND (next_retry_at IS NULL OR next_retry_at <= CURRENT_TIMESTAMP)
              ORDER BY created_at ASC
              LIMIT $1
@@ -142,7 +142,7 @@ impl BroadcastQueue {
     /// 标记为正在广播
     pub async fn mark_broadcasting(&self, id: Uuid) -> Result<()> {
         let _ = sqlx::query(
-            "UPDATE broadcast_queue 
+            "UPDATE broadcast_queue
              SET status = 'broadcasting', updated_at = CURRENT_TIMESTAMP
              WHERE id = $1"
         )
@@ -156,8 +156,8 @@ impl BroadcastQueue {
     /// 标记为成功
     pub async fn mark_success(&self, id: Uuid, tx_hash: String) -> Result<()> {
         let _ = sqlx::query(
-            "UPDATE broadcast_queue 
-             SET status = 'success', 
+            "UPDATE broadcast_queue
+             SET status = 'success',
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = $1"
         )
@@ -171,12 +171,12 @@ impl BroadcastQueue {
     /// 标记为失败并安排重试
     pub async fn mark_failed_with_retry(&self, id: Uuid, error: String) -> Result<()> {
         let item = self.get_item(id).await?;
-        
+
         if item.retry_count + 1 >= item.max_retries {
             // 超过最大重试次数，标记为最终失败
             let _ = sqlx::query(
-                "UPDATE broadcast_queue 
-                 SET status = 'failed', 
+                "UPDATE broadcast_queue
+                 SET status = 'failed',
                      error_message = $2,
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = $1"
@@ -188,9 +188,9 @@ impl BroadcastQueue {
         } else {
             // 安排下次重试（指数退避）
             let retry_delay_seconds = 2_i64.pow((item.retry_count + 1) as u32) * 60; // 2min, 4min, 8min
-            
+
             let _ = sqlx::query(
-                "UPDATE broadcast_queue 
+                "UPDATE broadcast_queue
                  SET status = 'pending',
                      retry_count = retry_count + 1,
                      error_message = $2,
@@ -225,7 +225,7 @@ impl BroadcastQueue {
             next_retry_at: Option<DateTime<Utc>>,
             error_message: Option<String>,
         }
-        
+
         let row = sqlx::query_as::<_, QueueItemRow>(
             "SELECT id, chain, signed_tx, user_id, tenant_id, retry_count, max_retries,
                     status, created_at, next_retry_at, error_message
@@ -253,8 +253,8 @@ impl BroadcastQueue {
     /// 清理旧的成功记录（超过7天）
     pub async fn cleanup_old_items(&self) -> Result<i64> {
         let result = sqlx::query(
-            "DELETE FROM broadcast_queue 
-             WHERE status = 'success' 
+            "DELETE FROM broadcast_queue
+             WHERE status = 'success'
                AND created_at < CURRENT_TIMESTAMP - INTERVAL '7 days'"
         )
         .execute(&self.pool)
@@ -266,7 +266,7 @@ impl BroadcastQueue {
     /// 取消待处理项目
     pub async fn cancel_pending(&self, id: Uuid) -> Result<()> {
         let _ = sqlx::query(
-            "UPDATE broadcast_queue 
+            "UPDATE broadcast_queue
              SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
              WHERE id = $1 AND status = 'pending'"
         )
@@ -297,12 +297,12 @@ CREATE TABLE IF NOT EXISTS broadcast_queue (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_broadcast_queue_status_retry 
-ON broadcast_queue(status, next_retry_at) 
+CREATE INDEX IF NOT EXISTS idx_broadcast_queue_status_retry
+ON broadcast_queue(status, next_retry_at)
 WHERE status = 'pending';
 
-CREATE INDEX IF NOT EXISTS idx_broadcast_queue_created 
-ON broadcast_queue(created_at) 
+CREATE INDEX IF NOT EXISTS idx_broadcast_queue_created
+ON broadcast_queue(created_at)
 WHERE status = 'success';
 
 COMMENT ON TABLE broadcast_queue IS '交易广播队列：持久化待广播交易，支持重启恢复';

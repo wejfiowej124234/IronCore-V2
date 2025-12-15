@@ -116,8 +116,8 @@ impl CrossChainTransactionRepository for PgCrossChainTransactionRepository {
         let result = sqlx::query_as::<_, CrossChainTransaction>(
             r#"
             SELECT id, user_id, tenant_id, source_chain, source_address,
-                   source_tx_hash, source_confirmations, 
-                   destination_chain, destination_address, destination_tx_hash, 
+                   source_tx_hash, source_confirmations,
+                   destination_chain, destination_address, destination_tx_hash,
                    destination_confirmations,
                    token_symbol, amount, status, progress_percentage,
                    bridge_provider, bridge_protocol, fee_paid, signed_source_tx,
@@ -137,8 +137,8 @@ impl CrossChainTransactionRepository for PgCrossChainTransactionRepository {
         let results = sqlx::query_as::<_, CrossChainTransaction>(
             r#"
             SELECT id, user_id, tenant_id, source_chain, source_address,
-                   source_tx_hash, source_confirmations, 
-                   destination_chain, destination_address, destination_tx_hash, 
+                   source_tx_hash, source_confirmations,
+                   destination_chain, destination_address, destination_tx_hash,
                    destination_confirmations,
                    token_symbol, amount, status, progress_percentage,
                    bridge_provider, bridge_protocol, fee_paid, signed_source_tx,

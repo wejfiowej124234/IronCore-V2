@@ -77,7 +77,7 @@ impl TransactionMonitor {
             r#"
             SELECT swap_id, network, tx_hash, status
             FROM swap_transactions
-            WHERE tx_hash IS NOT NULL 
+            WHERE tx_hash IS NOT NULL
               AND tx_hash != ''
               AND status IN ('executing', 'pending')
               AND created_at > CURRENT_TIMESTAMP - INTERVAL '1 hour'
@@ -209,7 +209,7 @@ impl TransactionMonitor {
         >(
             "SELECT id, chain, tx_hash, created_at
              FROM gas.fee_audit
-             WHERE tx_hash IS NOT NULL 
+             WHERE tx_hash IS NOT NULL
                AND tx_hash != ''
                AND gas_used IS NULL
                AND (retry_count IS NULL OR retry_count < $1)

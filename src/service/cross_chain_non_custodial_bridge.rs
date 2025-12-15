@@ -100,8 +100,8 @@ impl NonCustodialBridgeService {
         let now = Utc::now();
 
         let _ = sqlx::query(
-            "INSERT INTO cross_chain_transactions 
-             (id, user_id, source_chain, source_address, destination_chain, destination_address, 
+            "INSERT INTO cross_chain_transactions
+             (id, user_id, source_chain, source_address, destination_chain, destination_address,
               amount, token_symbol, status, created_at, updated_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
         )
@@ -176,8 +176,8 @@ impl NonCustodialBridgeService {
     pub async fn broadcast_source_tx(&self, order_id: Uuid) -> Result<String> {
         // 1. 获取订单
         let order = sqlx::query_as::<_, (String, String)>(
-            "SELECT source_chain, COALESCE(signed_source_tx, '') 
-             FROM cross_chain_transactions 
+            "SELECT source_chain, COALESCE(signed_source_tx, '')
+             FROM cross_chain_transactions
              WHERE id = $1",
         )
         .bind(order_id)
@@ -189,7 +189,7 @@ impl NonCustodialBridgeService {
 
         // 3. 更新订单状态
         let _ = sqlx::query(
-            "UPDATE cross_chain_transactions 
+            "UPDATE cross_chain_transactions
              SET source_tx_hash = $1, status = $2, updated_at = CURRENT_TIMESTAMP
              WHERE id = $3",
         )
@@ -219,8 +219,8 @@ impl NonCustodialBridgeService {
     pub async fn build_dest_tx_params(&self, order_id: Uuid) -> Result<UnsignedTransaction> {
         // 1. 获取订单
         let order = sqlx::query_as::<_, (String, String, String, String)>(
-            "SELECT destination_chain, destination_address, amount, token_symbol 
-             FROM cross_chain_transactions 
+            "SELECT destination_chain, destination_address, amount, token_symbol
+             FROM cross_chain_transactions
              WHERE id = $1 AND status = $2",
         )
         .bind(order_id)
@@ -244,7 +244,7 @@ impl NonCustodialBridgeService {
 
         // 4. 更新状态
         let _ = sqlx::query(
-            "UPDATE cross_chain_transactions 
+            "UPDATE cross_chain_transactions
              SET status = $1, updated_at = CURRENT_TIMESTAMP
              WHERE id = $2",
         )
@@ -262,8 +262,8 @@ impl NonCustodialBridgeService {
     pub async fn submit_dest_signed_tx(&self, order_id: Uuid, signed_tx: String) -> Result<String> {
         // 1. 验证订单状态
         let order = sqlx::query_as::<_, (String, String)>(
-            "SELECT destination_chain, destination_address 
-             FROM cross_chain_transactions 
+            "SELECT destination_chain, destination_address
+             FROM cross_chain_transactions
              WHERE id = $1 AND status = $2",
         )
         .bind(order_id)
@@ -280,7 +280,7 @@ impl NonCustodialBridgeService {
 
         // 4. 更新订单
         let _ = sqlx::query(
-            "UPDATE cross_chain_transactions 
+            "UPDATE cross_chain_transactions
              SET status = $1, updated_at = CURRENT_TIMESTAMP
              WHERE id = $2",
         )

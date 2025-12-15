@@ -53,7 +53,7 @@ mod tests {
         // 注意：这需要真实的测试数据库
         let database_url = std::env::var("TEST_DATABASE_URL")
             .unwrap_or_else(|_| "postgres://root@localhost:26257/ironcore_test?sslmode=disable".to_string());
-        
+
         sqlx::PgPool::connect(&database_url)
             .await
             .expect("Failed to connect to test database")
@@ -67,12 +67,12 @@ mod tests {
         let provider_service = ProviderService::new(pool.clone());
 
         let providers = provider_service.get_enabled_providers().await.unwrap();
-        
+
         // 验证优先级从高到低排序
         let mut prev_priority = i64::MAX;
         for provider in providers {
-            assert!(provider.priority <= prev_priority, 
-                "Provider {} priority {} not in descending order", 
+            assert!(provider.priority <= prev_priority,
+                "Provider {} priority {} not in descending order",
                 provider.name, provider.priority);
             prev_priority = provider.priority;
         }
@@ -110,10 +110,10 @@ mod tests {
         // 如果不可用，会降级到Alchemy或Onramper
         if let Ok(quote) = result {
             assert!(
-                quote.provider_name == "transfi" || 
-                quote.provider_name == "alchemypay" || 
+                quote.provider_name == "transfi" ||
+                quote.provider_name == "alchemypay" ||
                 quote.provider_name == "onramper",
-                "Expected China-optimized provider, got: {}", 
+                "Expected China-optimized provider, got: {}",
                 quote.provider_name
             );
         }
@@ -181,10 +181,10 @@ mod integration_tests {
     pub async fn create_test_order(pool: &PgPool) -> Uuid {
         let order_id = Uuid::new_v4();
         sqlx::query(
-            "INSERT INTO fiat.orders 
-             (id, tenant_id, user_id, order_type, payment_method, 
-              fiat_amount, fiat_currency, crypto_amount, crypto_token, 
-              exchange_rate, fee_amount, fee_percentage, 
+            "INSERT INTO fiat.orders
+             (id, tenant_id, user_id, order_type, payment_method,
+              fiat_amount, fiat_currency, crypto_amount, crypto_token,
+              exchange_rate, fee_amount, fee_percentage,
               provider_name, status, created_at, updated_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW())"
         )

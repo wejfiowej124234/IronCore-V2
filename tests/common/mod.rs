@@ -32,7 +32,7 @@ pub async fn create_test_pool() -> PgPool {
 /// 创建测试应用状态
 pub async fn create_test_app_state() -> Arc<AppState> {
     let pool = create_test_pool().await;
-    
+
     let redis_url = test_redis_url();
     let redis = Arc::new(RedisCtx::new(&redis_url).expect("Failed to create Redis client"));
 

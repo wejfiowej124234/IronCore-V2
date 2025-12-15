@@ -128,8 +128,8 @@ pub async fn unlock_wallet(
 
     // 2. 验证钱包归属
     let wallet = sqlx::query_as::<_, (Uuid, Uuid, String, i64, String)>(
-        "SELECT id, user_id, address, chain_id, pubkey 
-         FROM wallets 
+        "SELECT id, user_id, address, chain_id, pubkey
+         FROM wallets
          WHERE id = $1 AND user_id = $2",
     )
     .bind(wallet_id)
@@ -162,8 +162,8 @@ pub async fn unlock_wallet(
     sqlx::query(
         "INSERT INTO wallet_unlock_tokens (user_id, wallet_id, unlock_token, unlock_proof, expires_at, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-         ON CONFLICT (user_id, wallet_id) 
-         DO UPDATE SET 
+         ON CONFLICT (user_id, wallet_id)
+         DO UPDATE SET
             unlock_token = EXCLUDED.unlock_token,
             unlock_proof = EXCLUDED.unlock_proof,
             expires_at = EXCLUDED.expires_at,
@@ -305,8 +305,8 @@ pub async fn get_unlock_status(
     // 查询解锁令牌
     let wallet_id_text = wallet_id.to_string();
     let token = sqlx::query_as::<_, (String, DateTime<Utc>)>(
-        "SELECT unlock_token, expires_at 
-         FROM wallet_unlock_tokens 
+        "SELECT unlock_token, expires_at
+         FROM wallet_unlock_tokens
          WHERE user_id = $1 AND wallet_id = $2 AND expires_at > CURRENT_TIMESTAMP",
     )
     .bind(user_id)
@@ -387,7 +387,7 @@ pub async fn verify_unlock_token(
 ) -> Result<bool, AppError> {
     let wallet_id_text = wallet_id.to_string();
     let result = sqlx::query_as::<_, (Uuid,)>(
-        "SELECT id FROM wallet_unlock_tokens 
+        "SELECT id FROM wallet_unlock_tokens
          WHERE user_id = $1 AND wallet_id = $2 AND unlock_token = $3 AND expires_at > CURRENT_TIMESTAMP"
     )
     .bind(user_id)

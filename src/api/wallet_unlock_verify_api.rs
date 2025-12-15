@@ -102,10 +102,10 @@ pub async fn create_unlock_token(
 
     // 存储到数据库（或Redis）
     let _ = sqlx::query(
-        "INSERT INTO wallet_unlock_tokens 
+        "INSERT INTO wallet_unlock_tokens
          (user_id, wallet_id, unlock_token, unlock_proof, expires_at, created_at)
          VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-         ON CONFLICT (user_id, wallet_id) 
+         ON CONFLICT (user_id, wallet_id)
          DO UPDATE SET unlock_token = $3, unlock_proof = $4, expires_at = $5, created_at = CURRENT_TIMESTAMP"
     )
     .bind(auth.user_id)
@@ -191,7 +191,7 @@ pub async fn refresh_unlock_token(
     let expires_at = Utc::now() + Duration::minutes(15);
 
     let _ = sqlx::query(
-        "UPDATE wallet_unlock_tokens 
+        "UPDATE wallet_unlock_tokens
          SET expires_at = $1, updated_at = CURRENT_TIMESTAMP
          WHERE user_id = $2 AND wallet_id = $3 AND unlock_token = $4",
     )

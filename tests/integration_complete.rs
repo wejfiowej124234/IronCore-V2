@@ -88,7 +88,7 @@ async fn create_test_user(pool: &PgPool) -> Uuid {
     let tenant_id = Uuid::new_v4();
 
     let _ = sqlx::query(
-        "INSERT INTO tenants (id, name) VALUES ($1, $2) 
+        "INSERT INTO tenants (id, name) VALUES ($1, $2)
          ON CONFLICT (id) DO NOTHING",
     )
     .bind(tenant_id)
@@ -97,7 +97,7 @@ async fn create_test_user(pool: &PgPool) -> Uuid {
     .await;
 
     sqlx::query(
-        "INSERT INTO users (id, tenant_id, email_cipher, role, password_hash) 
+        "INSERT INTO users (id, tenant_id, email_cipher, role, password_hash)
          VALUES ($1, $2, $3, $4, $5)",
     )
     .bind(user_id)
@@ -124,7 +124,7 @@ async fn test_complete_fee_calculation_flow() {
     // 1. 创建费率规则
     let rule_id = Uuid::new_v4();
     sqlx::query(
-        "INSERT INTO gas.platform_fee_rules 
+        "INSERT INTO gas.platform_fee_rules
          (id, chain, operation, fee_type, flat_amount, percent_bp, min_fee, priority, rule_version, active)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)",
     )
@@ -250,8 +250,8 @@ async fn test_notification_publish_and_feed() {
     // 2. 查询通知
     use sqlx::Row;
     let notifications = sqlx::query(
-        "SELECT id, category, title, content, severity, published_at 
-         FROM notify.notifications 
+        "SELECT id, category, title, content, severity, published_at
+         FROM notify.notifications
          WHERE category = $1
          ORDER BY published_at DESC
          LIMIT 10",
@@ -291,7 +291,7 @@ async fn test_fee_cache_expiration() {
     // 创建费率规则
     let rule_id = Uuid::new_v4();
     sqlx::query(
-        "INSERT INTO gas.platform_fee_rules 
+        "INSERT INTO gas.platform_fee_rules
          (id, chain, operation, fee_type, flat_amount, percent_bp, min_fee, priority, rule_version, active)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)",
     )
@@ -373,7 +373,7 @@ async fn test_multi_chain_fee_calculation() {
     for (chain, percent_bp, min_fee) in chains {
         let rule_id = Uuid::new_v4();
         sqlx::query(
-            "INSERT INTO gas.platform_fee_rules 
+            "INSERT INTO gas.platform_fee_rules
              (id, chain, operation, fee_type, percent_bp, min_fee, priority, rule_version, active)
              VALUES ($1, $2, 'transfer', 'percent', $3, $4, 10, 1, true)",
         )

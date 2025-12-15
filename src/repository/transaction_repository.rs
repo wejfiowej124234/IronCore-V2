@@ -145,10 +145,10 @@ impl TransactionRepository for PgTransactionRepository {
         }
 
         let row = sqlx::query_as::<_, TransactionRow>(
-            r#"SELECT id, tenant_id, user_id, wallet_id, chain, tx_hash, 
-                    tx_type, status, from_address, to_address, amount::TEXT as amount, token_symbol, 
+            r#"SELECT id, tenant_id, user_id, wallet_id, chain, tx_hash,
+                    tx_type, status, from_address, to_address, amount::TEXT as amount, token_symbol,
                     gas_fee, nonce, metadata, created_at, updated_at, confirmed_at
-             FROM transactions WHERE id = $1"#
+             FROM transactions WHERE id = $1"#,
         )
         .bind(tx_id)
         .fetch_optional(&self.pool)
@@ -200,10 +200,10 @@ impl TransactionRepository for PgTransactionRepository {
         }
 
         let row = sqlx::query_as::<_, TransactionRow>(
-            r#"SELECT id, tenant_id, user_id, wallet_id, chain, tx_hash, 
-                    tx_type, status, from_address, to_address, amount::TEXT as amount, token_symbol, 
+            r#"SELECT id, tenant_id, user_id, wallet_id, chain, tx_hash,
+                    tx_type, status, from_address, to_address, amount::TEXT as amount, token_symbol,
                     gas_fee, nonce, metadata, created_at, updated_at, confirmed_at
-             FROM transactions WHERE tx_hash = $1"#
+             FROM transactions WHERE tx_hash = $1"#,
         )
         .bind(tx_hash)
         .fetch_optional(&self.pool)
@@ -261,9 +261,9 @@ impl TransactionRepository for PgTransactionRepository {
         }
 
         let row = sqlx::query_as::<_, TransactionRow>(
-            r#"INSERT INTO transactions 
+            r#"INSERT INTO transactions
              (id, tenant_id, user_id, wallet_id, chain, tx_hash, tx_type, status,
-              from_address, to_address, amount, token_symbol, gas_fee, nonce, metadata, 
+              from_address, to_address, amount, token_symbol, gas_fee, nonce, metadata,
               created_at, updated_at)
              VALUES ($1, NULL, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10, $11, $12, NULL, $13, $13)
              RETURNING id, tenant_id, user_id, wallet_id, chain, tx_hash, tx_type, status,
@@ -358,10 +358,10 @@ impl TransactionRepository for PgTransactionRepository {
         }
 
         let rows = sqlx::query_as::<_, TransactionRow>(
-            r#"SELECT id, tenant_id, user_id, wallet_id, chain, tx_hash, tx_type, status, 
+            r#"SELECT id, tenant_id, user_id, wallet_id, chain, tx_hash, tx_type, status,
                     from_address, to_address, amount::TEXT as amount, token_symbol, gas_fee, nonce, metadata,
                     created_at, updated_at, confirmed_at
-             FROM transactions 
+             FROM transactions
              WHERE user_id = $1
              ORDER BY created_at DESC
              LIMIT $2 OFFSET $3"#
@@ -426,10 +426,10 @@ impl TransactionRepository for PgTransactionRepository {
         }
 
         let rows = sqlx::query_as::<_, TransactionRow>(
-            r#"SELECT id, tenant_id, user_id, wallet_id, chain, tx_hash, tx_type, status, 
+            r#"SELECT id, tenant_id, user_id, wallet_id, chain, tx_hash, tx_type, status,
                     from_address, to_address, amount::TEXT as amount, token_symbol, gas_fee, nonce, metadata,
                     created_at, updated_at, confirmed_at
-             FROM transactions 
+             FROM transactions
              WHERE wallet_id = $1
              ORDER BY created_at DESC
              LIMIT $2 OFFSET $3"#
@@ -474,7 +474,7 @@ impl TransactionRepository for PgTransactionRepository {
         use sqlx::QueryBuilder;
 
         let mut query_builder = QueryBuilder::new(
-            "SELECT id, tenant_id, user_id, wallet_id, chain, chain_type, tx_hash, tx_type, status, 
+            "SELECT id, tenant_id, user_id, wallet_id, chain, chain_type, tx_hash, tx_type, status,
                     from_address, to_address, amount::TEXT, token_symbol, gas_fee, nonce, metadata,
                     created_at, updated_at, confirmed_at
              FROM transactions WHERE 1=1",

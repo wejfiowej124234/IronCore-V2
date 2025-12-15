@@ -30,7 +30,6 @@ format_strings = false
 
 # 链式调用
 chain_width = 60
-chains_overflow_last = true
 
 # 控制流
 match_arm_leading_pipes = "Never"

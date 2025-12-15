@@ -351,10 +351,10 @@ pub async fn run_migrations_manual(pool: &PgPool) -> Result<()> {
                         format!(
                         "Failed to execute statement {} of migration {}: {}\nSQL: {}\nError: {}",
                         idx + 1, version, name,
-                        if statement.len() > 500 { 
-                            format!("{}...", &statement[..500]) 
-                        } else { 
-                            statement.to_string() 
+                        if statement.len() > 500 {
+                            format!("{}...", &statement[..500])
+                        } else {
+                            statement.to_string()
                         },
                         e
                     );
@@ -417,7 +417,7 @@ pub async fn drop_all_tables(pool: &PgPool) -> Result<()> {
     let tables: Vec<String> = sqlx::query_scalar(
         r#"
         SELECT table_schema || '.' || table_name as full_table_name
-        FROM information_schema.tables 
+        FROM information_schema.tables
         WHERE table_type = 'BASE TABLE'
         AND table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_extension', 'crdb_internal')
         ORDER BY table_schema, table_name

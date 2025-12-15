@@ -231,7 +231,7 @@ pub async fn create_bridge_enhanced(
 
     // 插入订单
     let _ = sqlx::query(
-        "INSERT INTO cross_chain_transactions 
+        "INSERT INTO cross_chain_transactions
          (id, tenant_id, user_id, source_chain, source_address, destination_chain, destination_address,
           token_symbol, amount, status, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)"
@@ -271,7 +271,7 @@ pub async fn create_bridge_enhanced(
 
             // 更新tx_hash
             let _ = sqlx::query(
-                "UPDATE cross_chain_transactions 
+                "UPDATE cross_chain_transactions
                  SET source_tx_hash = $1, updated_at = CURRENT_TIMESTAMP
                  WHERE id = $2",
             )
@@ -371,7 +371,7 @@ pub async fn get_bridge_status_enhanced(
     }
 
     let bridge = sqlx::query_as::<_, BridgeQueryRow>(
-        "SELECT id, status, source_chain, destination_chain, source_tx_hash, 
+        "SELECT id, status, source_chain, destination_chain, source_tx_hash,
                 dest_tx_hash, source_confirmations, dest_confirmations, created_at
          FROM cross_chain_transactions
          WHERE id = $1 AND user_id = $2",
@@ -462,7 +462,7 @@ async fn update_bridge_status(
 
     // 更新状态
     let _ = sqlx::query(
-        "UPDATE cross_chain_transactions 
+        "UPDATE cross_chain_transactions
          SET status = $1, updated_at = CURRENT_TIMESTAMP
          WHERE id = $2",
     )

@@ -3537,10 +3537,10 @@ pub async fn simple_list_transactions(
 
     // 从数据库查询交易历史（带分页）
     let tx_records = sqlx::query(
-        "SELECT tx_hash, from_address, to_address, amount, chain_type, created_at 
-         FROM transactions 
-         WHERE user_id = $1 
-         ORDER BY created_at DESC 
+        "SELECT tx_hash, from_address, to_address, amount, chain_type, created_at
+         FROM transactions
+         WHERE user_id = $1
+         ORDER BY created_at DESC
          LIMIT $2 OFFSET $3",
     )
     .bind(user_id)

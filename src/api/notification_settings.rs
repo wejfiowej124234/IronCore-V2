@@ -154,7 +154,7 @@ pub async fn create_preference(
     let type_str = serde_json::to_string(&req.notification_type)?;
 
     sqlx::query(
-        "INSERT INTO notify.user_preferences 
+        "INSERT INTO notify.user_preferences
          (id, user_id, notification_type, channels, frequency, enabled)
          VALUES ($1, $2, $3, $4, $5, $6)",
     )
@@ -363,9 +363,9 @@ pub async fn get_stats(
 
     // 按类型统计
     let type_counts: Vec<(String, i64)> = sqlx::query_as(
-        "SELECT notification_type, COUNT(*) as count 
-         FROM notify.user_preferences 
-         WHERE user_id = $1 
+        "SELECT notification_type, COUNT(*) as count
+         FROM notify.user_preferences
+         WHERE user_id = $1
          GROUP BY notification_type",
     )
     .bind(auth.user_id)
@@ -473,7 +473,7 @@ pub async fn reset_to_defaults(
         let type_str = serde_json::to_string(&ntype)?;
 
         sqlx::query(
-            "INSERT INTO notify.user_preferences 
+            "INSERT INTO notify.user_preferences
              (id, user_id, notification_type, channels, frequency, enabled)
              VALUES ($1, $2, $3, $4, $5, $6)",
         )

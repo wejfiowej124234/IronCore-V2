@@ -200,7 +200,7 @@ impl AuditService {
         // 1. 统计订单数据
         let order_stats = sqlx::query(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*) as total_orders,
                 SUM(fiat_amount) as total_amount,
                 COUNT(*) FILTER (WHERE status = 'completed') as completed_orders,

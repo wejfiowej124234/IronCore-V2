@@ -34,7 +34,7 @@ pub async fn handle_batch_create_wallets(
             .and_then(|w| w.name.as_ref())
             .unwrap_or(&"Multi-Chain Wallet".to_string())
             .clone();
-        
+
         // 创建钱包组
         match create_wallet_group(&state, user_id, tenant_id, &group_name).await {
             Ok(gid) => Some(gid),
@@ -101,7 +101,7 @@ async fn create_wallet_group(
     name: &str,
 ) -> Result<Uuid, AppError> {
     let group_id = Uuid::new_v4();
-    
+
     sqlx::query(
         "INSERT INTO wallet_groups (id, tenant_id, user_id, name, created_at, updated_at)
          VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
@@ -113,7 +113,7 @@ async fn create_wallet_group(
     .execute(&state.pool)
     .await
     .map_err(|e| AppError::internal_error(format!("Failed to create wallet group: {}", e)))?;
-    
+
     Ok(group_id)
 }
 
@@ -281,7 +281,7 @@ async fn insert_wallet_to_db(
         .unwrap_or_else(|| format!("{} Wallet", item.chain));
 
     let _ = sqlx::query(
-        "INSERT INTO wallets 
+        "INSERT INTO wallets
          (id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name, derivation_path, curve_type, group_id, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)"
     )
@@ -322,7 +322,7 @@ async fn log_batch_creation_audit(
     group_id: Option<Uuid>,
 ) {
     let chains: Vec<_> = results.iter().map(|r| &r.chain).collect();
-    
+
     let _ = sqlx::query(
         "INSERT INTO audit_logs (event_type, resource_type, resource_id, metadata, created_at)
          VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)"

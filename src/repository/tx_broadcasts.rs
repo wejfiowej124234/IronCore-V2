@@ -126,7 +126,7 @@ pub async fn update(
 ) -> Result<Option<TxBroadcast>, sqlx::Error> {
     let rec = sqlx::query_as::<_, TxBroadcast>(
         r#"
-        UPDATE tx_broadcasts 
+        UPDATE tx_broadcasts
         SET tx_hash = COALESCE($3, tx_hash), receipt = COALESCE($4, receipt)
         WHERE id = $1 AND tenant_id = $2
         RETURNING id, tenant_id, tx_request_id, tx_hash, receipt, created_at

@@ -181,9 +181,9 @@ impl EventBus for InMemoryEventBus {
                     i32,
                 ),
             >(
-                "SELECT id, event_type, event_data, published_at, retry_count 
-                 FROM events.domain_events 
-                 ORDER BY published_at DESC 
+                "SELECT id, event_type, event_data, published_at, retry_count
+                 FROM events.domain_events
+                 ORDER BY published_at DESC
                  LIMIT $1 OFFSET $2",
             )
             .bind(limit)

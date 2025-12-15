@@ -277,7 +277,7 @@ impl BroadcastQueueManager {
     /// 标记为处理中
     pub async fn mark_processing(&self, id: uuid::Uuid) -> Result<()> {
         let _ = sqlx::query(
-            "UPDATE broadcast_queue 
+            "UPDATE broadcast_queue
              SET status = 'broadcasting', updated_at = CURRENT_TIMESTAMP
              WHERE id = $1",
         )
@@ -291,7 +291,7 @@ impl BroadcastQueueManager {
     /// 标记为完成
     pub async fn mark_completed(&self, id: uuid::Uuid, _tx_hash: String) -> Result<()> {
         let _ = sqlx::query(
-            "UPDATE broadcast_queue 
+            "UPDATE broadcast_queue
              SET status = 'success', updated_at = CURRENT_TIMESTAMP
              WHERE id = $1",
         )
@@ -305,7 +305,7 @@ impl BroadcastQueueManager {
     /// 标记为失败
     pub async fn mark_failed(&self, id: uuid::Uuid, error: String) -> Result<()> {
         let _ = sqlx::query(
-            "UPDATE broadcast_queue 
+            "UPDATE broadcast_queue
              SET status = 'failed', error_message = $2, updated_at = CURRENT_TIMESTAMP
              WHERE id = $1",
         )

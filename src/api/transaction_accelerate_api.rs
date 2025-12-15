@@ -84,8 +84,8 @@ pub async fn accelerate_transaction(
     }
 
     let original_tx = sqlx::query_as::<_, OriginalTxRow>(
-        "SELECT id, tx_hash, from_address, nonce, status 
-         FROM transactions 
+        "SELECT id, tx_hash, from_address, nonce, status
+         FROM transactions
          WHERE tx_hash = $1 AND user_id = $2",
     )
     .bind(&req.original_tx_hash)
@@ -154,7 +154,7 @@ pub async fn accelerate_transaction(
 
     // 8. 更新数据库：标记原交易为replaced
     let _ = sqlx::query(
-        "UPDATE transactions 
+        "UPDATE transactions
          SET status = 'replaced', updated_at = CURRENT_TIMESTAMP
          WHERE tx_hash = $1",
     )
@@ -165,8 +165,8 @@ pub async fn accelerate_transaction(
 
     // 9. 插入新交易记录
     let _ = sqlx::query(
-        "INSERT INTO transactions 
-         (id, tenant_id, user_id, chain, tx_hash, from_address, to_address, 
+        "INSERT INTO transactions
+         (id, tenant_id, user_id, chain, tx_hash, from_address, to_address,
           nonce, status, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'submitted', CURRENT_TIMESTAMP)",
     )

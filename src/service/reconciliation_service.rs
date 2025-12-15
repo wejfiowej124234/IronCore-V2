@@ -108,7 +108,7 @@ impl ReconciliationService {
                 started_at, completed_at
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            ON CONFLICT (reconciliation_date, provider) 
+            ON CONFLICT (reconciliation_date, provider)
             DO UPDATE SET
                 total_orders = EXCLUDED.total_orders,
                 matched_orders = EXCLUDED.matched_orders,

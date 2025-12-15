@@ -10,7 +10,7 @@ mod tests {
     #[tokio::test]
     async fn test_ethereum_rlp_encoding() {
         let builder = TransactionBuilder::new();
-        
+
         let request = BuildTransactionRequest {
             chain: "ETH".to_string(),
             from: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb6".to_string(),
@@ -22,9 +22,9 @@ mod tests {
             nonce: Some(0),
             chain_id: Some(1),
         };
-        
+
         let response = builder.build_transaction(request).await.unwrap();
-        
+
         // 验证RLP编码格式
         assert!(response.raw_transaction.starts_with("0x"));
         assert_eq!(response.transaction_details.chain, "ETH");
@@ -34,7 +34,7 @@ mod tests {
     #[tokio::test]
     async fn test_solana_transaction_format() {
         let builder = TransactionBuilder::new();
-        
+
         let request = BuildTransactionRequest {
             chain: "SOL".to_string(),
             from: "11111111111111111111111111111111".to_string(),
@@ -46,9 +46,9 @@ mod tests {
             nonce: None,
             chain_id: None,
         };
-        
+
         let response = builder.build_transaction(request).await.unwrap();
-        
+
         assert_eq!(response.transaction_details.chain, "SOL");
         // Solana费用应该大于0
         assert!(response.transaction_details.estimated_fee.parse::<f64>().unwrap() > 0.0);
@@ -57,7 +57,7 @@ mod tests {
     #[tokio::test]
     async fn test_bitcoin_transaction_format() {
         let builder = TransactionBuilder::new();
-        
+
         let request = BuildTransactionRequest {
             chain: "BTC".to_string(),
             from: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh".to_string(),
@@ -69,9 +69,9 @@ mod tests {
             nonce: None,
             chain_id: None,
         };
-        
+
         let response = builder.build_transaction(request).await.unwrap();
-        
+
         assert_eq!(response.transaction_details.chain, "BTC");
         // Bitcoin费用应该大于0
         assert!(response.transaction_details.estimated_fee.parse::<f64>().unwrap() > 0.0);

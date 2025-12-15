@@ -122,7 +122,7 @@ impl BridgeStateMachine {
 
         // 执行转换
         let _ = sqlx::query(
-            "UPDATE cross_chain_transactions 
+            "UPDATE cross_chain_transactions
              SET status = $1, updated_at = CURRENT_TIMESTAMP
              WHERE id = $2",
         )

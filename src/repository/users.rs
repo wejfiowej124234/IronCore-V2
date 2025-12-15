@@ -92,7 +92,7 @@ pub async fn update(
     // 使用COALESCE处理可选字段
     let rec = sqlx::query_as::<_, User>(
         r#"
-        UPDATE users 
+        UPDATE users
         SET email_cipher = COALESCE($3, email_cipher),
             phone_cipher = COALESCE($4, phone_cipher),
             role = COALESCE($5, role)

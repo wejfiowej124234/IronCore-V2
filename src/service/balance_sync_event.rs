@@ -80,9 +80,9 @@ impl BalanceSyncEventHandler {
 
                 // ✅ 更新交易元数据标记已同步（使用metadata字段）
                 sqlx::query(
-                    r#"UPDATE public.transactions 
-                       SET metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{balance_synced}', 'true'::jsonb), 
-                           updated_at = CURRENT_TIMESTAMP 
+                    r#"UPDATE public.transactions
+                       SET metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{balance_synced}', 'true'::jsonb),
+                           updated_at = CURRENT_TIMESTAMP
                        WHERE tx_hash = $1"#
                 )
                 .bind(&tx_hash)
@@ -130,7 +130,7 @@ impl BalanceSyncEventHandler {
             r#"
             SELECT chain_id, from_addr, tx_hash
             FROM public.transactions
-            WHERE status = 'confirmed' 
+            WHERE status = 'confirmed'
               AND (metadata->>'balance_synced')::boolean IS NOT TRUE
               AND created_at > NOW() - INTERVAL '24 hours'
             LIMIT 50

@@ -129,7 +129,7 @@ pub async fn create_onramp_order(
     let expires_at = chrono::Utc::now() + chrono::Duration::hours(24);
 
     let _ = sqlx::query(
-        "INSERT INTO fiat_onramp_orders 
+        "INSERT INTO fiat_onramp_orders
          (id, user_id, tenant_id, fiat_amount, fiat_currency, crypto_currency, crypto_amount,
           target_chain, wallet_address, payment_method, status, exchange_rate, fee_amount, expires_at, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
@@ -212,7 +212,7 @@ async fn get_user_daily_onramp_total(pool: &sqlx::PgPool, user_id: Uuid) -> Resu
     let result = sqlx::query_as::<_, (rust_decimal::Decimal,)>(
         "SELECT COALESCE(SUM(fiat_amount), 0) as total
          FROM fiat_onramp_orders
-         WHERE user_id = $1 
+         WHERE user_id = $1
          AND created_at >= CURRENT_DATE
          AND status NOT IN ('cancelled', 'failed')",
     )

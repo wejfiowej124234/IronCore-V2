@@ -157,7 +157,7 @@ pub async fn create_withdrawal(
     };
 
     let _ = sqlx::query(
-        "INSERT INTO withdrawal_requests 
+        "INSERT INTO withdrawal_requests
          (id, user_id, tenant_id, wallet_id, chain, to_address, amount, amount_usd, status, risk_level)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
     )

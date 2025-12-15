@@ -99,7 +99,7 @@ impl ProviderService {
 
         let rows = sqlx::query(
             r#"
-            SELECT 
+            SELECT
                 id, name, display_name, is_enabled, priority,
                 fee_min_percent, fee_max_percent, api_url, webhook_url,
                 timeout_seconds, supported_countries, supported_payment_methods,
@@ -223,8 +223,8 @@ impl ProviderService {
     ) -> Result<bool> {
         let row = sqlx::query(
             r#"
-            SELECT 
-                CASE 
+            SELECT
+                CASE
                     WHEN EXISTS (
                         SELECT 1 FROM fiat.provider_country_support pcs
                         JOIN fiat.providers p ON p.id = pcs.provider_id
@@ -253,7 +253,7 @@ impl ProviderService {
     pub async fn get_supported_countries(&self, provider_name: &str) -> Result<Vec<String>> {
         let row = sqlx::query(
             r#"
-            SELECT 
+            SELECT
                 COALESCE(
                     ARRAY_AGG(DISTINCT pcs.country_code) FILTER (WHERE pcs.is_supported = TRUE),
                     ARRAY[]::TEXT[]
@@ -292,14 +292,14 @@ impl ProviderService {
         sqlx::query(
             r#"
             UPDATE fiat.providers
-            SET 
+            SET
                 health_status = $1,
                 last_health_check = $2,
-                consecutive_failures = CASE 
+                consecutive_failures = CASE
                     WHEN $1 = 'healthy' THEN 0
                     ELSE consecutive_failures + 1
                 END,
-                average_response_time_ms = CASE 
+                average_response_time_ms = CASE
                     WHEN $3 IS NOT NULL THEN COALESCE(
                         (average_response_time_ms + $3) / 2,
                         $3
@@ -335,10 +335,10 @@ impl ProviderService {
         sqlx::query(
             r#"
             UPDATE fiat.providers
-            SET 
+            SET
                 total_requests = total_requests + 1,
                 successful_requests = successful_requests + CASE WHEN $1 THEN 1 ELSE 0 END,
-                average_response_time_ms = CASE 
+                average_response_time_ms = CASE
                     WHEN $2 IS NOT NULL THEN COALESCE(
                         (average_response_time_ms + $2) / 2,
                         $2

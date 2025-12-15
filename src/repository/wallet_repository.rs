@@ -327,7 +327,7 @@ impl WalletRepository for PgWalletRepository {
         >(
             "SELECT id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
                     derivation_path, curve_type, account_index, address_index, policy_id, created_at
-             FROM wallets 
+             FROM wallets
              WHERE user_id = $1
              ORDER BY created_at DESC",
         )
@@ -398,7 +398,7 @@ impl WalletRepository for PgWalletRepository {
         >(
             "SELECT id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
                     derivation_path, curve_type, account_index, address_index, policy_id, created_at
-             FROM wallets 
+             FROM wallets
              WHERE user_id = $1 AND chain_symbol = $2
              ORDER BY created_at DESC",
         )
@@ -455,8 +455,8 @@ impl WalletRepository for PgWalletRepository {
         // PRODUCTION: Query user's first wallet address on target chain for cross-chain recipient
         // Returns first created wallet address for the specified chain
         let row = sqlx::query_as::<_, (String,)>(
-            "SELECT address 
-             FROM wallets 
+            "SELECT address
+             FROM wallets
              WHERE user_id = $1 AND chain_symbol = $2
              ORDER BY created_at ASC
              LIMIT 1",

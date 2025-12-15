@@ -117,7 +117,7 @@ async fn get_pending_nonce(
     let result = sqlx::query_as::<_, (Option<i64>,)>(
         "SELECT MAX(nonce) as max_nonce
          FROM transactions
-         WHERE from_address = $1 
+         WHERE from_address = $1
            AND chain = $2
            AND status IN ('pending', 'submitted')",
     )

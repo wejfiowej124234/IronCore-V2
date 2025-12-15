@@ -233,7 +233,7 @@ impl ReferralCommissionService {
     ) -> Result<ProviderCommissionConfig> {
         let config = sqlx::query_as::<_, ProviderCommissionConfig>(
             r#"
-            SELECT 
+            SELECT
                 id, provider_name, provider_display_name,
                 default_commission_rate, onramp_commission_rate, offramp_commission_rate,
                 tier1_volume, tier1_rate, tier2_volume, tier2_rate, tier3_volume, tier3_rate,

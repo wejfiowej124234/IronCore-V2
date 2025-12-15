@@ -143,10 +143,10 @@ impl NonceManager {
     async fn get_pending_nonces_from_db(&self, chain: &str, address: &str) -> Result<Vec<u64>> {
         // 查询pending状态的交易（从transactions表）
         let rows = sqlx::query(
-            "SELECT nonce FROM transactions 
-             WHERE chain = $1 
-             AND from_address = $2 
-             AND status = 'pending' 
+            "SELECT nonce FROM transactions
+             WHERE chain = $1
+             AND from_address = $2
+             AND status = 'pending'
              AND nonce IS NOT NULL
              ORDER BY nonce",
         )
@@ -173,7 +173,7 @@ impl NonceManager {
         sqlx::query(
             "INSERT INTO nonce_tracking (chain, address, last_nonce, updated_at)
              VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-             ON CONFLICT (chain, address) 
+             ON CONFLICT (chain, address)
              DO UPDATE SET last_nonce = $3, updated_at = CURRENT_TIMESTAMP",
         )
         .bind(chain)
@@ -188,7 +188,7 @@ impl NonceManager {
     /// 更新数据库中的nonce
     async fn update_nonce_in_db(&self, chain: &str, address: &str, nonce: u64) -> Result<()> {
         sqlx::query(
-            "UPDATE nonce_tracking 
+            "UPDATE nonce_tracking
              SET last_nonce = $1, updated_at = CURRENT_TIMESTAMP
              WHERE chain = $2 AND address = $3",
         )
@@ -257,9 +257,9 @@ impl NonceManager {
             // 标记这些交易为"replaced"
             for nonce in stale_nonces {
                 let result = sqlx::query(
-                    "UPDATE transactions 
+                    "UPDATE transactions
                      SET status = 'replaced', updated_at = CURRENT_TIMESTAMP
-                     WHERE chain = $1 AND from_address = $2 
+                     WHERE chain = $1 AND from_address = $2
                        AND nonce = $3 AND status = 'pending'",
                 )
                 .bind(chain)

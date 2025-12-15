@@ -91,7 +91,7 @@ impl UserRepository for PgUserRepository {
                 chrono::DateTime<chrono::Utc>,
             ),
         >(
-            "SELECT id, tenant_id, email_cipher, email, phone_cipher, phone, 
+            "SELECT id, tenant_id, email_cipher, email, phone_cipher, phone,
                     role, status, password_hash, kyc_status, created_at, updated_at
              FROM users WHERE id = $1",
         )
@@ -150,7 +150,7 @@ impl UserRepository for PgUserRepository {
                 chrono::DateTime<chrono::Utc>,
             ),
         >(
-            "SELECT id, tenant_id, email_cipher, email, phone_cipher, phone, 
+            "SELECT id, tenant_id, email_cipher, email, phone_cipher, phone,
                     role, status, password_hash, kyc_status, created_at, updated_at
              FROM users WHERE email_cipher = $1",
         )
@@ -266,7 +266,7 @@ impl UserRepository for PgUserRepository {
             String, String, String, String, chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>
         )>(
             "SELECT id, tenant_id, email_cipher, email, phone_cipher, phone, role, status, password_hash, kyc_status, created_at, updated_at
-             FROM users 
+             FROM users
              WHERE tenant_id = $1 AND role != 'deleted'
              ORDER BY created_at DESC
              LIMIT $2 OFFSET $3"

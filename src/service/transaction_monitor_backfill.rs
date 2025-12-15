@@ -61,7 +61,7 @@ impl GasBackfillService {
             r#"
             SELECT id, chain, tx_hash, wallet_address
             FROM gas.fee_audit
-            WHERE tx_hash IS NOT NULL 
+            WHERE tx_hash IS NOT NULL
               AND gas_fee_native IS NULL
               AND created_at > NOW() - INTERVAL '7 days'
             ORDER BY created_at DESC
@@ -102,8 +102,8 @@ impl GasBackfillService {
                             let result = sqlx::query(
                                 r#"
                                 UPDATE gas.fee_audit
-                                SET gas_fee_native = $1, 
-                                    metadata = CASE 
+                                SET gas_fee_native = $1,
+                                    metadata = CASE
                                         WHEN metadata IS NULL THEN jsonb_build_object('backfilled_at', CURRENT_TIMESTAMP)
                                         ELSE jsonb_set(metadata, '{backfilled_at}', to_jsonb(CURRENT_TIMESTAMP))
                                     END
@@ -164,8 +164,8 @@ impl GasBackfillService {
                 sqlx::query(
                     r#"
                     UPDATE gas.fee_audit
-                    SET gas_fee_native = $1, 
-                        metadata = CASE 
+                    SET gas_fee_native = $1,
+                        metadata = CASE
                             WHEN metadata IS NULL THEN jsonb_build_object('backfilled_at', CURRENT_TIMESTAMP)
                             ELSE jsonb_set(metadata, '{backfilled_at}', to_jsonb(CURRENT_TIMESTAMP))
                         END

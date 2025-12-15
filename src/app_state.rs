@@ -145,7 +145,7 @@ impl AppState {
 
         for (chain, url, priority) in endpoints {
             sqlx::query(
-                "INSERT INTO admin.rpc_endpoints (chain, url, priority, healthy, circuit_state) 
+                "INSERT INTO admin.rpc_endpoints (chain, url, priority, healthy, circuit_state)
                  VALUES ($1, $2, $3, true, 'closed')",
             )
             .bind(chain)

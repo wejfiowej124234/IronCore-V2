@@ -758,9 +758,9 @@ pub async fn list_onramp_orders(
     let offset = (page - 1) * page_size;
 
     let mut sql = String::from(
-        "SELECT id, status, fiat_amount, fiat_currency, crypto_amount, crypto_token, 
+        "SELECT id, status, fiat_amount, fiat_currency, crypto_amount, crypto_token,
                 payment_method, created_at, updated_at, COUNT(*) OVER() as total
-         FROM fiat.orders 
+         FROM fiat.orders
          WHERE user_id = $1 AND tenant_id = $2 AND order_type = 'onramp'",
     );
 
@@ -842,9 +842,9 @@ pub async fn list_offramp_orders(
     let offset = (page - 1) * page_size;
 
     let mut sql = String::from(
-        "SELECT id, status, fiat_amount, fiat_currency, crypto_amount, crypto_token, 
+        "SELECT id, status, fiat_amount, fiat_currency, crypto_amount, crypto_token,
                 payment_method, created_at, updated_at, COUNT(*) OVER() as total
-         FROM fiat.orders 
+         FROM fiat.orders
          WHERE user_id = $1 AND tenant_id = $2 AND order_type = 'offramp'",
     );
 

@@ -148,8 +148,8 @@ impl WalletBatchRegisterService {
         let wallet_name = format!("{} Wallet", wallet.chain);
 
         let _ = sqlx::query(
-            "INSERT INTO wallets 
-             (id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, 
+            "INSERT INTO wallets
+             (id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey,
               name, derivation_path, curve_type, created_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)",
         )

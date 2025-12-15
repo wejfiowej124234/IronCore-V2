@@ -224,8 +224,8 @@ pub async fn execute_bridge(
 
     // 4. 创建跨链交易记录
     let _ = sqlx::query(
-        "INSERT INTO cross_chain_transactions 
-         (id, user_id, tenant_id, source_chain, source_address, destination_chain, 
+        "INSERT INTO cross_chain_transactions
+         (id, user_id, tenant_id, source_chain, source_address, destination_chain,
           destination_address, token_symbol, amount, status, bridge_provider, fee_paid, source_tx_hash, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP)"
     )
@@ -261,7 +261,7 @@ pub async fn execute_bridge(
         Ok(resp) => {
             // 更新交易哈希
             let _ = sqlx::query(
-                "UPDATE cross_chain_transactions 
+                "UPDATE cross_chain_transactions
                  SET source_tx_hash = $1, status = 'SourceConfirming', updated_at = CURRENT_TIMESTAMP
                  WHERE id = $2"
             )
@@ -277,7 +277,7 @@ pub async fn execute_bridge(
 
             // 更新为失败状态
             let _ = sqlx::query(
-                "UPDATE cross_chain_transactions 
+                "UPDATE cross_chain_transactions
                  SET status = 'SourceFailed', updated_at = CURRENT_TIMESTAMP
                  WHERE id = $1",
             )

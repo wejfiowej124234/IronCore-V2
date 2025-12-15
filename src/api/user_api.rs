@@ -83,8 +83,8 @@ pub async fn get_kyc_status(
     let daily_used_result = sqlx::query_as::<_, TotalRow>(
         r#"
         SELECT COALESCE(SUM(fiat_amount), 0) as total
-        FROM fiat_onramp_orders 
-        WHERE user_id = $1 
+        FROM fiat_onramp_orders
+        WHERE user_id = $1
           AND created_at >= $2
           AND status IN ('completed', 'processing', 'pending')
         "#,
@@ -120,8 +120,8 @@ pub async fn get_kyc_status(
     let monthly_used_result = sqlx::query_as::<_, TotalRow>(
         r#"
         SELECT COALESCE(SUM(fiat_amount), 0) as total
-        FROM fiat_onramp_orders 
-        WHERE user_id = $1 
+        FROM fiat_onramp_orders
+        WHERE user_id = $1
           AND created_at >= $2
           AND status IN ('completed', 'processing', 'pending')
         "#,

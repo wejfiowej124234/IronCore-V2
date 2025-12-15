@@ -94,7 +94,7 @@ pub async fn create_fee_rule(
     let rule_id = Uuid::new_v4();
 
     sqlx::query(
-        "INSERT INTO gas.platform_fee_rules 
+        "INSERT INTO gas.platform_fee_rules
          (id, chain, operation, fee_type, flat_amount, percent_bp, min_fee, max_fee, priority, rule_version, active)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)"
     )
@@ -283,7 +283,7 @@ pub async fn list_fee_rules(
             chrono::DateTime<chrono::Utc>,
         ),
     >(
-        "SELECT id, chain, operation, fee_type, flat_amount, percent_bp, min_fee, max_fee, 
+        "SELECT id, chain, operation, fee_type, flat_amount, percent_bp, min_fee, max_fee,
                 priority, rule_version, active, created_at, updated_at
          FROM gas.platform_fee_rules
          ORDER BY chain, operation, priority DESC",
@@ -463,8 +463,8 @@ pub async fn toggle_collector_address(
     require_admin(&auth)?;
 
     sqlx::query(
-        "UPDATE gas.fee_collector_addresses 
-         SET active = NOT active, updated_at = CURRENT_TIMESTAMP 
+        "UPDATE gas.fee_collector_addresses
+         SET active = NOT active, updated_at = CURRENT_TIMESTAMP
          WHERE id = $1",
     )
     .bind(id)

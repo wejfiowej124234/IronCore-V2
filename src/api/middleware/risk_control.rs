@@ -82,7 +82,7 @@ fn should_apply_risk_control(path: &str) -> bool {
 ///         user_id,
 ///         format!("amount_usd={}", amount)
 ///     );
-///     
+///
 ///     // 业务逻辑...
 /// }
 /// ```

@@ -27,11 +27,11 @@ impl NonCustodialWalletRepository {
         let chain_id = self.chain_to_id(&request.chain);
 
         let wallet = sqlx::query_as::<_, NonCustodialWallet>(
-            "INSERT INTO wallets 
-            (id, user_id, tenant_id, chain_id, chain_symbol, address, pubkey, 
+            "INSERT INTO wallets
+            (id, user_id, tenant_id, chain_id, chain_symbol, address, pubkey,
              name, derivation_path, curve_type, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            RETURNING 
+            RETURNING
                 id, user_id, tenant_id, chain_id, chain_symbol, address,
                 pubkey as public_key, name, derivation_path, curve_type,
                 created_at, updated_at",
@@ -81,7 +81,7 @@ impl NonCustodialWalletRepository {
     /// 查询用户的所有钱包
     pub async fn find_by_user(&self, user_id: Uuid) -> Result<Vec<NonCustodialWallet>> {
         let wallets = sqlx::query_as::<_, NonCustodialWallet>(
-            "SELECT 
+            "SELECT
                 id, user_id, tenant_id, chain_id, chain_symbol, address,
                 pubkey as public_key, name, derivation_path, curve_type,
                 created_at, updated_at
@@ -103,7 +103,7 @@ impl NonCustodialWalletRepository {
         chain_id: i64,
     ) -> Result<Option<NonCustodialWallet>> {
         let wallet = sqlx::query_as::<_, NonCustodialWallet>(
-            "SELECT 
+            "SELECT
                 id, user_id, tenant_id, chain_id, chain_symbol, address,
                 pubkey as public_key, name, derivation_path, curve_type,
                 created_at, updated_at

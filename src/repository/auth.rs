@@ -33,13 +33,13 @@ pub async fn find_user_by_email(
 ) -> Result<Option<AuthUser>, sqlx::Error> {
     let rec = sqlx::query_as::<_, AuthUser>(
         r#"
-        SELECT id, tenant_id, 
+        SELECT id, tenant_id,
                COALESCE(email_cipher, '') as email_cipher,
                email,
                phone_cipher,
                phone,
-               role, 
-               password_hash, 
+               role,
+               password_hash,
                created_at
         FROM users
         WHERE tenant_id = $1 AND (email_cipher = $2 OR email = $2)

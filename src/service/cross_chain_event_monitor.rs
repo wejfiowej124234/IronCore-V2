@@ -216,7 +216,7 @@ impl CrossChainEventMonitor {
     ) -> Result<()> {
         if is_source {
             let _ = sqlx::query(
-                "UPDATE cross_chain_transactions 
+                "UPDATE cross_chain_transactions
                  SET source_confirmations = $1, updated_at = CURRENT_TIMESTAMP
                  WHERE id = $2",
             )
@@ -226,7 +226,7 @@ impl CrossChainEventMonitor {
             .await?;
         } else {
             let _ = sqlx::query(
-                "UPDATE cross_chain_transactions 
+                "UPDATE cross_chain_transactions
                  SET dest_confirmations = $1, updated_at = CURRENT_TIMESTAMP
                  WHERE id = $2",
             )

@@ -220,8 +220,8 @@ pub async fn create_offramp_order_enhanced(
 
     // 插入订单到真实表
     let _ = sqlx::query(
-        "INSERT INTO fiat_offramp_orders 
-         (id, tenant_id, user_id, fiat_amount, fiat_currency, 
+        "INSERT INTO fiat_offramp_orders
+         (id, tenant_id, user_id, fiat_amount, fiat_currency,
           crypto_amount, crypto_currency, source_chain, source_address,
           transfer_tx_hash, bank_account_info, status, exchange_rate, fee_amount, risk_level, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending_review', $12, $13, 'Low', CURRENT_TIMESTAMP)"
@@ -261,7 +261,7 @@ pub async fn create_offramp_order_enhanced(
         Ok(result) => {
             // 更新订单状态为 tx_submitted
             let _ = sqlx::query(
-                "UPDATE fiat_offramp_orders 
+                "UPDATE fiat_offramp_orders
                  SET status = 'confirming_onchain', transfer_tx_hash = $1, updated_at = CURRENT_TIMESTAMP
                  WHERE id = $2"
             )
@@ -275,8 +275,8 @@ pub async fn create_offramp_order_enhanced(
         Err(e) => {
             // 广播失败，标记订单
             let _ = sqlx::query(
-                "UPDATE fiat_offramp_orders 
-                 SET status = 'failed', 
+                "UPDATE fiat_offramp_orders
+                 SET status = 'failed',
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = $1",
             )
@@ -483,7 +483,7 @@ async fn get_platform_offramp_address(
     pool: &sqlx::PgPool,
 ) -> Result<String, AppError> {
     let result = sqlx::query_as::<_, (String,)>(
-        "SELECT address FROM platform_addresses 
+        "SELECT address FROM platform_addresses
          WHERE chain = $1 AND address_type = 'offramp' AND is_active = true
          LIMIT 1",
     )
@@ -519,7 +519,7 @@ async fn perform_offramp_risk_check(
     let today_total = sqlx::query_as::<_, (rust_decimal::Decimal,)>(
         "SELECT COALESCE(SUM(fiat_amount), 0) as total
          FROM fiat_offramp_orders
-         WHERE user_id = $1 
+         WHERE user_id = $1
            AND created_at > CURRENT_TIMESTAMP - INTERVAL '24 hours'",
     )
     .bind(user_id)

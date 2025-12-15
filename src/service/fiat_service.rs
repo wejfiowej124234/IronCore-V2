@@ -798,7 +798,7 @@ impl FiatService {
         sqlx::query(
             r#"
             UPDATE fiat.orders
-            SET 
+            SET
                 status = $1,
                 provider_order_id = COALESCE($2, provider_order_id),
                 metadata = COALESCE($3, metadata),
@@ -1560,7 +1560,7 @@ impl FiatService {
         });
 
         let _ = sqlx::query(
-            "INSERT INTO fiat.audit_logs (order_id, action, details, created_at) 
+            "INSERT INTO fiat.audit_logs (order_id, action, details, created_at)
              VALUES ($1, $2, $3, NOW())",
         )
         .bind(order_id)
@@ -1589,13 +1589,13 @@ impl FiatService {
     /// 根据订单ID查询订单详情
     pub async fn get_order_by_id(&self, order_id: Uuid) -> Result<FiatOrder> {
         let row = sqlx::query(
-            "SELECT id, tenant_id, user_id, order_type, payment_method, 
-                    fiat_amount, fiat_currency, crypto_amount, crypto_token, 
-                    exchange_rate, fee_amount, fee_percentage, 
-                    provider_name, provider_order_id, provider_tx_id, 
-                    status, created_at, updated_at, completed_at, 
+            "SELECT id, tenant_id, user_id, order_type, payment_method,
+                    fiat_amount, fiat_currency, crypto_amount, crypto_token,
+                    exchange_rate, fee_amount, fee_percentage,
+                    provider_name, provider_order_id, provider_tx_id,
+                    status, created_at, updated_at, completed_at,
                     expires_at, user_wallet_address, target_chain
-             FROM fiat.orders 
+             FROM fiat.orders
              WHERE id = $1",
         )
         .bind(order_id)

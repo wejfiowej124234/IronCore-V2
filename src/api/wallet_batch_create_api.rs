@@ -231,7 +231,7 @@ async fn create_single_wallet(
 
         let tenant_name = format!("Auto-Tenant-{}", &tenant_id.to_string()[..8]);
         let _ = sqlx::query(
-            "INSERT INTO tenants (id, name, created_at, updated_at) 
+            "INSERT INTO tenants (id, name, created_at, updated_at)
              VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
              ON CONFLICT (id) DO NOTHING",
         )

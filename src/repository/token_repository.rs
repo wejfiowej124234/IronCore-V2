@@ -59,7 +59,7 @@ impl TokenRepository for PgTokenRepository {
         // 使用sqlx::query_as（运行时查询，避免编译时数据库连接要求）
         let token = sqlx::query_as::<_, Token>(
             r#"
-            SELECT 
+            SELECT
                 id,
                 symbol,
                 name,
@@ -96,7 +96,7 @@ impl TokenRepository for PgTokenRepository {
         // ✅ 使用 LOWER() 进行不区分大小写的地址匹配（Ethereum 地址标准）
         let token = sqlx::query_as::<_, Token>(
             r#"
-            SELECT 
+            SELECT
                 id,
                 symbol,
                 name,
@@ -128,7 +128,7 @@ impl TokenRepository for PgTokenRepository {
         // 使用sqlx::query_as（运行时查询，避免编译时数据库连接要求）
         let tokens = sqlx::query_as::<_, Token>(
             r#"
-            SELECT 
+            SELECT
                 id,
                 symbol,
                 name,
@@ -160,7 +160,7 @@ impl TokenRepository for PgTokenRepository {
         // 使用sqlx::query_as（运行时查询，避免编译时数据库连接要求）
         let tokens = sqlx::query_as::<_, Token>(
             r#"
-            SELECT 
+            SELECT
                 id,
                 symbol,
                 name,

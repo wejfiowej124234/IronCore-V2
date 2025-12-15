@@ -111,7 +111,7 @@ impl CrossChainEventListener {
                 String,
             ),
         >(
-            "SELECT id, user_id, source_chain, source_tx_hash, destination_chain, 
+            "SELECT id, user_id, source_chain, source_tx_hash, destination_chain,
                     destination_tx_hash, status, amount, token_symbol
              FROM cross_chain_transactions
              WHERE status NOT IN ('DestinationConfirmed', 'Failed')
@@ -310,7 +310,7 @@ impl CrossChainEventListener {
     /// 更新状态
     async fn update_status(&self, tx_id: Uuid, new_status: CrossChainStatus) -> Result<()> {
         sqlx::query(
-            "UPDATE cross_chain_transactions 
+            "UPDATE cross_chain_transactions
              SET status = $1, updated_at = CURRENT_TIMESTAMP
              WHERE id = $2",
         )

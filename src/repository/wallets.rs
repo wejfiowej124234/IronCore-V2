@@ -55,7 +55,7 @@ pub async fn create(pool: &PgPool, input: CreateWalletInput) -> Result<Wallet, s
             name, derivation_path, curve_type, chain_symbol, account_index, address_index, group_id
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        RETURNING 
+        RETURNING
             id, tenant_id, user_id, chain_id, address, pubkey, policy_id, created_at,
             name, derivation_path, curve_type, chain_symbol, account_index, address_index, group_id
         "#,
