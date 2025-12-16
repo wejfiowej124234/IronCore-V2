@@ -72,6 +72,16 @@ def _jobs(owner: str, repo: str, run_id: int, token: Optional[str]) -> List[Dict
     return list(data.get("jobs", []))
 
 
+def _check_runs(owner: str, repo: str, head_sha: str, token: Optional[str]) -> List[Dict[str, Any]]:
+    # Check-runs API is separate from workflow jobs and is where manually-created checks appear.
+    url = (
+        f"https://api.github.com/repos/{owner}/{repo}/commits/{head_sha}/check-runs"
+        f"?per_page=100"
+    )
+    data = _get_json(url, token)
+    return list(data.get("check_runs", []))
+
+
 def _format_job_summary(jobs: Iterable[Dict[str, Any]]) -> str:
     lines: List[str] = []
     for job in jobs:
@@ -130,12 +140,20 @@ def main() -> int:
             jobs = _jobs(args.owner, args.repo, run_id, token)
             jobs_by_name = {j.get("name"): j for j in jobs}
 
-            missing = [name for name in required if name not in jobs_by_name]
-            bad = [
-                name
-                for name in required
-                if name in jobs_by_name and jobs_by_name[name].get("conclusion") != "success"
-            ]
+            check_runs = _check_runs(args.owner, args.repo, run.get("head_sha") or "", token)
+            checks_by_name = {c.get("name"): c for c in check_runs}
+
+            def _is_ok(name: str) -> bool:
+                j = jobs_by_name.get(name)
+                if j is not None:
+                    return j.get("conclusion") == "success"
+                c = checks_by_name.get(name)
+                if c is not None:
+                    return c.get("conclusion") == "success"
+                return False
+
+            missing = [name for name in required if name not in jobs_by_name and name not in checks_by_name]
+            bad = [name for name in required if not _is_ok(name) and name not in missing]
 
             print(f"run_id={run_id} sha={head_sha} status={status} conclusion={conclusion}")
             if html_url:
@@ -146,6 +164,10 @@ def main() -> int:
                 for name in missing:
                     print(f"  - {name}")
                 print("\nJobs seen:\n" + _format_job_summary(jobs))
+                if check_runs:
+                    print("\nCheck-runs seen:")
+                    for c in check_runs:
+                        print(f"- {c.get('name')} | {c.get('status')} | {c.get('conclusion')}")
                 return 2
 
             if conclusion != "success" or bad:
@@ -153,9 +175,17 @@ def main() -> int:
                 if bad:
                     print("Required jobs not successful:")
                     for name in bad:
-                        job = jobs_by_name[name]
-                        print(f"  - {name}: {job.get('conclusion')}")
+                        if name in jobs_by_name:
+                            job = jobs_by_name[name]
+                            print(f"  - {name}: {job.get('conclusion')}")
+                        elif name in checks_by_name:
+                            chk = checks_by_name[name]
+                            print(f"  - {name}: {chk.get('conclusion')}")
                 print("\nJobs:\n" + _format_job_summary(jobs))
+                if check_runs:
+                    print("\nCheck-runs:")
+                    for c in check_runs:
+                        print(f"- {c.get('name')} | {c.get('status')} | {c.get('conclusion')}")
                 return 1
 
             print("OK: CI is green and all required jobs succeeded.")
