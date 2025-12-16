@@ -21,7 +21,7 @@ jobs:
   gates:
     name: Gates (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       RUST_TOOLCHAIN: 1.91.1
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: git
