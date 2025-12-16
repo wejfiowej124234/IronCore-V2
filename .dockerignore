@@ -1,0 +1,13 @@
+.git
+.github
+target
+**/target
+**/*.log
+**/*.md
+.env
+.env.*
+ops/
+archive/
+*.bat
+*.ps1
+ngrok.exe

@@ -48,8 +48,8 @@ sudo apt-get install redis-tools
 
 ```bash
 # 使用Docker Compose启动所有服务
-cd backend/ops
-docker-compose up -d
+cd ops
+docker compose up -d
 ```
 
 ### 3. 配置环境变量
@@ -69,14 +69,14 @@ vim .env
 export DATABASE_URL="postgres://root@localhost:26257/ironcore?sslmode=disable"
 
 # 运行迁移
-cd backend
+cd ..
 sqlx migrate run
 ```
 
 ### 5. 启动应用
 
 ```bash
-cd backend
+cd ..
 cargo run --release
 ```
 
@@ -88,11 +88,10 @@ cargo run --release
 
 ```bash
 # 构建Release版本
-cd backend
 cargo build --release
 
 # 二进制文件位置
-target/release/ironforge_backend
+target/release/ironcore
 ```
 
 ### 2. 配置环境变量
@@ -134,15 +133,15 @@ export CONFIG_PATH=./config.toml
 
 ```bash
 # 直接运行
-./target/release/ironforge_backend
+./target/release/ironcore
 
 # 或使用systemd服务
-sudo systemctl start ironforge-backend
+sudo systemctl start ironcore
 ```
 
 ### 5. systemd服务配置
 
-创建 `/etc/systemd/system/ironforge-backend.service`:
+创建 `/etc/systemd/system/ironcore.service`:
 
 ```ini
 [Unit]
@@ -152,9 +151,9 @@ After=network.target
 [Service]
 Type=simple
 User=ironforge
-WorkingDirectory=/opt/ironforge/backend
-Environment="CONFIG_PATH=/opt/ironforge/backend/config.toml"
-ExecStart=/opt/ironforge/backend/target/release/ironforge_backend
+WorkingDirectory=/opt/ironcore
+Environment="CONFIG_PATH=/opt/ironcore/config.toml"
+ExecStart=/opt/ironcore/target/release/ironcore
 Restart=always
 RestartSec=10
 
@@ -169,41 +168,73 @@ WantedBy=multi-user.target
 ### 1. 构建Docker镜像
 
 ```bash
-# 创建Dockerfile
-cat > Dockerfile <<EOF
-FROM rust:1.75 as builder
-WORKDIR /app
-COPY . .
-RUN cargo build --release
-
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app/target/release/ironforge_backend /usr/local/bin/
-COPY --from=builder /app/config.example.toml /etc/ironforge/config.toml
-EXPOSE 8088
-CMD ["ironforge_backend"]
-EOF
-
-# 构建镜像
-docker build -t ironforge-backend:latest .
+# 本仓库已提供 Dockerfile（见仓库根目录）
+docker build -t ironcore:latest .
 ```
 
 ### 2. 运行容器
 
 ```bash
 docker run -d \
-  --name ironforge-backend \
+  --name ironcore \
   -p 8088:8088 \
   -e DATABASE_URL="postgres://..." \
   -e REDIS_URL="redis://..." \
   -e JWT_SECRET="..." \
   -e WALLET_ENC_KEY="..." \
-  ironforge-backend:latest
+  ironcore:latest
 ```
 
 ### 3. Docker Compose
 
 参考 `ops/docker-compose.yml`
+
+---
+
+## Fly.io 部署
+
+本仓库已提供：
+- `fly.toml`
+- `Dockerfile`
+
+### 1. 安装并登录 flyctl
+
+```bash
+flyctl auth login
+```
+
+### 2. 初始化（首次）
+
+在仓库根目录：
+
+```bash
+flyctl launch --no-deploy
+```
+
+提示：`fly.toml` 中的 `app = "ironcore-v2"` 只是占位符，请改成你的实际 app 名称。
+
+### 3. 配置依赖（Postgres/Redis）
+
+- Postgres：建议使用 Fly Postgres 并 attach 到 app（会提供/注入 `DATABASE_URL`）。
+- Redis：必须配置可用的 `REDIS_URL`（否则服务启动会失败）。
+
+### 4. 设置运行时机密（必须）
+
+```bash
+flyctl secrets set \
+  DATABASE_URL='postgres://...' \
+  REDIS_URL='redis://...' \
+  JWT_SECRET='your-secret-key-must-be-at-least-32-characters-long' \
+  WALLET_ENC_KEY='your-32-bytes-key-or-hex'
+```
+
+### 5. 部署
+
+```bash
+flyctl deploy
+```
+
+健康检查：`GET /healthz`
 
 ---
 

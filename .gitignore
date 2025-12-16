@@ -12,6 +12,7 @@ target/
 # OS
 .DS_Store
 Thumbs.db
+NUL
 
 # Local config (keep example files)
 config.toml
