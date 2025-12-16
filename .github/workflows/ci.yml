@@ -24,6 +24,7 @@ jobs:
     timeout-minutes: 25
     env:
       RUST_TOOLCHAIN: 1.91.1
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: git
       RUSTFLAGS: ""
       CARGO_ENCODED_RUSTFLAGS: ""
       RUSTDOCFLAGS: ""
@@ -147,6 +148,8 @@ jobs:
     name: Security Audit
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: git
     steps:
       - uses: actions/checkout@v4
 
