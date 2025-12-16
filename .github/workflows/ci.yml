@@ -6,6 +6,8 @@ on:
       - main
       - "ci/**"
       - "release/**"
+    tags:
+      - "v*"
   pull_request:
     branches: [main]
 
