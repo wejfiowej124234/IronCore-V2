@@ -58,55 +58,78 @@ jobs:
         shell: bash
         run: cargo fmt --all -- --check
 
-      - name: Clippy lint
+      - name: Clippy lint (capture)
+        id: clippy
         shell: bash
         run: |
-          set -euo pipefail
-          cargo clippy --locked --all-targets --all-features --message-format=json -- -D warnings |
-            python - <<'PY'
-          import json
-          import sys
+          set +e
+          cargo clippy --locked --all-targets --all-features --message-format=json -- -D warnings 1>clippy.json 2>clippy.stderr
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          exit 0
 
-          def esc(s: str) -> str:
-            return s.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+      - name: Clippy annotations
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
 
-          for line in sys.stdin:
-            line = line.strip()
-            if not line:
-              continue
-            try:
-              obj = json.loads(line)
-            except Exception:
-              continue
+            const path = 'clippy.json';
+            const stderrPath = 'clippy.stderr';
+            const exitCode = Number('${{ steps.clippy.outputs.exit_code }}');
+            const conclusion = exitCode === 0 ? 'success' : 'failure';
 
-            if obj.get('reason') != 'compiler-message':
-              continue
+            let annotations = [];
+            if (fs.existsSync(path)) {
+              const lines = fs.readFileSync(path, 'utf8').split(/\r?\n/).filter(Boolean);
+              for (const line of lines) {
+                let obj;
+                try { obj = JSON.parse(line); } catch { continue; }
+                if (obj.reason !== 'compiler-message') continue;
+                const msg = obj.message;
+                if (!msg || msg.level !== 'error') continue;
 
-            msg = obj.get('message') or {}
-            level = msg.get('level')
-            if level != 'error':
-              continue
+                const spans = msg.spans || [];
+                const span = spans.find(s => s.is_primary) || spans[0];
 
-            rendered = msg.get('rendered') or msg.get('message') or 'clippy error'
-            rendered = ' '.join(str(rendered).splitlines())
+                const rendered = (msg.rendered || msg.message || 'clippy error').toString();
+                annotations.push({
+                  path: (span && span.file_name) ? span.file_name : '.',
+                  start_line: (span && span.line_start) ? span.line_start : 1,
+                  end_line: (span && (span.line_end || span.line_start)) ? (span.line_end || span.line_start) : 1,
+                  annotation_level: 'failure',
+                  message: rendered.slice(0, 65000),
+                });
+                if (annotations.length >= 50) break;
+              }
+            }
 
-            span = None
-            for s in msg.get('spans') or []:
-              if s.get('is_primary'):
-                span = s
-                break
-            if span is None:
-              spans = msg.get('spans') or []
-              span = spans[0] if spans else None
+            let summary = exitCode === 0
+              ? 'Clippy passed.'
+              : `Clippy failed (exit ${exitCode}). Showing up to ${annotations.length} errors as annotations.`;
 
-            if span and span.get('file_name'):
-              file_name = span.get('file_name')
-              line_start = span.get('line_start', 1)
-              col_start = span.get('column_start', 1)
-              print(f"::error file={esc(str(file_name))},line={line_start},col={col_start}::{esc(rendered)}")
-            else:
-              print(f"::error::{esc(rendered)}")
-          PY
+            if (exitCode !== 0 && annotations.length === 0 && fs.existsSync(stderrPath)) {
+              const stderr = fs.readFileSync(stderrPath, 'utf8');
+              summary += `\n\n(First 20 lines of stderr)\n\n${stderr.split(/\r?\n/).slice(0, 20).join('\n')}`;
+            }
+
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Clippy (annotated)',
+              head_sha: context.sha,
+              status: 'completed',
+              conclusion,
+              output: {
+                title: 'Clippy',
+                summary: summary.slice(0, 65000),
+                annotations,
+              },
+            });
+
+      - name: Fail if clippy failed
+        shell: bash
+        run: exit ${{ steps.clippy.outputs.exit_code }}
 
       - name: Tests
         shell: bash
