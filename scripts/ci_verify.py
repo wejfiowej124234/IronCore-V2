@@ -21,6 +21,7 @@ import os
 import sys
 import time
 import urllib.parse
+import urllib.error
 import urllib.request
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -43,10 +44,41 @@ def _headers(token: Optional[str]) -> Dict[str, str]:
 
 
 def _get_json(url: str, token: Optional[str]) -> Any:
-    req = urllib.request.Request(url, headers=_headers(token))
-    with urllib.request.urlopen(req) as resp:
-        raw = resp.read().decode("utf-8")
-    return json.loads(raw)
+    # GitHub applies both primary and secondary rate limits. Without a token,
+    # polling can occasionally trip 403/429 even if the primary limit hasn't reset.
+    backoff_secs = 5
+    for attempt in range(8):
+        req = urllib.request.Request(url, headers=_headers(token))
+        try:
+            with urllib.request.urlopen(req) as resp:
+                raw = resp.read().decode("utf-8")
+            return json.loads(raw)
+        except urllib.error.HTTPError as e:
+            # Retry on rate limiting.
+            if e.code in (403, 429):
+                body = ""
+                try:
+                    body = e.read().decode("utf-8")
+                except Exception:
+                    body = ""
+
+                retry_after = e.headers.get("Retry-After")
+                if retry_after and retry_after.isdigit():
+                    wait = int(retry_after)
+                else:
+                    # Fall back to exponential backoff.
+                    wait = min(backoff_secs * (2**attempt), 120)
+
+                print(
+                    f"rate-limited (HTTP {e.code}) fetching {url}; waiting {wait}s",
+                    file=sys.stderr,
+                )
+                if body:
+                    print(body[:300], file=sys.stderr)
+                time.sleep(wait)
+                continue
+
+            raise
 
 
 def _latest_run_id(owner: str, repo: str, branch: str, token: Optional[str]) -> Tuple[int, str]:
