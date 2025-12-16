@@ -713,6 +713,75 @@ async fn preflight_ok() -> Response {
     ).into_response()
 }
 
+async fn cors_preflight_middleware(req: Request, next: axum::middleware::Next) -> Response {
+    if req.method() == axum::http::Method::OPTIONS {
+        let origin = req
+            .headers()
+            .get("origin")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string())
+            .unwrap_or_default();
+
+        let requested_headers = req
+            .headers()
+            .get("access-control-request-headers")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string());
+
+        let allow_origins = std::env::var("CORS_ALLOW_ORIGINS").unwrap_or_else(|_| {
+            "http://localhost:8080,http://127.0.0.1:8080,http://localhost:8081,http://127.0.0.1:8081".into()
+        });
+
+        let allowed_origin = if allow_origins == "*" {
+            "*".to_string()
+        } else if !origin.is_empty()
+            && allow_origins
+                .split(',')
+                .any(|allowed| allowed.trim() == origin)
+        {
+            origin.clone()
+        } else if !origin.is_empty() {
+            // Keep permissive behavior for now: allow any explicit Origin.
+            origin.clone()
+        } else {
+            allow_origins.split(',').next().unwrap_or("*").to_string()
+        };
+
+        let mut resp = StatusCode::OK.into_response();
+        let headers = resp.headers_mut();
+
+        if let Ok(val) = HeaderValue::from_str(&allowed_origin) {
+            headers.insert(ACCESS_CONTROL_ALLOW_ORIGIN, val);
+        } else {
+            headers.insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
+        }
+
+        headers.insert(
+            ACCESS_CONTROL_ALLOW_METHODS,
+            HeaderValue::from_static("GET,POST,PUT,DELETE,OPTIONS"),
+        );
+
+        if let Some(req_hdrs) = requested_headers {
+            if let Ok(val) = HeaderValue::from_str(&req_hdrs) {
+                headers.insert(ACCESS_CONTROL_ALLOW_HEADERS, val);
+            } else {
+                headers.insert(ACCESS_CONTROL_ALLOW_HEADERS, HeaderValue::from_static("Content-Type, Authorization, Idempotency-Key, X-Request-Id, X-Platform, x-platform, X-Client-Version, Accept-Language"));
+            }
+        } else {
+            headers.insert(ACCESS_CONTROL_ALLOW_HEADERS, HeaderValue::from_static("Content-Type, Authorization, Idempotency-Key, X-Request-Id, X-Platform, x-platform, X-Client-Version, Accept-Language"));
+        }
+
+        headers.insert(
+            ACCESS_CONTROL_ALLOW_CREDENTIALS,
+            HeaderValue::from_static("false"),
+        );
+
+        return resp;
+    }
+
+    next.run(req).await
+}
+
 async fn add_cors_headers(req: Request, next: axum::middleware::Next) -> Response {
     // 🔧 获取请求来源，动态返回对应的CORS头（需要clone，因为req会被移动）
     let origin = req
