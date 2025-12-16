@@ -19,6 +19,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     env:
+      RUST_TOOLCHAIN: 1.91.1
       RUSTFLAGS: ""
       CARGO_ENCODED_RUSTFLAGS: ""
       RUSTDOCFLAGS: ""
@@ -51,7 +52,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: target
-          key: ${{ runner.os }}-cargo-build-target-v2-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-build-target-v3-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Format check
         shell: bash
