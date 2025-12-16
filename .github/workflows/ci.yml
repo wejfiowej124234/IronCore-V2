@@ -59,7 +59,53 @@ jobs:
 
       - name: Clippy lint
         shell: bash
-        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+        run: |
+          set -euo pipefail
+          cargo clippy --locked --all-targets --all-features --message-format=json -- -D warnings |
+            python - <<'PY'
+          import json
+          import sys
+
+          def esc(s: str) -> str:
+            return s.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+
+          for line in sys.stdin:
+            line = line.strip()
+            if not line:
+              continue
+            try:
+              obj = json.loads(line)
+            except Exception:
+              continue
+
+            if obj.get('reason') != 'compiler-message':
+              continue
+
+            msg = obj.get('message') or {}
+            level = msg.get('level')
+            if level != 'error':
+              continue
+
+            rendered = msg.get('rendered') or msg.get('message') or 'clippy error'
+            rendered = ' '.join(str(rendered).splitlines())
+
+            span = None
+            for s in msg.get('spans') or []:
+              if s.get('is_primary'):
+                span = s
+                break
+            if span is None:
+              spans = msg.get('spans') or []
+              span = spans[0] if spans else None
+
+            if span and span.get('file_name'):
+              file_name = span.get('file_name')
+              line_start = span.get('line_start', 1)
+              col_start = span.get('column_start', 1)
+              print(f"::error file={esc(str(file_name))},line={line_start},col={col_start}::{esc(rendered)}")
+            else:
+              print(f"::error::{esc(rendered)}")
+          PY
 
       - name: Tests
         shell: bash
