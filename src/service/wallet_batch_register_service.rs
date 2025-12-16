@@ -50,7 +50,7 @@ impl WalletBatchRegisterService {
         // 1. 验证所有地址不重复
         for wallet in &request.wallets {
             if let Err(e) = self
-                .validate_wallet_unique(&wallet, request.user_id, &mut tx)
+                .validate_wallet_unique(wallet, request.user_id, &mut tx)
                 .await
             {
                 failed_wallets.push(WalletRegisterError {

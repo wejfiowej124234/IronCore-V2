@@ -137,7 +137,7 @@ pub async fn create_onramp_order(
     .bind(order_id)
     .bind(user_id)
     .bind(uuid::Uuid::nil())
-    .bind(&req.fiat_amount)
+    .bind(req.fiat_amount)
     .bind(&req.fiat_currency)
     .bind(&req.crypto_currency)
     .bind(&crypto_amount_estimate)

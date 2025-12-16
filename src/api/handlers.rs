@@ -310,7 +310,7 @@ pub async fn api_fees(
                     .filter(|&v| v > 0 && v <= 10_000_000)
                     .unwrap_or_else(|| {
                         // 企业级实现：尝试从链特定的环境变量读取
-                        let chain_specific_key = format!("DEFAULT_CONTRACT_GAS_LIMIT_POLYGON");
+                        let chain_specific_key = "DEFAULT_CONTRACT_GAS_LIMIT_POLYGON".to_string();
                         if let Ok(env_value) = std::env::var(&chain_specific_key) {
                             if let Ok(value) = env_value.parse::<u64>() {
                                 if value > 0 && value <= 10_000_000 {
@@ -335,7 +335,7 @@ pub async fn api_fees(
                     .filter(|&v| v > 0 && v <= 10_000_000)
                     .unwrap_or_else(|| {
                         // 企业级实现：尝试从链特定的环境变量读取
-                        let chain_specific_key = format!("DEFAULT_CONTRACT_GAS_LIMIT_BSC");
+                        let chain_specific_key = "DEFAULT_CONTRACT_GAS_LIMIT_BSC".to_string();
                         if let Ok(env_value) = std::env::var(&chain_specific_key) {
                             if let Ok(value) = env_value.parse::<u64>() {
                                 if value > 0 && value <= 10_000_000 {
@@ -360,7 +360,7 @@ pub async fn api_fees(
                     .filter(|&v| v > 0 && v <= 10_000_000)
                     .unwrap_or_else(|| {
                         // 企业级实现：尝试从链特定的环境变量读取
-                        let chain_specific_key = format!("DEFAULT_CONTRACT_GAS_LIMIT_ARBITRUM");
+                        let chain_specific_key = "DEFAULT_CONTRACT_GAS_LIMIT_ARBITRUM".to_string();
                         if let Ok(env_value) = std::env::var(&chain_specific_key) {
                             if let Ok(value) = env_value.parse::<u64>() {
                                 if value > 0 && value <= 10_000_000 {
@@ -385,7 +385,7 @@ pub async fn api_fees(
                     .filter(|&v| v > 0 && v <= 10_000_000)
                     .unwrap_or_else(|| {
                         // 企业级实现：尝试从链特定的环境变量读取
-                        let chain_specific_key = format!("DEFAULT_CONTRACT_GAS_LIMIT_OPTIMISM");
+                        let chain_specific_key = "DEFAULT_CONTRACT_GAS_LIMIT_OPTIMISM".to_string();
                         if let Ok(env_value) = std::env::var(&chain_specific_key) {
                             if let Ok(value) = env_value.parse::<u64>() {
                                 if value > 0 && value <= 10_000_000 {
@@ -1144,7 +1144,7 @@ pub async fn list_wallets(
 
     // ✅ 强制使用认证的user_id和tenant_id，防止IDOR漏洞
     // 从JWT token获取tenant_id和user_id，不接受查询参数
-    let page_size = q.page_size.min(100).max(1); // 1-100条
+    let page_size = q.page_size.clamp(1, 100); // 1-100条
     let offset = (q.page.max(1) - 1) * page_size; // 分页偏移
 
     let wallets = service::wallets::list_wallets_by_user(

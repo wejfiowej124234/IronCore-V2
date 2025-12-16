@@ -369,7 +369,7 @@ impl Ed25519Strategy {
             let mut hasher = Sha512::new();
             hasher.update(b"ed25519 seed"); // Cardano domain separator
             hasher.update(&key);
-            hasher.update(&hardened_index.to_be_bytes());
+            hasher.update(hardened_index.to_be_bytes());
             let derived = hasher.finalize();
 
             // 取前32字节作为新的key material
@@ -435,7 +435,7 @@ impl Ed25519Strategy {
 
         // 步骤1: 从公钥生成账户地址（256位 = 32字节）
         // TON标准：使用SHA256(公钥)作为账户地址
-        let account_address = Sha256::digest(&public_key_bytes);
+        let account_address = Sha256::digest(public_key_bytes);
 
         // 步骤2: 构建TON地址（workchain:account_address）
         // workchain = 0 (主链)

@@ -243,8 +243,8 @@ pub async fn seed_providers(pool: &PgPool) -> Result<()> {
         .bind(fee_max)
         .bind(api_url)
         .bind(webhook_url)
-        .bind(&countries)
-        .bind(&payment_methods)
+        .bind(countries)
+        .bind(payment_methods)
         .execute(pool)
         .await
         {

@@ -1,6 +1,6 @@
 //! 法币充值和提现服务
 //! 企业级实现，禁止Mock数据，真实对接第三方服务商API
-use std::{str::FromStr, sync::Arc};
+use std::{fmt, str::FromStr, sync::Arc};
 
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Utc};
@@ -28,17 +28,18 @@ pub enum FiatOrderStatus {
     Expired,
 }
 
-impl ToString for FiatOrderStatus {
-    fn to_string(&self) -> String {
-        match self {
-            FiatOrderStatus::Pending => "pending".to_string(),
-            FiatOrderStatus::Processing => "processing".to_string(),
-            FiatOrderStatus::Completed => "completed".to_string(),
-            FiatOrderStatus::Failed => "failed".to_string(),
-            FiatOrderStatus::Cancelled => "cancelled".to_string(),
-            FiatOrderStatus::Refunded => "refunded".to_string(),
-            FiatOrderStatus::Expired => "expired".to_string(),
-        }
+impl fmt::Display for FiatOrderStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            FiatOrderStatus::Pending => "pending",
+            FiatOrderStatus::Processing => "processing",
+            FiatOrderStatus::Completed => "completed",
+            FiatOrderStatus::Failed => "failed",
+            FiatOrderStatus::Cancelled => "cancelled",
+            FiatOrderStatus::Refunded => "refunded",
+            FiatOrderStatus::Expired => "expired",
+        };
+        f.write_str(s)
     }
 }
 
@@ -175,6 +176,7 @@ impl FiatService {
     }
 
     /// 获取充值报价
+    #[allow(clippy::too_many_arguments)]
     pub async fn get_onramp_quote(
         &self,
         _tenant_id: Uuid,
@@ -404,6 +406,7 @@ impl FiatService {
     }
 
     /// 创建充值订单
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_onramp_order(
         &self,
         tenant_id: Uuid,
@@ -618,6 +621,7 @@ impl FiatService {
     }
 
     /// 创建提现订单
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_offramp_order(
         &self,
         tenant_id: Uuid,
@@ -926,7 +930,7 @@ impl FiatService {
                                 _currency
                             );
 
-                            return Ok((
+                            Ok((
                                 _provider.name.clone(),
                                 OnrampQuote {
                                     fiat_amount: amount_decimal,
@@ -944,15 +948,15 @@ impl FiatService {
                                     max_amount: Decimal::from_str("50000.0").unwrap(),
                                     quote_id: onramper_quote.quote_id,
                                 },
-                            ));
+                            ))
                         }
                         Err(e) => {
                             tracing::error!("❌ Onramper报价失败: {}", e);
-                            return Err(anyhow!("Onramper报价失败: {}", e));
+                            Err(anyhow!("Onramper报价失败: {}", e))
                         }
                     }
                 } else {
-                    return Err(anyhow!("Onramper客户端未配置，无法获取报价"));
+                    Err(anyhow!("Onramper客户端未配置，无法获取报价"))
                 }
             }
 
@@ -989,7 +993,7 @@ impl FiatService {
                                 fee_amount
                             );
 
-                            return Ok((
+                            Ok((
                                 _provider.name.clone(),
                                 OnrampQuote {
                                     fiat_amount: amount_decimal,
@@ -1007,21 +1011,21 @@ impl FiatService {
                                     max_amount: Decimal::from_str("50000.0").unwrap(),
                                     quote_id: transfi_quote.quote_id,
                                 },
-                            ));
+                            ))
                         }
                         Err(e) => {
                             tracing::error!("❌ TransFi报价失败: {}", e);
-                            return Err(anyhow!("TransFi报价失败: {}", e));
+                            Err(anyhow!("TransFi报价失败: {}", e))
                         }
                     }
                 } else {
-                    return Err(anyhow!("TransFi客户端未配置，无法获取报价"));
+                    Err(anyhow!("TransFi客户端未配置，无法获取报价"))
                 }
             }
 
             _ => {
                 tracing::warn!("⚠️ 不支持的支付服务商: {}", _provider.name);
-                return Err(anyhow!("不支持的支付服务商: {}", _provider.name));
+                Err(anyhow!("不支持的支付服务商: {}", _provider.name))
             }
         }
     }
@@ -1055,9 +1059,9 @@ impl FiatService {
                                 "https://ironforge.io/orders/{}/complete",
                                 _order.id
                             )),
-                            webhook_url: Some(format!(
-                                "https://api.ironforge.io/webhooks/onramper"
-                            )),
+                            webhook_url: Some(
+                                "https://api.ironforge.io/webhooks/onramper".to_string(),
+                            ),
                         })
                         .await;
 
@@ -1068,15 +1072,15 @@ impl FiatService {
                                 onramper_order.order_id,
                                 onramper_order.payment_url
                             );
-                            return Ok(onramper_order.payment_url);
+                            Ok(onramper_order.payment_url)
                         }
                         Err(e) => {
                             tracing::error!("❌ Onramper订单创建失败: {}", e);
-                            return Err(anyhow!("Onramper订单创建失败: {}", e));
+                            Err(anyhow!("Onramper订单创建失败: {}", e))
                         }
                     }
                 } else {
-                    return Err(anyhow!("Onramper客户端未配置，无法创建订单"));
+                    Err(anyhow!("Onramper客户端未配置，无法创建订单"))
                 }
             }
 
@@ -1097,9 +1101,9 @@ impl FiatService {
                                 phone: None,
                                 name: None,
                             },
-                            callback_url: Some(format!(
-                                "https://api.ironforge.io/webhooks/transfi"
-                            )),
+                            callback_url: Some(
+                                "https://api.ironforge.io/webhooks/transfi".to_string(),
+                            ),
                         })
                         .await;
 
@@ -1110,21 +1114,21 @@ impl FiatService {
                                 transfi_order.order_id,
                                 transfi_order.payment_url
                             );
-                            return Ok(transfi_order.payment_url);
+                            Ok(transfi_order.payment_url)
                         }
                         Err(e) => {
                             tracing::error!("❌ TransFi订单创建失败: {}", e);
-                            return Err(anyhow!("TransFi订单创建失败: {}", e));
+                            Err(anyhow!("TransFi订单创建失败: {}", e))
                         }
                     }
                 } else {
-                    return Err(anyhow!("TransFi客户端未配置，无法创建订单"));
+                    Err(anyhow!("TransFi客户端未配置，无法创建订单"))
                 }
             }
 
             _ => {
                 tracing::warn!("⚠️ 不支持的支付服务商: {}", provider);
-                return Err(anyhow!("不支持的支付服务商: {}", provider));
+                Err(anyhow!("不支持的支付服务商: {}", provider))
             }
         }
     }
@@ -1666,7 +1670,7 @@ impl FiatService {
         if let Some(result) = json.get("result") {
             if let Some(pair_data) = result.as_object().and_then(|o| o.values().next()) {
                 if let Some(price_arr) = pair_data.get("c").and_then(|v| v.as_array()) {
-                    if let Some(price_str) = price_arr.get(0).and_then(|v| v.as_str()) {
+                    if let Some(price_str) = price_arr.first().and_then(|v| v.as_str()) {
                         return Decimal::from_str(price_str)
                             .context("Failed to parse Kraken price");
                     }

@@ -871,13 +871,7 @@ impl BlockchainClient {
         let confirmations = if let Some(tx_block) = block_number {
             // 尝试获取当前区块高度
             match self.get_block_number(chain_type).await {
-                Ok(current_block) => {
-                    if current_block >= tx_block {
-                        current_block - tx_block
-                    } else {
-                        0 // 异常情况：交易块高于当前块
-                    }
-                }
+                Ok(current_block) => current_block.saturating_sub(tx_block),
                 Err(e) => {
                     tracing::warn!("Failed to get current block number: {}", e);
                     0 // 降级：无法确定确认数

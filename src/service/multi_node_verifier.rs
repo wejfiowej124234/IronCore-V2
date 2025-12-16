@@ -293,7 +293,7 @@ impl MultiNodeVerifier {
 
     /// 验证跨链桥合约（白名单）
     fn verify_bridge_contract(&self, address: &str) -> Result<()> {
-        let trusted_bridges = vec![
+        let trusted_bridges = [
             "0x1111111111111111111111111111111111111111", // LayerZero (示例)
             "0x2222222222222222222222222222222222222222", // Wormhole (示例)
             "0x3333333333333333333333333333333333333333", // Axelar (示例)

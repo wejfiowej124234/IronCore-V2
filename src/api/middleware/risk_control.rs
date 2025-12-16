@@ -89,7 +89,7 @@ fn should_apply_risk_control(path: &str) -> bool {
 #[macro_export]
 macro_rules! sensitive_operation_guard {
     ($state:expr, $operation:expr, $user_id:expr, $details:expr) => {{
-        use crate::service::sensitive_operation_guard::SensitiveOperationGuard;
+        use $crate::service::sensitive_operation_guard::SensitiveOperationGuard;
 
         let guard = SensitiveOperationGuard::new($state.pool.clone());
         guard.check_and_log($operation, $user_id, &$details).await?;

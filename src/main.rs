@@ -4,7 +4,6 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use axum::routing::get;
 use ironcore::{api, app_state::AppState, config::BlockchainConfig, infrastructure::db::PgPool};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -200,10 +199,6 @@ async fn main() -> Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
-}
-
-async fn health_check() -> &'static str {
-    "OK"
 }
 
 #[allow(dead_code)]

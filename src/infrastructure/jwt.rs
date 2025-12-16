@@ -158,10 +158,7 @@ pub fn verify_token(token: &str) -> Result<Claims> {
 fn get_jwt_secret() -> Result<String> {
     match std::env::var("JWT_SECRET") {
         Ok(secret) => {
-            tracing::debug!(
-                "JWT: using secret from env, len={}",
-                secret.as_bytes().len()
-            );
+            tracing::debug!("JWT: using secret from env, len={}", secret.len());
             Ok(secret)
         }
         Err(_) => Err(anyhow!("JWT_SECRET environment variable not set")),

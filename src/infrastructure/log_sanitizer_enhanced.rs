@@ -95,7 +95,7 @@ impl LogSanitizer {
                 }
                 Value::Object(sanitized)
             }
-            Value::Array(arr) => Value::Array(arr.iter().map(|v| Self::sanitize_json(v)).collect()),
+            Value::Array(arr) => Value::Array(arr.iter().map(Self::sanitize_json).collect()),
             _ => value.clone(),
         }
     }

@@ -99,6 +99,12 @@ pub struct SwapQuote {
     pub valid_for: u32,
 }
 
+impl Default for OneInchService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OneInchService {
     /// 创建新的 1inch 服务
     pub fn new() -> Self {

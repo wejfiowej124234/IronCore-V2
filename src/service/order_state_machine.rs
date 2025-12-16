@@ -21,6 +21,7 @@ pub enum OrderStatus {
 
 impl OrderStatus {
     /// 从字符串解析状态
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
             "pending" => Ok(OrderStatus::Pending),

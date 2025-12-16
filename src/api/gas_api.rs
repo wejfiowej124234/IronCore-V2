@@ -179,6 +179,15 @@ fn is_supported_chain(chain: &str) -> bool {
     )
 }
 
+// Routes
+pub fn routes() -> axum::Router<Arc<crate::app_state::AppState>> {
+    use axum::routing::{get, post};
+
+    axum::Router::new()
+        .route("/estimate", post(estimate_gas))
+        .route("/speeds", get(estimate_all_speeds))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,13 +214,4 @@ mod tests {
         let speed = default_speed();
         assert!(matches!(speed, GasSpeed::Normal));
     }
-}
-
-// Routes
-pub fn routes() -> axum::Router<Arc<crate::app_state::AppState>> {
-    use axum::routing::{get, post};
-
-    axum::Router::new()
-        .route("/estimate", post(estimate_gas))
-        .route("/speeds", get(estimate_all_speeds))
 }

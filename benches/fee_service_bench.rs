@@ -108,7 +108,7 @@ fn bench_fee_by_amount_levels(c: &mut Criterion) {
                                 black_box(level.value()),
                             )
                             .await;
-                        black_box(result);
+                        let _ = black_box(result);
                     })
                 });
             },
@@ -138,7 +138,7 @@ fn bench_fee_multi_chain(c: &mut Criterion) {
                         let result = service
                             .calculate_fee(black_box(chain), black_box("transfer"), black_box(1.0))
                             .await;
-                        black_box(result);
+                        let _ = black_box(result);
                     })
                 });
             },
@@ -171,7 +171,7 @@ fn bench_fee_by_tx_type(c: &mut Criterion) {
                                 black_box(1.0),
                             )
                             .await;
-                        black_box(result);
+                        let _ = black_box(result);
                     })
                 });
             },
@@ -198,7 +198,7 @@ fn bench_cache_performance(c: &mut Criterion) {
                 let result = fresh_service
                     .calculate_fee("ethereum", "transfer", 1.0)
                     .await;
-                black_box(result);
+                let _ = black_box(result);
             })
         });
     });
@@ -211,7 +211,7 @@ fn bench_cache_performance(c: &mut Criterion) {
             rt.block_on(async {
                 for _ in 0..100 {
                     let result = service.calculate_fee("ethereum", "transfer", 1.0).await;
-                    black_box(result);
+                    let _ = black_box(result);
                 }
             })
         });
@@ -225,7 +225,7 @@ fn bench_cache_performance(c: &mut Criterion) {
                 for i in 0..50 {
                     let chain = CHAINS[i % CHAINS.len()];
                     let result = service.calculate_fee(chain, "transfer", 1.0).await;
-                    black_box(result);
+                    let _ = black_box(result);
                 }
             })
         });
@@ -324,7 +324,7 @@ fn bench_throughput(c: &mut Criterion) {
                 for i in 0..1000 {
                     let chain = CHAINS[i % CHAINS.len()];
                     let result = service.calculate_fee(chain, "transfer", 1.0).await;
-                    black_box(result);
+                    let _ = black_box(result);
                 }
             })
         });
