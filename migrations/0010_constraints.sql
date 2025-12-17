@@ -35,12 +35,11 @@ ON gas.fee_collector_addresses(chain, address);
 -- Keep admin-specific constraints/indexes there to avoid ordering issues caused by
 -- historical duplicate migration versions.
 
--- Nonce追踪：链+地址唯一（CockroachDB兼容）
--- NOTE: This migration runs BEFORE 0032_nonce_tracking_table.sql which renames 'chain' to 'chain_symbol'.
--- At this point in migration timeline, the column is still named 'chain'.
--- 0032 will drop this index and create a new one with 'chain_symbol'.
-CREATE UNIQUE INDEX IF NOT EXISTS uq_nonce_tracking_chain_address 
-ON nonce_tracking(chain, address);
+-- Nonce追踪索引：SKIPPED
+-- NOTE: nonce_tracking table undergoes column rename in 0032_nonce_tracking_table.sql
+-- (chain → chain_symbol). Since the database may already have the renamed column from
+-- previous migration runs, we skip index creation here to avoid "column does not exist" errors.
+-- The correct index with chain_symbol is created in 0032.
 
 -- 通知模板：code唯一（CockroachDB兼容）
 CREATE UNIQUE INDEX IF NOT EXISTS uq_notify_templates_code 
