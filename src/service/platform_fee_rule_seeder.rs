@@ -95,11 +95,11 @@ pub async fn seed_platform_fee_rules_if_empty(pool: &PgPool) -> Result<()> {
 
     tracing::warn!("no_active_platform_fee_rules_found; seeding_baseline_defaults");
 
-    // Collector addresses (same as migrations/0007_insert_collector_addresses.sql)
+    // Collector addresses (baseline defaults; must be valid EVM addresses)
     ensure_collector_address(
         pool,
         "ethereum",
-        "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+        "0x742d35cc6634c0532925a3b844bc9e7595f0beb6",
     )
     .await?;
     ensure_collector_address(pool, "bsc", "0x8894E0a0c962CB723c1976a4421c95949bE2D4E3").await?;
