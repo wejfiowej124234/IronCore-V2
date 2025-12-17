@@ -31,16 +31,16 @@ pub mod oneinch_service;
 pub mod order_state_machine; // ✅ 订单状态机
 pub mod platform_address_manager; // ✅ H项核心: 平台地址管理+余额监控
 pub mod platform_fee_rule_seeder; // ✅ 平台费规则种子数据（防止生产环境空表）
-pub mod rpc_endpoint_seeder; // ✅ 生产环境RPC端点种子数据（防止空表导致500）
 pub mod policies;
 pub mod price_service;
 pub mod provider_service;
 pub mod reconciliation_service;
 pub mod referral_commission_service; // ✅ 返佣收入追踪（对齐行业标准）
+pub mod rpc_endpoint_seeder; // ✅ 生产环境RPC端点种子数据（防止空表导致500）
 pub mod sensitive_operation_guard; // ✅ 敏感操作二次验证
 pub mod tenants;
-pub mod token_service;
 pub mod token_registry_seeder; // ✅ 代币注册表种子数据（防止空表/缺数据）
+pub mod token_service;
 pub mod transaction_auto_recovery; // ✅ P0-10: 交易自动恢复
 pub mod transaction_builder; // NEW: 统一交易构建器
 pub mod transaction_monitor;

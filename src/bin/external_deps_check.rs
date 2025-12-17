@@ -1,17 +1,6 @@
 use anyhow::{Context, Result};
 use reqwest::StatusCode;
-use serde::Deserialize;
 use std::time::Duration;
-
-#[derive(Debug, Deserialize)]
-struct ApiEnvelope<T> {
-    #[serde(default)]
-    code: serde_json::Value,
-    #[serde(default)]
-    message: Option<String>,
-    #[serde(default)]
-    data: Option<T>,
-}
 
 #[derive(Debug)]
 struct CheckResult {
@@ -46,22 +35,27 @@ async fn check_get_json(client: &reqwest::Client, name: &str, url: String) -> Ch
             let detail = if ok {
                 "ok".to_string()
             } else {
-                // Try to extract {message} if backend uses envelope
-                match serde_json::from_str::<ApiEnvelope<serde_json::Value>>(&body) {
-                    Ok(env) => env
-                        .message
-                        .unwrap_or_else(|| format!("http {}", status.as_u16())),
-                    Err(_) => {
-                        let trimmed = body.trim();
-                        if trimmed.is_empty() {
-                            format!("http {}", status.as_u16())
-                        } else {
-                            trimmed
-                                .chars()
-                                .take(240)
-                                .collect::<String>()
-                                .replace('\n', " ")
-                        }
+                // Try to extract {message} if backend uses an envelope
+                let extracted = serde_json::from_str::<serde_json::Value>(&body)
+                    .ok()
+                    .and_then(|v| {
+                        v.get("message")
+                            .and_then(|m| m.as_str())
+                            .map(|s| s.to_string())
+                    });
+
+                if let Some(m) = extracted {
+                    m
+                } else {
+                    let trimmed = body.trim();
+                    if trimmed.is_empty() {
+                        format!("http {}", status.as_u16())
+                    } else {
+                        trimmed
+                            .chars()
+                            .take(240)
+                            .collect::<String>()
+                            .replace('\n', " ")
                     }
                 }
             };
