@@ -12,6 +12,10 @@ primary_region = 'sjc'
 [env]
   BIND_ADDR = '0.0.0.0:8088'
   RUST_LOG = 'info'
+  # Fly deploy health checks require the process to bind quickly.
+  # Running SQLx migrations on startup can block for a long time (e.g. advisory lock wait),
+  # causing the VM to never become healthy during rollout.
+  SKIP_MIGRATIONS = '1'
 
 [http_service]
   internal_port = 8088
