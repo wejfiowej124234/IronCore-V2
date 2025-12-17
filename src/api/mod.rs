@@ -264,6 +264,11 @@ pub fn routes(state: Arc<AppState>) -> Router {
             "/api/v1/prices",
             get(asset_api::get_prices).options(preflight_ok),
         )
+        // ✅ 向后兼容：历史前端路径（部分前端会请求 /api/v1/assets/prices）
+        .route(
+            "/api/v1/assets/prices",
+            get(asset_api::get_prices).options(preflight_ok),
+        )
         // ✅ 企业级标准：Swap API v1版本（同链交换不同代币）
         .route(
             "/api/v1/swap/quote",

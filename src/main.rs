@@ -71,6 +71,19 @@ async fn main() -> Result<()> {
         tracing::info!("⏭️ Database migrations skipped (SKIP_MIGRATIONS=1)");
     }
 
+    // ✅ 4.5 生产兜底：若关键基础表为空则自动补齐种子数据
+    // - `admin.rpc_endpoints` 为空会导致 Gas/余额等功能大量 500
+    // - `tokens.registry` 为空会导致 tokens/list 等接口 500
+    if let Err(e) = ironcore::service::rpc_endpoint_seeder::seed_rpc_endpoints_if_empty(&pool).await
+    {
+        tracing::warn!("Failed to seed RPC endpoints: {}", e);
+    }
+    if let Err(e) =
+        ironcore::service::token_registry_seeder::seed_token_registry_if_empty(&pool).await
+    {
+        tracing::warn!("Failed to seed token registry: {}", e);
+    }
+
     // ✅ 5. 初始化Redis（分布式锁 + 缓存）
     let redis_url =
         std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
