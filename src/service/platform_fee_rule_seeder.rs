@@ -99,7 +99,7 @@ pub async fn seed_platform_fee_rules_if_empty(pool: &PgPool) -> Result<()> {
     ensure_collector_address(
         pool,
         "ethereum",
-        "0x742d35cc6634c0532925a3b844bc9e7595f0beb6",
+        "0xf5c533a89fb01a1e8e1c288433a345a713027244",
     )
     .await?;
     ensure_collector_address(pool, "bsc", "0x8894E0a0c962CB723c1976a4421c95949bE2D4E3").await?;
