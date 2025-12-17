@@ -18,6 +18,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/ironcore /usr/local/bin/ironcore
+COPY --from=builder /app/target/release/ironcore_migrate /usr/local/bin/ironcore_migrate
 
 ENV BIND_ADDR=0.0.0.0:8088
 EXPOSE 8088

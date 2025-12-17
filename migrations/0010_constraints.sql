@@ -36,8 +36,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_fee_collector
 ON gas.fee_collector_addresses(chain, address);
 
 -- RPC端点：链+URL唯一（CockroachDB兼容）
-CREATE UNIQUE INDEX IF NOT EXISTS uq_rpc_endpoint 
-ON admin.rpc_endpoints(chain, url);
+-- NOTE: admin.rpc_endpoints is created in 0017_admin_tables.sql.
+-- Keep admin-specific constraints/indexes there to avoid ordering issues caused by
+-- historical duplicate migration versions.
 
 -- 通知模板：code唯一（CockroachDB兼容）
 CREATE UNIQUE INDEX IF NOT EXISTS uq_notify_templates_code 

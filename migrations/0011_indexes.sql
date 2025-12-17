@@ -87,18 +87,9 @@ CREATE INDEX IF NOT EXISTS idx_fee_audit_stale_tx ON gas.fee_audit(created_at, t
 -- 管理员系统索引
 -- ----------------------------------------------------------------------------
 
--- RPC端点索引
-CREATE INDEX IF NOT EXISTS idx_rpc_endpoints_chain_health ON admin.rpc_endpoints(chain, healthy, priority);
-CREATE INDEX IF NOT EXISTS idx_rpc_endpoints_chain_circuit ON admin.rpc_endpoints(chain, circuit_state);
-CREATE INDEX IF NOT EXISTS idx_rpc_endpoints_chain ON admin.rpc_endpoints(chain);
-CREATE INDEX IF NOT EXISTS idx_rpc_endpoints_healthy ON admin.rpc_endpoints(healthy) WHERE healthy = true;
-
--- 管理员操作日志索引
-CREATE INDEX IF NOT EXISTS idx_admin_log_operator ON admin.admin_operation_log(operator_user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_admin_log_action ON admin.admin_operation_log(action, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_admin_log_target ON admin.admin_operation_log(target_ref) WHERE target_ref IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_admin_op_log_user ON admin.admin_operation_log(operator_user_id);
-CREATE INDEX IF NOT EXISTS idx_admin_op_log_created ON admin.admin_operation_log(created_at DESC);
+-- NOTE: admin.* tables are created in 0017_admin_tables.sql due to historical
+-- duplicate migration version numbers. Admin indexes are also created there to
+-- avoid ordering issues.
 
 -- ----------------------------------------------------------------------------
 -- 通知系统索引
