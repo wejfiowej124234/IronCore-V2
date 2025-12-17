@@ -69,7 +69,7 @@
 ### 最简模式（无数据库）
 
 ```bash
-cd IronCore
+cd IronCore-V2
 
 # 创建配置文件
 cat > config.toml << EOF
@@ -102,7 +102,7 @@ export REDIS_URL="redis://localhost:6379"
 export JWT_SECRET="your-production-secret-min-32-chars"
 
 # 3. 启动服务
-cd ../IronCore
+cd ../IronCore-V2
 cargo run
 ```
 
