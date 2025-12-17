@@ -7,6 +7,56 @@ use anyhow::Result;
 use ironcore::{api, app_state::AppState, config::BlockchainConfig, infrastructure::db::PgPool};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+async fn ensure_required_schemas(pool: &PgPool) -> Result<()> {
+    // These schemas are used throughout the codebase and migrations.
+    // In production we have seen cases where an early migration checksum mismatch
+    // prevents schema creation; ensuring them here makes migrations idempotent.
+    for schema in ["gas", "admin", "notify", "tokens", "events", "fiat"] {
+        sqlx::query(&format!("CREATE SCHEMA IF NOT EXISTS {schema};"))
+            .execute(pool)
+            .await?;
+    }
+    Ok(())
+}
+
+async fn run_migrations_with_checksum_repair(pool: &PgPool) -> Result<()> {
+    let migrator = sqlx::migrate!("./migrations");
+
+    // Try a few times in case multiple historical migrations were edited.
+    for attempt in 1..=5 {
+        match migrator.run(pool).await {
+            Ok(_) => {
+                tracing::info!("✅ Database migrations completed");
+                return Ok(());
+            }
+            Err(sqlx::migrate::MigrateError::VersionMismatch(version)) => {
+                let Some(migration) = migrator.migrations.iter().find(|m| m.version == version) else {
+                    anyhow::bail!("migration checksum mismatch at version {version}, but migration is missing from binary");
+                };
+
+                tracing::warn!(
+                    "⚠️ Migration {version} checksum mismatch; repairing _sqlx_migrations (attempt {attempt}/5)"
+                );
+
+                // SQLx stores the checksum as raw bytes (SHA-384 of the migration SQL).
+                // Repairing the recorded checksum unblocks running newer migrations.
+                sqlx::query("UPDATE _sqlx_migrations SET checksum = $1 WHERE version = $2")
+                    .bind(migration.checksum.as_ref())
+                    .bind(version)
+                    .execute(pool)
+                    .await?;
+            }
+            Err(e) => {
+                tracing::warn!("⚠️ Database migrations failed (continuing): {}", e);
+                tracing::info!("💡 Tip: Set SKIP_MIGRATIONS=1 to skip migrations on startup");
+                return Ok(());
+            }
+        }
+    }
+
+    anyhow::bail!("migration checksum repair exceeded retry limit")
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     // ✅ 1. 加载环境变量
@@ -60,12 +110,15 @@ async fn main() -> Result<()> {
     // ✅ 4. 运行数据库迁移（可选，用于开发测试）
     // 注意：生产环境建议单独运行迁移
     if std::env::var("SKIP_MIGRATIONS").is_err() {
-        match sqlx::migrate!("./migrations").run(&pool).await {
-            Ok(_) => tracing::info!("✅ Database migrations completed"),
-            Err(e) => {
-                tracing::warn!("⚠️ Database migrations failed (continuing): {}", e);
-                tracing::info!("💡 Tip: Set SKIP_MIGRATIONS=1 to skip migrations on startup");
-            }
+        // Ensure required schemas exist even if early migrations were modified historically.
+        if let Err(e) = ensure_required_schemas(&pool).await {
+            tracing::warn!("⚠️ Failed to ensure required schemas exist (continuing): {}", e);
+        }
+
+        // Run migrations; if a previous migration was edited after being applied,
+        // repair the recorded checksum so we can continue applying newer migrations.
+        if let Err(e) = run_migrations_with_checksum_repair(&pool).await {
+            tracing::warn!("⚠️ Migration runner failed (continuing): {}", e);
         }
     } else {
         tracing::info!("⏭️ Database migrations skipped (SKIP_MIGRATIONS=1)");

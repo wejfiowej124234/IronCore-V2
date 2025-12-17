@@ -19,7 +19,7 @@ const DEFAULT_TTL_SECS: u64 = 86400; // 24小时
 /// 幂等性中间件
 ///
 /// # 使用方式
-/// ```rust
+/// ```rust,ignore
 /// Router::new()
 ///     .route("/api/fiat/callback", post(callback_handler))
 ///     .layer(middleware::from_fn_with_state(

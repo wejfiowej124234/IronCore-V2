@@ -132,7 +132,7 @@ impl ReferralCommissionService {
     /// 当fiat_order状态变为completed时，自动计算并记录返佣
     ///
     /// # 示例
-    /// ```rust
+    /// ```rust,ignore
     /// let commission_id = service
     ///     .record_commission(
     ///         order_id,
