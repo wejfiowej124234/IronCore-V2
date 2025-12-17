@@ -7,8 +7,10 @@ use bip39::{Language, Mnemonic};
 use rand::RngCore;
 
 use crate::domain::chain_config::{ChainConfig, ChainRegistry};
-use crate::domain::DerivationStrategyFactory;
 use crate::utils::chain_normalizer;
+
+#[cfg(any(test, feature = "dev-tools"))]
+use crate::domain::DerivationStrategyFactory;
 
 /// 钱包创建请求
 #[derive(Debug, Clone)]
