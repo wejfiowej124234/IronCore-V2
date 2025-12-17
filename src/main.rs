@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use ironcore::{api, app_state::AppState, config::BlockchainConfig, infrastructure::db::PgPool};
+use sqlx::Row;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 async fn ensure_required_schemas(pool: &PgPool) -> Result<()> {
@@ -22,8 +23,47 @@ async fn ensure_required_schemas(pool: &PgPool) -> Result<()> {
 async fn run_migrations_with_checksum_repair(pool: &PgPool) -> Result<()> {
     let migrator = sqlx::migrate!("./migrations");
 
-    // Try a few times in case multiple historical migrations were edited.
-    for attempt in 1..=5 {
+    async fn repair_checksum(pool: &PgPool, version: i64, checksum: &[u8]) -> Result<u64> {
+        // In some environments (e.g. CockroachDB), the effective schema/search_path can vary.
+        // Find every schema that contains `_sqlx_migrations` and update all of them.
+        let rows = sqlx::query(
+            "SELECT table_schema FROM information_schema.tables WHERE table_name = '_sqlx_migrations'",
+        )
+        .fetch_all(pool)
+        .await?;
+
+        let mut total_rows_affected: u64 = 0;
+
+        for row in rows {
+            let schema: String = row.try_get("table_schema")?;
+            let schema_escaped = schema.replace('"', "\"\"");
+            let sql = format!(
+                "UPDATE \"{}\"._sqlx_migrations SET checksum = $1 WHERE version = $2",
+                schema_escaped
+            );
+            let result = sqlx::query(&sql)
+                .bind(checksum)
+                .bind(version)
+                .execute(pool)
+                .await?;
+            total_rows_affected = total_rows_affected.saturating_add(result.rows_affected());
+        }
+
+        // Fallback: if we didn't find it in information_schema for any reason, try without schema.
+        if total_rows_affected == 0 {
+            let result = sqlx::query("UPDATE _sqlx_migrations SET checksum = $1 WHERE version = $2")
+                .bind(checksum)
+                .bind(version)
+                .execute(pool)
+                .await?;
+            total_rows_affected = total_rows_affected.saturating_add(result.rows_affected());
+        }
+
+        Ok(total_rows_affected)
+    }
+
+    // Try multiple times in case multiple historical migrations were edited.
+    for attempt in 1..=20 {
         match migrator.run(pool).await {
             Ok(_) => {
                 tracing::info!("✅ Database migrations completed");
@@ -35,16 +75,15 @@ async fn run_migrations_with_checksum_repair(pool: &PgPool) -> Result<()> {
                 };
 
                 tracing::warn!(
-                    "⚠️ Migration {version} checksum mismatch; repairing _sqlx_migrations (attempt {attempt}/5)"
+                    "⚠️ Migration {version} checksum mismatch; repairing _sqlx_migrations (attempt {attempt}/20)"
                 );
 
                 // SQLx stores the checksum as raw bytes (SHA-384 of the migration SQL).
                 // Repairing the recorded checksum unblocks running newer migrations.
-                sqlx::query("UPDATE _sqlx_migrations SET checksum = $1 WHERE version = $2")
-                    .bind(migration.checksum.as_ref())
-                    .bind(version)
-                    .execute(pool)
-                    .await?;
+                let rows_affected = repair_checksum(pool, version, migration.checksum.as_ref()).await?;
+                tracing::warn!(
+                    "⚠️ Migration {version} checksum repair rows_affected={rows_affected}"
+                );
             }
             Err(e) => {
                 tracing::warn!("⚠️ Database migrations failed (continuing): {}", e);
