@@ -109,7 +109,7 @@ impl OnramperClient {
     /// 获取报价
     ///
     /// # 示例
-    /// ```rust
+    /// ```rust,ignore
     /// let client = OnramperClient::new("your_api_key")?;
     /// let quote = client
     ///     .get_quote(QuoteParams {
@@ -183,7 +183,7 @@ impl OnramperClient {
     /// 创建订单
     ///
     /// # 示例
-    /// ```rust
+    /// ```rust,ignore
     /// let order_response = client
     ///     .create_order(OrderParams {
     ///         quote_id: quote.quote_id.clone(),

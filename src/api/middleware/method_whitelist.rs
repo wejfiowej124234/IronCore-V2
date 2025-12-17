@@ -28,7 +28,7 @@ use tracing::warn;
 ///
 /// ## 使用方法
 ///
-/// ```rust
+/// ```rust,ignore
 /// use axum::middleware::from_fn;
 ///
 /// Router::new()

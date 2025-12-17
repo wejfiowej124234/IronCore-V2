@@ -19,7 +19,7 @@ use crate::{app_state::AppState, error::AppError};
 /// - 敏感设置变更
 ///
 /// # 使用方式
-/// ```rust
+/// ```rust,ignore
 /// Router::new()
 ///     .route("/api/withdrawals", post(withdraw_handler))
 ///     .layer(middleware::from_fn_with_state(
@@ -74,7 +74,7 @@ fn should_apply_risk_control(path: &str) -> bool {
 /// 敏感操作守卫（函数级别）
 ///
 /// # 用法
-/// ```rust
+/// ```rust,ignore
 /// async fn withdraw_handler(...) -> Result<...> {
 ///     sensitive_operation_guard!(
 ///         state,

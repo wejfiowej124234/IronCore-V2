@@ -115,7 +115,8 @@ static CHAIN_REGISTRY: Lazy<HashMap<String, ChainIdentifier>> = Lazy::new(|| {
 /// - 返回规范化的小写链名称
 ///
 /// # 示例
-/// ```
+/// ```rust
+/// # use ironcore::utils::chain_normalizer::normalize_chain_identifier;
 /// assert_eq!(normalize_chain_identifier("ETH").unwrap(), "ethereum");
 /// assert_eq!(normalize_chain_identifier("1").unwrap(), "ethereum");
 /// assert_eq!(normalize_chain_identifier("Ethereum").unwrap(), "ethereum");
