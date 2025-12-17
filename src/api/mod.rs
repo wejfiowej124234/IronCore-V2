@@ -695,22 +695,88 @@ pub fn routes(state: Arc<AppState>) -> Router {
     public_routes.merge(protected_routes).with_state(state)
 }
 
-async fn preflight_ok() -> Response {
-    // 🔧 开发环境：允许localhost和127.0.0.1，生产环境：从环境变量读取
-    let allow_origins = std::env::var("CORS_ALLOW_ORIGINS")
-        .unwrap_or_else(|_| "http://localhost:8080,http://127.0.0.1:8080,http://localhost:8081,http://127.0.0.1:8081".into());
+async fn preflight_ok(headers: axum::http::HeaderMap) -> Response {
+    // IMPORTANT: 浏览器会先发 OPTIONS 预检。
+    // 旧实现固定返回 allow-origins 的第一个值（默认 localhost），会导致生产前端跨域预检失败。
 
-    (
-        StatusCode::OK,
-        [
-            (ACCESS_CONTROL_ALLOW_ORIGIN, allow_origins.split(',').next().unwrap_or("*")),
-            (ACCESS_CONTROL_ALLOW_METHODS, "GET,POST,PUT,DELETE,OPTIONS"),
-            // Allow common custom headers used by the frontend
-            (ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type, Authorization, Idempotency-Key, X-Request-Id, X-Platform, x-platform, X-Client-Version, Accept-Language"),
-            (ACCESS_CONTROL_MAX_AGE, "600"),
-        ],
-        "",
-    ).into_response()
+    let origin = headers
+        .get("origin")
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string)
+        .unwrap_or_default();
+
+    let requested_headers = headers
+        .get("access-control-request-headers")
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string);
+
+    // 🔧 开发环境：允许localhost和127.0.0.1；生产环境：建议显式配置 CORS_ALLOW_ORIGINS
+    let allow_origins = std::env::var("CORS_ALLOW_ORIGINS").unwrap_or_else(|_| {
+        "http://localhost:8080,http://127.0.0.1:8080,http://localhost:8081,http://127.0.0.1:8081".into()
+    });
+
+    let allowed_origin = if allow_origins.trim() == "*" {
+        "*".to_string()
+    } else if !origin.is_empty()
+        && allow_origins
+            .split(',')
+            .any(|allowed| allowed.trim() == origin)
+    {
+        origin
+    } else if !origin.is_empty() {
+        // 兼容当前策略：存在显式 Origin 时，先放行（避免运营误配导致全站不可用）
+        // 如需严格限制，把此分支移除即可。
+        origin
+    } else {
+        allow_origins
+            .split(',')
+            .next()
+            .unwrap_or("*")
+            .trim()
+            .to_string()
+    };
+
+    let mut resp = StatusCode::OK.into_response();
+    let resp_headers = resp.headers_mut();
+
+    if let Ok(val) = HeaderValue::from_str(&allowed_origin) {
+        resp_headers.insert(ACCESS_CONTROL_ALLOW_ORIGIN, val);
+    } else {
+        resp_headers.insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
+    }
+
+    resp_headers.insert(
+        ACCESS_CONTROL_ALLOW_METHODS,
+        HeaderValue::from_static("GET,POST,PUT,DELETE,OPTIONS"),
+    );
+
+    if let Some(req_hdrs) = requested_headers {
+        if let Ok(val) = HeaderValue::from_str(&req_hdrs) {
+            resp_headers.insert(ACCESS_CONTROL_ALLOW_HEADERS, val);
+        } else {
+            resp_headers.insert(
+                ACCESS_CONTROL_ALLOW_HEADERS,
+                HeaderValue::from_static(
+                    "Content-Type, Authorization, Idempotency-Key, X-Request-Id, X-Platform, x-platform, X-Client-Version, Accept-Language",
+                ),
+            );
+        }
+    } else {
+        resp_headers.insert(
+            ACCESS_CONTROL_ALLOW_HEADERS,
+            HeaderValue::from_static(
+                "Content-Type, Authorization, Idempotency-Key, X-Request-Id, X-Platform, x-platform, X-Client-Version, Accept-Language",
+            ),
+        );
+    }
+
+    resp_headers.insert(
+        ACCESS_CONTROL_ALLOW_CREDENTIALS,
+        HeaderValue::from_static("false"),
+    );
+
+    resp_headers.insert(ACCESS_CONTROL_MAX_AGE, HeaderValue::from_static("600"));
+    resp
 }
 
 async fn cors_preflight_middleware(req: Request, next: axum::middleware::Next) -> Response {
