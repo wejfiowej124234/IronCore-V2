@@ -355,7 +355,7 @@ impl Default for BlockchainConfig {
     fn default() -> Self {
         Self {
             eth_rpc_url: std::env::var("ETH_RPC_URL")
-                .unwrap_or_else(|_| "https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY".into()),
+                .unwrap_or_else(|_| "https://eth.llamarpc.com".into()),
             bsc_rpc_url: std::env::var("BSC_RPC_URL")
                 .unwrap_or_else(|_| "https://bsc-dataseed1.binance.org".into()),
             polygon_rpc_url: std::env::var("POLYGON_RPC_URL")

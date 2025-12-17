@@ -6,10 +6,8 @@ use anyhow::{Context, Result};
 use bip39::{Language, Mnemonic};
 use rand::RngCore;
 
-use crate::domain::{
-    chain_config::{ChainConfig, ChainRegistry},
-    derivation::DerivationStrategyFactory,
-};
+use crate::domain::chain_config::{ChainConfig, ChainRegistry};
+use crate::domain::DerivationStrategyFactory;
 use crate::utils::chain_normalizer;
 
 /// 钱包创建请求
