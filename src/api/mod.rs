@@ -713,6 +713,7 @@ async fn preflight_ok() -> Response {
     ).into_response()
 }
 
+#[allow(dead_code)]
 async fn cors_preflight_middleware(req: Request, next: axum::middleware::Next) -> Response {
     if req.method() == axum::http::Method::OPTIONS {
         let origin = req
