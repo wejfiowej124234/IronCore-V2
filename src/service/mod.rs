@@ -30,6 +30,7 @@ pub mod onchain_data_sync_service; // NEW: 链上数据同步服务
 pub mod oneinch_service;
 pub mod order_state_machine; // ✅ 订单状态机
 pub mod platform_address_manager; // ✅ H项核心: 平台地址管理+余额监控
+pub mod platform_fee_rule_seeder; // ✅ 平台费规则种子数据（防止生产环境空表）
 pub mod policies;
 pub mod price_service;
 pub mod provider_service;

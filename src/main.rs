@@ -120,6 +120,13 @@ async fn main() -> Result<()> {
         tracing::warn!("Failed to initialize fee defaults: {}", e);
     }
 
+    // ✅ 7.2 初始化平台服务费规则（/api/v1/fees/calculate 依赖）
+    if let Err(e) =
+        ironcore::service::platform_fee_rule_seeder::seed_platform_fee_rules_if_empty(&pool).await
+    {
+        tracing::warn!("Failed to seed platform fee rules: {}", e);
+    }
+
     // ✅ 7.5 初始化法币支付服务商（首次启动）
     if let Err(e) = ironcore::service::fiat_provider_seeder::seed_providers(&pool).await {
         tracing::warn!("Failed to initialize fiat providers: {}", e);
