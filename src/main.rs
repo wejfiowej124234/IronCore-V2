@@ -51,11 +51,12 @@ async fn run_migrations_with_checksum_repair(pool: &PgPool) -> Result<()> {
 
         // Fallback: if we didn't find it in information_schema for any reason, try without schema.
         if total_rows_affected == 0 {
-            let result = sqlx::query("UPDATE _sqlx_migrations SET checksum = $1 WHERE version = $2")
-                .bind(checksum)
-                .bind(version)
-                .execute(pool)
-                .await?;
+            let result =
+                sqlx::query("UPDATE _sqlx_migrations SET checksum = $1 WHERE version = $2")
+                    .bind(checksum)
+                    .bind(version)
+                    .execute(pool)
+                    .await?;
             total_rows_affected = total_rows_affected.saturating_add(result.rows_affected());
         }
 
@@ -70,7 +71,8 @@ async fn run_migrations_with_checksum_repair(pool: &PgPool) -> Result<()> {
                 return Ok(());
             }
             Err(sqlx::migrate::MigrateError::VersionMismatch(version)) => {
-                let Some(migration) = migrator.migrations.iter().find(|m| m.version == version) else {
+                let Some(migration) = migrator.migrations.iter().find(|m| m.version == version)
+                else {
                     anyhow::bail!("migration checksum mismatch at version {version}, but migration is missing from binary");
                 };
 
@@ -80,7 +82,8 @@ async fn run_migrations_with_checksum_repair(pool: &PgPool) -> Result<()> {
 
                 // SQLx stores the checksum as raw bytes (SHA-384 of the migration SQL).
                 // Repairing the recorded checksum unblocks running newer migrations.
-                let rows_affected = repair_checksum(pool, version, migration.checksum.as_ref()).await?;
+                let rows_affected =
+                    repair_checksum(pool, version, migration.checksum.as_ref()).await?;
                 tracing::warn!(
                     "⚠️ Migration {version} checksum repair rows_affected={rows_affected}"
                 );
@@ -151,7 +154,10 @@ async fn main() -> Result<()> {
     if std::env::var("SKIP_MIGRATIONS").is_err() {
         // Ensure required schemas exist even if early migrations were modified historically.
         if let Err(e) = ensure_required_schemas(&pool).await {
-            tracing::warn!("⚠️ Failed to ensure required schemas exist (continuing): {}", e);
+            tracing::warn!(
+                "⚠️ Failed to ensure required schemas exist (continuing): {}",
+                e
+            );
         }
 
         // Run migrations; if a previous migration was edited after being applied,
