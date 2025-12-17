@@ -22,11 +22,6 @@ ON api_keys(key_hash);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_swap_transactions_swap_id 
 ON swap_transactions(swap_id);
 
--- Nonce追踪：链+地址唯一（CockroachDB兼容）
--- 注意：nonce_tracking在0032中已重构，使用chain_symbol列
-CREATE UNIQUE INDEX IF NOT EXISTS uq_nonce_tracking_chain_address 
-ON nonce_tracking(chain, address);
-
 -- 价格：符号+数据源唯一（CockroachDB兼容）
 CREATE UNIQUE INDEX IF NOT EXISTS uq_prices_symbol_source 
 ON prices(symbol, source);
@@ -39,6 +34,13 @@ ON gas.fee_collector_addresses(chain, address);
 -- NOTE: admin.rpc_endpoints is created in 0017_admin_tables.sql.
 -- Keep admin-specific constraints/indexes there to avoid ordering issues caused by
 -- historical duplicate migration versions.
+
+-- Nonce追踪：链+地址唯一（CockroachDB兼容）
+-- NOTE: This migration runs BEFORE 0032_nonce_tracking_table.sql which renames 'chain' to 'chain_symbol'.
+-- At this point in migration timeline, the column is still named 'chain'.
+-- 0032 will drop this index and create a new one with 'chain_symbol'.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_nonce_tracking_chain_address 
+ON nonce_tracking(chain, address);
 
 -- 通知模板：code唯一（CockroachDB兼容）
 CREATE UNIQUE INDEX IF NOT EXISTS uq_notify_templates_code 
