@@ -5,7 +5,7 @@
 -- 1. 清理所有测试网端点（仅当表存在时）
 DO $$
 BEGIN
-    IF EXISTS (SELECT FROM information_schema.tables WHERE schemaname = 'admin' AND tablename = 'rpc_endpoints') THEN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'admin' AND table_name = 'rpc_endpoints') THEN
         DELETE FROM admin.rpc_endpoints WHERE 
             url LIKE '%testnet%' 
             OR url LIKE '%sepolia%' 
