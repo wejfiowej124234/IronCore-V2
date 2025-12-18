@@ -2,14 +2,19 @@
 -- 生产环境主网 RPC 端点配置（删除所有测试网）
 -- ============================================================================
 
--- 1. 清理所有测试网端点
-DELETE FROM admin.rpc_endpoints WHERE 
-    url LIKE '%testnet%' 
-    OR url LIKE '%sepolia%' 
-    OR url LIKE '%goerli%' 
-    OR url LIKE '%amoy%' 
-    OR url LIKE '%mumbai%'
-    OR url LIKE '%rinkeby%';
+-- 1. 清理所有测试网端点（仅当表存在时）
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE schemaname = 'admin' AND tablename = 'rpc_endpoints') THEN
+        DELETE FROM admin.rpc_endpoints WHERE 
+            url LIKE '%testnet%' 
+            OR url LIKE '%sepolia%' 
+            OR url LIKE '%goerli%' 
+            OR url LIKE '%amoy%' 
+            OR url LIKE '%mumbai%'
+            OR url LIKE '%rinkeby%';
+    END IF;
+END $$;
 
 -- 2. 插入生产级主网 RPC 端点
 -- NOTE: 生产环境可能已有自定义/付费节点；这里采用幂等插入，不做全量清空。
