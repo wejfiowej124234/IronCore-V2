@@ -18,6 +18,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/ironcore /usr/local/bin/ironcore
+# 🔥 FIX: Copy migrations directory for sqlx::migrate! macro
+COPY --from=builder /app/migrations /app/migrations
 
 ENV BIND_ADDR=0.0.0.0:8088
 EXPOSE 8088
