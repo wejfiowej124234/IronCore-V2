@@ -118,9 +118,9 @@ async fn main() -> Result<()> {
 
         // Run migrations; if a previous migration was edited after being applied,
         // repair the recorded checksum so we can continue applying newer migrations.
-        if let Err(e) = run_migrations_with_checksum_repair(&pool).await {
-            tracing::warn!("⚠️ Migration runner failed (continuing): {}", e);
-        }
+        // IMPORTANT: In production, continuing with a partially migrated DB causes silent feature breakage.
+        // If you truly need degraded startup, set SKIP_MIGRATIONS=1 explicitly.
+        run_migrations_with_checksum_repair(&pool).await?;
     } else {
         tracing::info!("⏭️ Database migrations skipped (SKIP_MIGRATIONS=1)");
     }

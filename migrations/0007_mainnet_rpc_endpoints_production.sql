@@ -16,6 +16,23 @@ BEGIN
     END IF;
 END $$;
 
+-- 1.5. 确保幂等插入所需的唯一约束存在
+-- 说明：本迁移使用 ON CONFLICT (chain, url) DO NOTHING。
+-- 若没有 (chain, url) 的唯一索引/约束，PostgreSQL 会报错：
+--   "there is no unique or exclusion constraint matching the ON CONFLICT specification"
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'admin' AND table_name = 'rpc_endpoints'
+    ) THEN
+        -- 使用唯一索引即可满足 ON CONFLICT (chain, url)
+        CREATE UNIQUE INDEX IF NOT EXISTS admin_rpc_endpoints_chain_url_uidx
+            ON admin.rpc_endpoints (chain, url);
+    END IF;
+END $$;
+
 -- 2. 插入生产级主网 RPC 端点
 -- NOTE: 生产环境可能已有自定义/付费节点；这里采用幂等插入，不做全量清空。
 
