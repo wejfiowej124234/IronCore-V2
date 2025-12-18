@@ -193,3 +193,16 @@ CREATE TABLE IF NOT EXISTS nonce_tracking (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- ----------------------------------------------------------------------------
+-- 13. 价格表（无依赖）
+-- 说明：后续迁移会为 prices(symbol, source) 建唯一索引，并为 last_updated 建索引。
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS prices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    symbol TEXT NOT NULL,
+    price_usdt DECIMAL(30, 8) NOT NULL DEFAULT 0,
+    source TEXT NOT NULL,
+    last_updated TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
