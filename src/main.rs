@@ -47,9 +47,10 @@ async fn run_migrations_with_checksum_repair(pool: &PgPool) -> Result<()> {
                     .await?;
             }
             Err(e) => {
-                tracing::warn!("⚠️ Database migrations failed (continuing): {}", e);
-                tracing::info!("💡 Tip: Set SKIP_MIGRATIONS=1 to skip migrations on startup");
-                return Ok(());
+                tracing::error!("❌ Database migrations failed: {}", e);
+                tracing::error!("💡 Tip: Set SKIP_MIGRATIONS=1 to skip migrations on startup");
+                // 🔥 CRITICAL FIX: Return error instead of continuing - force migration failures to be visible
+                anyhow::bail!("Migration failed: {}", e);
             }
         }
     }
