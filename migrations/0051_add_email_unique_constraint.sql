@@ -1,12 +1,12 @@
 -- 添加email唯一约束防止并发注册竞态条件
 -- P0 Critical Fix: 防止多个用户使用相同邮箱注册
 
--- 步骤1: 清理重复的email记录（保留最早的记录）
+-- 步骤1: 清理重复的email记录（保留最早的记录，基于created_at）
 DELETE FROM users a
 WHERE id NOT IN (
-    SELECT MIN(id)
+    SELECT DISTINCT ON (email_cipher) id
     FROM users
-    GROUP BY email_cipher
+    ORDER BY email_cipher, created_at ASC
 );
 
 -- 步骤2: 为email_cipher添加唯一约束（主要字段，生产环境加密使用）

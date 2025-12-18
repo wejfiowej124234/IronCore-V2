@@ -1,8 +1,8 @@
 -- 初始化法币支付服务商数据
 -- 企业级标准：5个主流服务商配置
 
--- 清理可能存在的旧数据
-DELETE FROM fiat.providers;
+-- NOTE: 生产环境可能已存在配置（例如 api_key_encrypted、自定义优先级等）。
+-- 该迁移仅在缺失时插入默认服务商，不做全量清空。
 
 -- 1. Moonpay (优先级最高，全球覆盖)
 INSERT INTO fiat.providers (
@@ -26,7 +26,8 @@ INSERT INTO fiat.providers (
     average_response_time_ms,
     created_at,
     updated_at
-) VALUES (
+)
+SELECT
     gen_random_uuid(),
     'moonpay',
     'MoonPay',
@@ -47,7 +48,7 @@ INSERT INTO fiat.providers (
     0,
     NOW(),
     NOW()
-);
+WHERE NOT EXISTS (SELECT 1 FROM fiat.providers WHERE name = 'moonpay');
 
 -- 2. Simplex (快速支付，信用卡专家)
 INSERT INTO fiat.providers (
@@ -71,7 +72,8 @@ INSERT INTO fiat.providers (
     average_response_time_ms,
     created_at,
     updated_at
-) VALUES (
+)
+SELECT
     gen_random_uuid(),
     'simplex',
     'Simplex',
@@ -92,7 +94,7 @@ INSERT INTO fiat.providers (
     0,
     NOW(),
     NOW()
-);
+WHERE NOT EXISTS (SELECT 1 FROM fiat.providers WHERE name = 'simplex');
 
 -- 3. Transak (支持更多支付方式)
 INSERT INTO fiat.providers (
@@ -116,7 +118,8 @@ INSERT INTO fiat.providers (
     average_response_time_ms,
     created_at,
     updated_at
-) VALUES (
+)
+SELECT
     gen_random_uuid(),
     'transak',
     'Transak',
@@ -137,7 +140,7 @@ INSERT INTO fiat.providers (
     0,
     NOW(),
     NOW()
-);
+WHERE NOT EXISTS (SELECT 1 FROM fiat.providers WHERE name = 'transak');
 
 -- 4. Ramp (银行转账专家，费用最低)
 INSERT INTO fiat.providers (
@@ -161,7 +164,8 @@ INSERT INTO fiat.providers (
     average_response_time_ms,
     created_at,
     updated_at
-) VALUES (
+)
+SELECT
     gen_random_uuid(),
     'ramp',
     'Ramp Network',
@@ -182,7 +186,7 @@ INSERT INTO fiat.providers (
     0,
     NOW(),
     NOW()
-);
+WHERE NOT EXISTS (SELECT 1 FROM fiat.providers WHERE name = 'ramp');
 
 -- 5. Banxa (澳洲本土，亚太地区强)
 INSERT INTO fiat.providers (
@@ -206,7 +210,8 @@ INSERT INTO fiat.providers (
     average_response_time_ms,
     created_at,
     updated_at
-) VALUES (
+)
+SELECT
     gen_random_uuid(),
     'banxa',
     'Banxa',
@@ -227,7 +232,7 @@ INSERT INTO fiat.providers (
     0,
     NOW(),
     NOW()
-);
+WHERE NOT EXISTS (SELECT 1 FROM fiat.providers WHERE name = 'banxa');
 
 -- 验证插入结果
 SELECT 
