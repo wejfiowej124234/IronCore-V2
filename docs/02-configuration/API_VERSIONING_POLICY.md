@@ -11,27 +11,27 @@
 ### 1. 版本前缀规则
 
 **当前策略**:
-- `/api/` - 无版本前缀，新系统标准端点（推荐使用）
-- `/api/v1/` - 企业版端点（保留用于向后兼容）
-- `/api/v2/` - 前端兼容接口（已废弃，迁移到 `/api/`）
+- `/api/v1/` - 业务 API 标准前缀（推荐使用）
+- `/api/health` - 健康检查（历史原因保留为无版本前缀）
+- 其他无版本前缀的 API 端点视为历史/兼容，不应在新集成中使用
 
 **未来策略**:
-- 新功能统一使用 `/api/` 前缀
-- 重大变更时引入新版本（如 `/api/v2/`）
-- 旧版本保留至少6个月后移除
+- 新功能统一使用 `/api/v1/` 前缀
+- 重大变更时引入新版本（如 v2）
+- 旧版本保留周期以发布说明为准
 
 ### 2. 端点命名规范
 
 **标准格式**:
 ```
-/api/{resource}/{action}
+/api/v1/{resource}/{action}
 ```
 
 **示例**:
-- ✅ `/api/wallets/unified-create` - 钱包创建
-- ✅ `/api/wallets/:id` - 钱包详情
-- ✅ `/api/swap/quote` - 交换报价（同链）
-- ✅ `/api/swap/cross-chain-quote` - 跨链兑换报价
+- ✅ `/api/v1/wallets/batch` - 钱包登记（非托管：地址/公钥）
+- ✅ `/api/v1/wallets/:id` - 钱包详情
+- ✅ `/api/v1/swap/quote` - Swap 报价
+- ✅ `/api/v1/bridge/quote` - 跨链报价
 
 ### 3. 废弃端点处理
 
@@ -42,10 +42,8 @@
 4. 6个月后移除
 
 **当前废弃端点**:
-- ⚠️ `POST /api/v1/wallets` - 已废弃，使用 `POST /api/wallets/unified-create`
-- ⚠️ `POST /api/swap/quote` (POST) - 已废弃，使用 `POST /api/swap/cross-chain-quote`
-- ⚠️ `GET /api/swap/simple-quote` - 已废弃，使用 `GET /api/swap/quote`
-- ⚠️ `GET /api/wallet/:address/balance` - 已废弃，使用 `GET /api/wallets/:address/balance`
+- ⚠️ 旧版无版本前缀端点：已停止推荐/逐步移除
+- ⚠️ 助记词/私钥上送后端创建钱包类端点：不符合非托管原则，不再提供
 
 ---
 
@@ -117,29 +115,23 @@ pub struct Response {
 ### 钱包创建端点迁移
 
 **旧端点** (已废弃):
-```http
-POST /api/v1/wallets
-```
+- 历史版本曾提供“unified-create”类无版本前缀钱包创建接口；该类接口不符合非托管原则，已停止推荐/逐步移除。
 
 **新端点** (推荐):
 ```http
-POST /api/wallets/unified-create
+POST /api/v1/wallets/batch
 ```
 
 **迁移步骤**:
-1. 更新前端代码使用新端点
-2. 验证功能正常
-3. 移除旧端点调用
+1. 客户端本地生成/管理助记词与私钥（非托管）
+2. 仅将派生出的地址/公钥通过 `POST /api/v1/wallets/batch` 登记到后端
+3. 更新所有调用从旧无版本前缀端点迁移到 `/api/v1/...`
 
 ### Swap端点迁移
 
-**同链交换**:
-- 旧: `GET /api/swap/simple-quote`
-- 新: `GET /api/swap/quote`
-
-**跨链兑换**:
-- 旧: `POST /api/swap/quote`
-- 新: `POST /api/swap/cross-chain-quote`
+**Swap 报价/执行**:
+- 使用 `/api/v1/swap/quote`、`/api/v1/swap/execute`、`/api/v1/swap/history`
+- 如遇历史文档中的旧 swap 无版本前缀端点，统一迁移到 `/api/v1/swap/...`
 
 ---
 

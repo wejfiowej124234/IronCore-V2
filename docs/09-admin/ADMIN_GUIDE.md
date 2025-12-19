@@ -70,10 +70,12 @@ WHERE role = 'Admin';
 
 ### API 端点
 
+> 响应统一使用 `{ code, message, data }` 包装格式；下文示例响应默认展示 `data` 字段内容。
+
 #### 1. 创建费率规则
 
 ```bash
-POST /api/admin/fee-rules
+POST /api/v1/admin/fee-rules
 Authorization: Bearer <admin_jwt>
 Content-Type: application/json
 
@@ -111,7 +113,7 @@ Content-Type: application/json
 #### 2. 查询所有规则
 
 ```bash
-GET /api/admin/fee-rules
+GET /api/v1/admin/fee-rules
 Authorization: Bearer <admin_jwt>
 ```
 
@@ -139,7 +141,7 @@ Authorization: Bearer <admin_jwt>
 #### 3. 更新费率规则
 
 ```bash
-PUT /api/admin/fee-rules/{id}
+PUT /api/v1/admin/fee-rules/{id}
 Authorization: Bearer <admin_jwt>
 Content-Type: application/json
 
@@ -153,7 +155,7 @@ Content-Type: application/json
 #### 4. 删除费率规则（软删除）
 
 ```bash
-DELETE /api/admin/fee-rules/{id}
+DELETE /api/v1/admin/fee-rules/{id}
 Authorization: Bearer <admin_jwt>
 ```
 
@@ -217,7 +219,7 @@ Authorization: Bearer <admin_jwt>
 #### 1. 添加归集地址
 
 ```bash
-POST /api/admin/collector-addresses
+POST /api/v1/admin/collector-addresses
 Authorization: Bearer <admin_jwt>
 Content-Type: application/json
 
@@ -238,19 +240,14 @@ Content-Type: application/json
 }
 ```
 
-#### 2. 查询归集地址
+#### 2. 激活/停用归集地址
 
 ```bash
-GET /api/admin/collector-addresses?chain=ethereum
+PUT /api/v1/admin/collector-addresses/{id}/activate
 Authorization: Bearer <admin_jwt>
 ```
 
-#### 3. 激活/停用归集地址
-
-```bash
-PUT /api/admin/collector-addresses/{id}/activate
-Authorization: Bearer <admin_jwt>
-```
+> 说明：当前版本未提供 `GET /api/v1/admin/collector-addresses` 列表查询 API；如需盘点请以 OpenAPI 与数据库为准。
 
 ### 安全建议
 
@@ -276,7 +273,7 @@ RPC 端点用于连接区块链节点，系统支持：
 #### 1. 添加 RPC 端点
 
 ```bash
-POST /api/admin/rpc-endpoints
+POST /api/v1/admin/rpc-endpoints
 Authorization: Bearer <admin_jwt>
 Content-Type: application/json
 
@@ -300,17 +297,10 @@ Content-Type: application/json
 }
 ```
 
-#### 2. 查询所有端点
+#### 2. 更新端点
 
 ```bash
-GET /api/admin/rpc-endpoints?chain=ethereum
-Authorization: Bearer <admin_jwt>
-```
-
-#### 3. 更新端点
-
-```bash
-PUT /api/admin/rpc-endpoints/{id}
+PUT /api/v1/admin/rpc-endpoints/{id}
 Authorization: Bearer <admin_jwt>
 Content-Type: application/json
 
@@ -320,12 +310,14 @@ Content-Type: application/json
 }
 ```
 
-#### 4. 删除端点
+#### 3. 删除端点
 
 ```bash
-DELETE /api/admin/rpc-endpoints/{id}
+DELETE /api/v1/admin/rpc-endpoints/{id}
 Authorization: Bearer <admin_jwt>
 ```
+
+> 说明：当前版本未提供 `GET /api/v1/admin/rpc-endpoints` 列表查询 API；如需盘点请以 OpenAPI 与数据库为准。
 
 ### 熔断器状态
 
@@ -353,24 +345,10 @@ Authorization: Bearer <admin_jwt>
 定期检查以下指标：
 
 ```bash
-# 查看 RPC 调用统计
-GET /api/admin/rpc-stats?chain=ethereum&period=24h
-
-# 响应示例
-{
-  "total_requests": 15000,
-  "successful": 14850,
-  "failed": 150,
-  "avg_latency_ms": 250,
-  "by_endpoint": [
-    {
-      "url": "https://...",
-      "requests": 7500,
-      "success_rate": 99.2,
-      "avg_latency_ms": 200
-    }
-  ]
-}
+# 当前版本未提供 RPC 统计查询 API。
+# 建议：
+# - 通过 Prometheus 指标查看（/metrics）
+# - 或在日志/监控系统中聚合 RPC 错误与延迟
 ```
 
 ---
@@ -652,8 +630,8 @@ connect_timeout_secs = 10
 
 **排查步骤**:
 ```bash
-# 检查 RPC 端点状态
-GET /api/admin/rpc-endpoints
+# 当前版本未提供 GET /api/v1/admin/rpc-endpoints 列表查询 API。
+# 建议：通过 OpenAPI(/docs) 核对可用管理端点，或直接检查数据库/配置。
 
 # 手动测试 RPC
 curl -X POST https://eth-mainnet.alchemyapi.io/v2/YOUR_KEY \
@@ -740,21 +718,19 @@ process_resident_memory_bytes
 ### A. 管理员 API 完整列表
 
 #### 费率规则
-- `POST /api/admin/fee-rules` - 创建规则
-- `GET /api/admin/fee-rules` - 查询规则
-- `PUT /api/admin/fee-rules/{id}` - 更新规则
-- `DELETE /api/admin/fee-rules/{id}` - 删除规则
+- `POST /api/v1/admin/fee-rules` - 创建规则
+- `GET /api/v1/admin/fee-rules` - 查询规则
+- `PUT /api/v1/admin/fee-rules/{id}` - 更新规则
+- `DELETE /api/v1/admin/fee-rules/{id}` - 删除规则
 
 #### 归集地址
-- `POST /api/admin/collector-addresses` - 添加地址
-- `GET /api/admin/collector-addresses` - 查询地址
-- `PUT /api/admin/collector-addresses/{id}/activate` - 激活/停用
+- `POST /api/v1/admin/collector-addresses` - 添加地址
+- `PUT /api/v1/admin/collector-addresses/{id}/activate` - 激活/停用
 
 #### RPC 端点
-- `POST /api/admin/rpc-endpoints` - 创建端点
-- `GET /api/admin/rpc-endpoints` - 查询端点
-- `PUT /api/admin/rpc-endpoints/{id}` - 更新端点
-- `DELETE /api/admin/rpc-endpoints/{id}` - 删除端点
+- `POST /api/v1/admin/rpc-endpoints` - 创建端点
+- `PUT /api/v1/admin/rpc-endpoints/{id}` - 更新端点
+- `DELETE /api/v1/admin/rpc-endpoints/{id}` - 删除端点
 
 #### 用户管理
 - `GET /api/v1/users` - 用户列表

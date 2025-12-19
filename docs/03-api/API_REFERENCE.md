@@ -1,9 +1,9 @@
 # 📖 API 完整参考手册
 
-> IronForge Backend API v0.4.0 完整参考文档
+> IronCore-V2 Backend API 参考文档（以 `/openapi.yaml` 与 `/docs` 为准）
 
 **基础URL**: `http://localhost:8088`  
-**API版本**: v0.4.0  
+**API版本**: v1（除健康检查外统一使用 `/api/v1/...`）  
 **认证方式**: JWT Bearer Token
 
 ---
@@ -28,7 +28,9 @@
 Authorization: Bearer <your_jwt_token>
 ```
 
-**获取Token**: 通过 `/api/auth/login` 接口
+> 响应统一使用 `{ code, message, data }` 包装格式；下文如未特别说明，示例响应展示的是 `data` 字段内容。
+
+**获取Token**: 通过 `/api/v1/auth/login` 接口
 
 ---
 
@@ -36,7 +38,7 @@ Authorization: Bearer <your_jwt_token>
 
 ### 用户注册
 
-**端点**: `POST /api/auth/register`  
+**端点**: `POST /api/v1/auth/register`  
 **认证**: 不需要  
 **描述**: 创建新用户账户
 
@@ -67,7 +69,7 @@ Authorization: Bearer <your_jwt_token>
 
 ### 用户登录
 
-**端点**: `POST /api/auth/login`  
+**端点**: `POST /api/v1/auth/login`  
 **认证**: 不需要  
 **描述**: 用户登录获取JWT Token
 
@@ -101,7 +103,7 @@ Authorization: Bearer <your_jwt_token>
 
 ### 刷新Token
 
-**端点**: `POST /api/auth/refresh`  
+**端点**: `POST /api/v1/auth/refresh`  
 **认证**: 需要有效的JWT Token  
 **描述**: 刷新JWT Token
 
@@ -118,7 +120,7 @@ Authorization: Bearer <your_jwt_token>
 
 ### 获取当前用户信息
 
-**端点**: `GET /api/auth/me`  
+**端点**: `GET /api/v1/auth/me`  
 **认证**: 需要JWT Token  
 **描述**: 获取当前登录用户的详细信息
 
@@ -137,7 +139,7 @@ Authorization: Bearer <your_jwt_token>
 
 ### 登出
 
-**端点**: `POST /api/auth/logout`  
+**端点**: `POST /api/v1/auth/logout`  
 **认证**: 需要JWT Token  
 **描述**: 用户登出（使Token失效）
 
@@ -152,66 +154,49 @@ Authorization: Bearer <your_jwt_token>
 
 ## 💰 多链钱包 API
 
-### 统一创建钱包（推荐）⭐
+### 批量登记钱包（非托管）⭐
 
-**端点**: `POST /api/wallets/unified-create`  
+**端点**: `POST /api/v1/wallets/batch`  
 **认证**: 需要JWT Token  
-**描述**: 统一接口创建多链钱包（推荐使用）
+**描述**: 批量登记多链钱包（后端只接受公开信息：地址/公钥；不接收助记词/私钥/用户密码）
 
 **请求体**:
 ```json
 {
-  "chain": "ethereum",
-  "name": "My ETH Wallet",
-  "mnemonic": "word1 word2 ... word12",
-  "account_index": 0,
-  "address_index": 0
+  "wallets": [
+    {
+      "chain": "ethereum",
+      "address": "0xYourDerivedAddress",
+      "public_key": "0xYourDerivedPublicKey",
+      "name": "My ETH Wallet"
+    },
+    {
+      "chain": "bsc",
+      "address": "0xYourDerivedAddressOnBsc",
+      "public_key": "0xYourDerivedPublicKeyOnBsc"
+    }
+  ]
 }
 ```
 
-**参数说明**:
-- `chain` (必需): 链标识，支持：
-  - `ethereum` / `eth` - 以太坊主网
-  - `bsc` / `binance` - BSC主网
-  - `polygon` / `matic` - Polygon主网
-  - `bitcoin` / `btc` - 比特币主网
-  - `ethereum-sepolia` - 以太坊测试网
-  - `bsc-testnet` - BSC测试网
-- `name` (可选): 钱包名称
-- `mnemonic` (可选): 助记词（不提供则自动生成）
-- `account_index` (可选): BIP44账户索引，默认0
-- `address_index` (可选): BIP44地址索引，默认0
-
-**响应 200**:
+**响应 200（data）**:
 ```json
 {
-  "wallet_id": "550e8400-e29b-41d4-a716-446655440000",
-  "chain_id": 1,
-  "chain_symbol": "ETH",
-  "curve_type": "Secp256k1",
-  "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
-  "derivation_path": "m/44'/60'/0'/0/0",
-  "name": "My ETH Wallet",
-  "created_at": "2025-11-24T10:00:00Z"
+  "success": true,
+  "wallets": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "chain": "ethereum",
+      "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+      "status": "created",
+      "created_at": "2025-11-24T10:00:00Z"
+    }
+  ],
+  "failed": []
 }
 ```
 
-**错误码**:
-- `400` - 参数验证失败（不支持的链、无效助记词等）
-- `401` - 未认证
-- `500` - 钱包创建失败
-
----
-
-**⚠️ 注意**: `/api/wallets/create` 端点已废弃，请使用 `/api/wallets/unified-create` 端点。
-
----
-
-### 批量创建多链钱包
-
-**端点**: `POST /api/wallets/create-multi`  
-**认证**: 需要JWT Token  
-**描述**: 一次创建多个链的钱包（共享同一助记词）
+> 说明：旧的“后端生成/导入助记词创建钱包”接口在 IronCore-V2 中不再推荐/不再提供。
 
 **请求体**:
 ```json
@@ -257,7 +242,7 @@ Authorization: Bearer <your_jwt_token>
 
 ### 查询钱包列表
 
-**端点**: `GET /api/wallets`  
+**端点**: `GET /api/v1/wallets`  
 **认证**: 需要JWT Token  
 **描述**: 获取当前用户的所有钱包
 
@@ -269,7 +254,7 @@ Authorization: Bearer <your_jwt_token>
 
 **请求示例**:
 ```
-GET /api/wallets?chain_id=1&page=1&page_size=10
+GET /api/v1/wallets?chain_id=1&page=1&page_size=10
 ```
 
 **响应 200**:
@@ -296,7 +281,7 @@ GET /api/wallets?chain_id=1&page=1&page_size=10
 
 ### 查询单个钱包
 
-**端点**: `GET /api/wallets/:id`  
+**端点**: `GET /api/v1/wallets/:id`  
 **认证**: 需要JWT Token  
 **描述**: 获取指定钱包的详细信息
 
@@ -328,7 +313,7 @@ GET /api/wallets?chain_id=1&page=1&page_size=10
 
 ### 获取支持的链列表
 
-**端点**: `GET /api/chains`  
+**端点**: `GET /api/v1/chains`  
 **认证**: 不需要  
 **描述**: 获取所有支持的区块链信息
 
@@ -369,7 +354,7 @@ GET /api/wallets?chain_id=1&page=1&page_size=10
 
 ### 按曲线分组链信息
 
-**端点**: `GET /api/chains/by-curve`  
+**端点**: `GET /api/v1/chains/by-curve`  
 **认证**: 不需要  
 **描述**: 按加密曲线类型分组返回链信息
 
@@ -401,35 +386,17 @@ GET /api/wallets?chain_id=1&page=1&page_size=10
 
 ---
 
-### 验证地址格式
+### 地址最小验证（推荐）
 
-**端点**: `POST /api/wallets/validate-address`  
+IronCore-V2 不提供单独的 `validate-address` 端点。建议使用余额查询进行最小验证：
+
+**端点**: `GET /api/v1/balance`  
 **认证**: 不需要  
-**描述**: 验证指定链的地址格式是否正确
+**描述**: 对地址做最小校验（无效地址通常会返回 400）
 
-**请求体**:
-```json
-{
-  "chain": "ethereum",
-  "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
-}
+**请求示例**:
 ```
-
-**响应 200**:
-```json
-{
-  "valid": true,
-  "chain_id": 1,
-  "address_type": "EOA"
-}
-```
-
-**响应 200（无效地址）**:
-```json
-{
-  "valid": false,
-  "error": "Invalid checksum"
-}
+GET /api/v1/balance?chain=ethereum&address=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
 ```
 
 ---
@@ -438,7 +405,7 @@ GET /api/wallets?chain_id=1&page=1&page_size=10
 
 ### 获取账户Nonce
 
-**端点**: `GET /api/tx/nonce`  
+**端点**: `GET /api/v1/transactions/nonce`  
 **认证**: 不需要（公开访问）  
 **描述**: 获取Ethereum账户的当前nonce值（用于构建交易）
 
@@ -448,7 +415,7 @@ GET /api/wallets?chain_id=1&page=1&page_size=10
 
 **请求示例**:
 ```
-GET /api/tx/nonce?address=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb&chain_id=1
+GET /api/v1/transactions/nonce?address=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb&chain_id=1
 ```
 
 **响应 200**:
@@ -470,7 +437,7 @@ GET /api/tx/nonce?address=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb&chain_id=1
 
 ### 获取交易历史
 
-**端点**: `GET /api/tx/history`  
+**端点**: `GET /api/v1/transactions/history`  
 **认证**: 不需要（公开访问）  
 **描述**: 获取交易历史记录
 
@@ -480,7 +447,7 @@ GET /api/tx/nonce?address=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb&chain_id=1
 
 **请求示例**:
 ```
-GET /api/tx/history?page=1&page_size=20
+GET /api/v1/transactions/history?page=1&page_size=20
 ```
 
 **响应 200**:
@@ -501,13 +468,13 @@ GET /api/tx/history?page=1&page_size=20
 
 ### 获取Solana最近区块哈希
 
-**端点**: `GET /api/solana/recent-blockhash`  
+**端点**: `GET /api/v1/solana/recent-blockhash`  
 **认证**: 不需要（公开访问）  
 **描述**: 获取Solana网络的最近区块哈希（用于构建交易）
 
 **请求示例**:
 ```
-GET /api/solana/recent-blockhash
+GET /api/v1/solana/recent-blockhash
 ```
 
 **响应 200**:
@@ -528,7 +495,7 @@ GET /api/solana/recent-blockhash
 
 ### 获取TON账户序列号
 
-**端点**: `GET /api/ton/seqno`  
+**端点**: `GET /api/v1/ton/seqno`  
 **认证**: 不需要（公开访问）  
 **描述**: 获取TON账户的序列号（用于构建交易）
 
@@ -537,7 +504,7 @@ GET /api/solana/recent-blockhash
 
 **请求示例**:
 ```
-GET /api/ton/seqno?address=EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFgBxEO30vqC2KN
+GET /api/v1/ton/seqno?address=EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFgBxEO30vqC2KN
 ```
 
 **响应 200**:
@@ -559,16 +526,17 @@ GET /api/ton/seqno?address=EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFgBxEO30vqC2KN
 
 ### 发送交易
 
-**端点**: `POST /api/transactions/send`  
+**端点**: `POST /api/v1/transactions`  
 **认证**: 需要JWT Token  
 **描述**: 发送区块链交易（需前端签名）
 
 **请求体**:
 ```json
 {
-  "wallet_id": "550e8400-e29b-41d4-a716-446655440000",
-  "to": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+  "from": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+  "to": "0x853d35Cc6634C0532925a3b844Bc9e7595f0bEc",
   "amount": "0.1",
+  "chain": "ethereum",
   "signed_tx": "0xf86c..."
 }
 ```
@@ -576,10 +544,13 @@ GET /api/ton/seqno?address=EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFgBxEO30vqC2KN
 **响应 200**:
 ```json
 {
-  "transaction_id": "770e8400-e29b-41d4-a716-446655440002",
   "tx_hash": "0xabc123...",
-  "status": "pending",
-  "submitted_at": "2025-11-24T10:00:00Z"
+  "from": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+  "to": "0x853d35Cc6634C0532925a3b844Bc9e7595f0bEc",
+  "amount": "0.1",
+  "chain": "ethereum",
+  "status": "broadcasted",
+  "timestamp": "2025-11-24T10:00:00Z"
 }
 ```
 
@@ -587,7 +558,7 @@ GET /api/ton/seqno?address=EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFgBxEO30vqC2KN
 
 ### 查询交易列表
 
-**端点**: `GET /api/transactions`  
+**端点**: `GET /api/v1/transactions`  
 **认证**: 需要JWT Token  
 **描述**: 获取当前用户的交易历史
 
@@ -621,7 +592,7 @@ GET /api/ton/seqno?address=EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFgBxEO30vqC2KN
 
 ### 广播交易
 
-**端点**: `POST /api/tx/broadcast`  
+**端点**: `POST /api/v1/transactions/broadcast`  
 **认证**: 不需要（公开访问）  
 **描述**: 广播已签名的交易到区块链网络
 
@@ -645,7 +616,7 @@ GET /api/ton/seqno?address=EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFgBxEO30vqC2KN
 
 ### 查询交易状态
 
-**端点**: `GET /api/tx/:hash/status`  
+**端点**: `GET /api/v1/transactions/{hash}/status`  
 **认证**: 不需要（公开访问）  
 **描述**: 查询交易状态和确认数
 
@@ -653,11 +624,11 @@ GET /api/ton/seqno?address=EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFgBxEO30vqC2KN
 - `hash` (必需): 交易哈希
 
 **查询参数**:
-- `chain` (必需): 链标识，如 `ethereum`, `bsc`, `polygon`
+- `chain` (可选): 链标识，如 `ethereum`, `bsc`, `polygon`
 
 **请求示例**:
 ```
-GET /api/tx/0xabc123.../status?chain=ethereum
+GET /api/v1/transactions/0xabc123.../status?chain=ethereum
 ```
 
 **响应 200**:
@@ -676,7 +647,7 @@ GET /api/tx/0xabc123.../status?chain=ethereum
 
 ### 单速度Gas估算
 
-**端点**: `GET /api/gas/estimate`  
+**端点**: `GET /api/v1/gas/estimate`  
 **认证**: 不需要  
 **描述**: 获取指定链和速度档位的Gas费用估算
 
@@ -686,7 +657,7 @@ GET /api/tx/0xabc123.../status?chain=ethereum
 
 **请求示例**:
 ```
-GET /api/gas/estimate?chain=ethereum&speed=fast
+GET /api/v1/gas/estimate?chain=ethereum&speed=fast
 ```
 
 **响应 200**:
@@ -718,7 +689,7 @@ GET /api/gas/estimate?chain=ethereum&speed=fast
 
 ### 所有速度档位Gas估算（推荐）⭐
 
-**端点**: `GET /api/gas/estimate-all`  
+**端点**: `GET /api/v1/gas/estimate-all`  
 **认证**: 不需要  
 **描述**: 获取指定链的所有速度档位（slow, normal, fast）的Gas费用估算
 
@@ -727,7 +698,7 @@ GET /api/gas/estimate?chain=ethereum&speed=fast
 
 **请求示例**:
 ```
-GET /api/gas/estimate-all?chain=ethereum
+GET /api/v1/gas/estimate-all?chain=ethereum
 ```
 
 **响应 200**:
@@ -756,46 +727,16 @@ GET /api/gas/estimate-all?chain=ethereum
 }
 ```
 
-**⚠️ 注意**: `/api/gas/suggest` 端点已废弃，请使用 `/api/gas/estimate-all` 端点。
+**⚠️ 注意**: 旧版的 gas suggest 端点已废弃，请使用 `/api/v1/gas/estimate-all`。
 
 ---
 
 ### 批量Gas估算
 
-**端点**: `POST /api/gas/estimate-batch`  
-**认证**: 不需要  
-**描述**: 批量获取多个链的Gas费用估算
+当前不提供 `estimate-batch` 批量接口；如需批量获取，请客户端并发调用：
 
-**请求体**:
-```json
-{
-  "chains": ["ethereum", "bsc", "polygon"],
-  "speed": "normal"
-}
-```
-
-**响应 200**:
-```json
-{
-  "estimates": [
-    {
-      "chain": "ethereum",
-      "speed": "normal",
-      "base_fee_gwei": "4.5",
-      "max_fee_per_gas_gwei": "5.5",
-      "estimated_time_seconds": 60
-    },
-    {
-      "chain": "bsc",
-      "speed": "normal",
-      "base_fee_gwei": "3.0",
-      "max_fee_per_gas_gwei": "4.0",
-      "estimated_time_seconds": 15
-    }
-  ],
-  "timestamp": "2025-11-24T10:00:00Z"
-}
-```
+- `GET /api/v1/gas/estimate-all?chain={chain}`（推荐）
+- `GET /api/v1/gas/estimate?chain={chain}&speed={speed}`（单档位）
 
 ---
 
@@ -805,7 +746,7 @@ GET /api/gas/estimate-all?chain=ethereum
 
 ### 创建费率规则
 
-**端点**: `POST /api/admin/fee-rules`  
+**端点**: `POST /api/v1/admin/fee-rules`  
 **认证**: 需要JWT Token (Admin)  
 **描述**: 创建新的费率规则
 
@@ -835,7 +776,7 @@ GET /api/gas/estimate-all?chain=ethereum
 
 ### 更新费率规则
 
-**端点**: `PUT /api/admin/fee-rules/:id`  
+**端点**: `PUT /api/v1/admin/fee-rules/:id`  
 **认证**: 需要JWT Token (Admin)  
 **描述**: 更新现有费率规则
 
@@ -843,7 +784,7 @@ GET /api/gas/estimate-all?chain=ethereum
 
 ### 查询所有费率规则
 
-**端点**: `GET /api/admin/fee-rules`  
+**端点**: `GET /api/v1/admin/fee-rules`  
 **认证**: 需要JWT Token (Admin)  
 **描述**: 获取所有费率规则列表
 
@@ -872,7 +813,7 @@ GET /api/gas/estimate-all?chain=ethereum
 
 ### 添加RPC端点
 
-**端点**: `POST /api/admin/rpc-endpoints`  
+**端点**: `POST /api/v1/admin/rpc-endpoints`  
 **认证**: 需要JWT Token (Admin)  
 **描述**: 添加新的RPC端点
 
@@ -900,7 +841,7 @@ GET /api/gas/estimate-all?chain=ethereum
 
 ### 更新RPC端点状态
 
-**端点**: `PUT /api/admin/rpc-endpoints/:id`  
+**端点**: `PUT /api/v1/admin/rpc-endpoints/:id`  
 **认证**: 需要JWT Token (Admin)  
 **描述**: 更新RPC端点配置或状态
 
@@ -908,7 +849,7 @@ GET /api/gas/estimate-all?chain=ethereum
 
 ### 删除RPC端点
 
-**端点**: `DELETE /api/admin/rpc-endpoints/:id`  
+**端点**: `DELETE /api/v1/admin/rpc-endpoints/:id`  
 **认证**: 需要JWT Token (Admin)  
 **描述**: 删除指定RPC端点
 
@@ -974,7 +915,10 @@ GET /api/gas/estimate-all?chain=ethereum
 ```
 # HELP http_requests_total Total number of HTTP requests
 # TYPE http_requests_total counter
-http_requests_total{method="GET",endpoint="/api/wallets",status="200"} 1234
+http_requests_total{method="GET",endpoint="/api/v1/wallets",status="200"} 1234
+
+# HELP http_request_duration_seconds HTTP request duration in seconds
+http_requests_total{method="GET",endpoint="/api/v1/wallets",status="200"} 1234
 
 # HELP http_request_duration_seconds HTTP request duration in seconds
 # TYPE http_request_duration_seconds histogram
@@ -1065,7 +1009,7 @@ http_request_duration_seconds_bucket{le="0.1"} 1000
 #### 1. 登录获取Token
 
 ```bash
-curl -X POST http://localhost:8088/api/auth/login \
+curl -X POST http://localhost:8088/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -1084,12 +1028,18 @@ curl -X POST http://localhost:8088/api/auth/login \
 #### 2. 创建以太坊钱包
 
 ```bash
-curl -X POST http://localhost:8088/api/wallets/unified-create \
+curl -X POST http://localhost:8088/api/v1/wallets/batch \
   -H "Authorization: Bearer eyJhbGc..." \
   -H "Content-Type: application/json" \
   -d '{
-    "chain": "ethereum",
-    "name": "My ETH Wallet"
+    "wallets": [
+      {
+        "chain": "ethereum",
+        "address": "0xYourDerivedAddress",
+        "public_key": "0xYourDerivedPublicKey",
+        "name": "My ETH Wallet"
+      }
+    ]
   }'
 ```
 
@@ -1105,7 +1055,7 @@ curl -X POST http://localhost:8088/api/wallets/unified-create \
 #### 3. 查询Gas费用
 
 ```bash
-curl "http://localhost:8088/api/gas/estimate?chain=ethereum&speed=fast"
+curl "http://localhost:8088/api/v1/gas/estimate?chain=ethereum&speed=fast"
 ```
 
 **响应**:
@@ -1119,13 +1069,14 @@ curl "http://localhost:8088/api/gas/estimate?chain=ethereum&speed=fast"
 #### 4. 发送交易
 
 ```bash
-curl -X POST http://localhost:8088/api/transactions/send \
+curl -X POST http://localhost:8088/api/v1/transactions \
   -H "Authorization: Bearer eyJhbGc..." \
   -H "Content-Type: application/json" \
   -d '{
-    "wallet_id": "550e8400-e29b-41d4-a716-446655440000",
+    "from": "0xYourDerivedAddress",
     "to": "0x853d35Cc6634C0532925a3b844Bc9e7595f0bEc",
     "amount": "0.1",
+    "chain": "ethereum",
     "signed_tx": "0xf86c..."
   }'
 ```

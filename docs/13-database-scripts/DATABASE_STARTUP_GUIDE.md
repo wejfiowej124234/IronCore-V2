@@ -6,13 +6,13 @@
 
 #### Windows
 ```bash
-cd IronCore
+cd IronCore-V2
 scripts\start-database.bat
 ```
 
 #### Linux/Mac/Git Bash
 ```bash
-cd IronCore
+cd IronCore-V2
 ./scripts/start-database.sh
 ```
 
@@ -154,13 +154,13 @@ docker restart ironwallet-cockroachdb
 
 2. **运行迁移**
    ```bash
-   cd IronCore
+   cd IronCore-V2
    ./scripts/run-migrations-cockroachdb.sh
    ```
 
 3. **或启动应用（自动迁移）**
    ```bash
-   cd IronCore
+   cd IronCore-V2
    cargo run
    ```
 

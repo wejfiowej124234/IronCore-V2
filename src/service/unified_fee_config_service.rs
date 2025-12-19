@@ -5,6 +5,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use rust_decimal::prelude::ToPrimitive;
+use rust_decimal::Decimal;
 use sqlx::PgPool;
 use tokio::sync::RwLock;
 
@@ -331,23 +333,129 @@ impl UnifiedFeeConfigService {
     ) -> Result<FeeConfig> {
         // 将 None 转换为 "global"
         let chain_str = chain.unwrap_or("global");
+        let fee_type_str = format!("{:?}", fee_type);
 
-        let row = sqlx::query_as::<_, FeeConfigRow>(
+        // 1) 优先尝试链特定配置
+        if let Some(row) = sqlx::query_as::<_, FeeConfigRow>(
             "SELECT fee_type, chain, rate_percentage, min_fee_usd, max_fee_usd,
                     fixed_fee_usd, enabled, description, updated_at
              FROM fee_configurations
              WHERE fee_type = $1 AND chain = $2
              LIMIT 1",
         )
-        .bind(format!("{:?}", fee_type))
+        .bind(&fee_type_str)
         .bind(chain_str)
-        .fetch_one(&self.pool)
-        .await?;
+        .fetch_optional(&self.pool)
+        .await?
+        {
+            return Ok(row.into());
+        }
 
-        Ok(row.into())
+        // 2) 链特定缺失时，回退到 global
+        if chain_str != "global" {
+            if let Some(row) = sqlx::query_as::<_, FeeConfigRow>(
+                "SELECT fee_type, chain, rate_percentage, min_fee_usd, max_fee_usd,
+                        fixed_fee_usd, enabled, description, updated_at
+                 FROM fee_configurations
+                 WHERE fee_type = $1 AND chain = 'global'
+                 LIMIT 1",
+            )
+            .bind(&fee_type_str)
+            .fetch_optional(&self.pool)
+            .await?
+            {
+                return Ok(row.into());
+            }
+        }
+
+        // 3) 数据库完全没有时，回退到内置默认，保证生产不会因缺 seed 而 500
+        tracing::warn!(fee_type = %fee_type_str, chain = %chain_str, "fee_config_missing_fallback_to_builtin_default");
+
+        let now = chrono::Utc::now();
+        let default_config = match fee_type {
+            FeeType::SwapServiceFee => FeeConfig {
+                fee_type: FeeType::SwapServiceFee,
+                chain: None,
+                rate_percentage: 0.3,
+                min_fee_usd: Some(0.1),
+                max_fee_usd: Some(100.0),
+                fixed_fee_usd: None,
+                enabled: true,
+                description: "Swap service fee".to_string(),
+                updated_at: now,
+            },
+            FeeType::BridgeFee => FeeConfig {
+                fee_type: FeeType::BridgeFee,
+                chain: None,
+                rate_percentage: 0.1,
+                min_fee_usd: Some(1.0),
+                max_fee_usd: Some(500.0),
+                fixed_fee_usd: None,
+                enabled: true,
+                description: "Cross-chain bridge fee".to_string(),
+                updated_at: now,
+            },
+            FeeType::WithdrawalFee => FeeConfig {
+                fee_type: FeeType::WithdrawalFee,
+                chain: None,
+                rate_percentage: 0.0,
+                min_fee_usd: None,
+                max_fee_usd: None,
+                fixed_fee_usd: Some(2.0),
+                enabled: true,
+                description: "Withdrawal fixed fee".to_string(),
+                updated_at: now,
+            },
+            FeeType::GasFee => FeeConfig {
+                fee_type: FeeType::GasFee,
+                chain: None,
+                rate_percentage: 0.0,
+                min_fee_usd: None,
+                max_fee_usd: None,
+                fixed_fee_usd: Some(0.0),
+                enabled: true,
+                description: "Gas fee (chain-estimated)".to_string(),
+                updated_at: now,
+            },
+            FeeType::FiatDepositFee => FeeConfig {
+                fee_type: FeeType::FiatDepositFee,
+                chain: None,
+                rate_percentage: 0.0,
+                min_fee_usd: None,
+                max_fee_usd: None,
+                fixed_fee_usd: Some(0.0),
+                enabled: true,
+                description: "Fiat deposit fee (free)".to_string(),
+                updated_at: now,
+            },
+            FeeType::FiatWithdrawalFee => FeeConfig {
+                fee_type: FeeType::FiatWithdrawalFee,
+                chain: None,
+                rate_percentage: 0.5,
+                min_fee_usd: Some(1.0),
+                max_fee_usd: Some(50.0),
+                fixed_fee_usd: None,
+                enabled: true,
+                description: "Fiat withdrawal fee".to_string(),
+                updated_at: now,
+            },
+        };
+
+        Ok(default_config)
     }
 
     async fn upsert_fee_config(&self, config: &FeeConfig) -> Result<()> {
+        let rate_percentage = Decimal::from_f64_retain(config.rate_percentage).unwrap_or(Decimal::ZERO);
+        let min_fee_usd = config
+            .min_fee_usd
+            .and_then(Decimal::from_f64_retain);
+        let max_fee_usd = config
+            .max_fee_usd
+            .and_then(Decimal::from_f64_retain);
+        let fixed_fee_usd = config
+            .fixed_fee_usd
+            .and_then(Decimal::from_f64_retain);
+
         sqlx::query(
             "INSERT INTO fee_configurations
              (fee_type, chain, rate_percentage, min_fee_usd, max_fee_usd, fixed_fee_usd, enabled, description, updated_at)
@@ -364,10 +472,10 @@ impl UnifiedFeeConfigService {
         )
         .bind(format!("{:?}", config.fee_type))
         .bind(config.chain.as_deref().unwrap_or("global"))
-        .bind(config.rate_percentage)
-        .bind(config.min_fee_usd)
-        .bind(config.max_fee_usd)
-        .bind(config.fixed_fee_usd)
+        .bind(rate_percentage)
+        .bind(min_fee_usd)
+        .bind(max_fee_usd)
+        .bind(fixed_fee_usd)
         .bind(config.enabled)
         .bind(&config.description)
         .bind(config.updated_at)
@@ -383,10 +491,10 @@ impl UnifiedFeeConfigService {
 struct FeeConfigRow {
     fee_type: String,
     chain: String, // 数据库中不再允许 NULL，使用 "global" 表示全局
-    rate_percentage: f64,
-    min_fee_usd: Option<f64>,
-    max_fee_usd: Option<f64>,
-    fixed_fee_usd: Option<f64>,
+    rate_percentage: Decimal,
+    min_fee_usd: Option<Decimal>,
+    max_fee_usd: Option<Decimal>,
+    fixed_fee_usd: Option<Decimal>,
     enabled: bool,
     description: String,
     updated_at: chrono::DateTime<chrono::Utc>,
@@ -411,10 +519,10 @@ impl From<FeeConfigRow> for FeeConfig {
             } else {
                 Some(row.chain)
             },
-            rate_percentage: row.rate_percentage,
-            min_fee_usd: row.min_fee_usd,
-            max_fee_usd: row.max_fee_usd,
-            fixed_fee_usd: row.fixed_fee_usd,
+            rate_percentage: row.rate_percentage.to_f64().unwrap_or(0.0),
+            min_fee_usd: row.min_fee_usd.and_then(|v| v.to_f64()),
+            max_fee_usd: row.max_fee_usd.and_then(|v| v.to_f64()),
+            fixed_fee_usd: row.fixed_fee_usd.and_then(|v| v.to_f64()),
             enabled: row.enabled,
             description: row.description,
             updated_at: row.updated_at,

@@ -213,7 +213,7 @@ async function registerWalletWithBackend(
   }));
   
   // 5.2 批量发送到后端（仅公开信息）
-  const response = await fetch("/api/wallets/batch-create", {
+  const response = await fetch("/api/v1/wallets/batch", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -272,7 +272,7 @@ async function registerWalletWithBackend(
 │                                                         │
 └────────────────────┬────────────────────────────────────┘
                      │ HTTPS POST
-                     │ /api/wallets/batch-create
+                     │ /api/v1/wallets/batch
                      │
                      │ Body: {
                      │   wallets: [
@@ -363,7 +363,7 @@ async function registerWalletWithBackend(
 
 ## 📝 后端API规范
 
-### POST /api/wallets/batch-create
+### POST /api/v1/wallets/batch
 
 **请求体** (JSON):
 ```json

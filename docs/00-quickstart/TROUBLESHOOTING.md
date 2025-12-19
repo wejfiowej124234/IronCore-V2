@@ -289,7 +289,7 @@ Error: database "ironcore" does not exist
 
 2. **运行迁移**
    ```bash
-   cd backend
+   cd IronCore-V2
    export DATABASE_URL="postgres://root@localhost:26257/ironcore?sslmode=disable"
    sqlx migrate run
    ```
@@ -302,7 +302,7 @@ Error: database "ironcore" does not exist
 
 **症状**:
 ```bash
-curl http://localhost:8088/api/wallet/create
+curl http://localhost:8088/wallet/create
 # {"error":"Not Found"}
 ```
 
@@ -311,19 +311,22 @@ curl http://localhost:8088/api/wallet/create
 1. **检查URL拼写**
    ```bash
    # ❌ 错误
-   /api/wallet/create
+   /wallet/create
    
-   # ✅ 正确
-   /api/wallets/create
+   # ✅ 正确（IronCore-V2 现行 API 使用 /api/v1 前缀）
+   /api/v1/chains
+   /api/v1/gas/estimate-all?chain=ethereum
+   /api/v1/fees/calculate
+   /api/v1/wallets/batch
    ```
 
 2. **查看路由列表**
    ```bash
    # 查看文档
-   cat backend/docs/01-architecture/API_ROUTES_MAP.md
+   cat IronCore-V2/docs/01-architecture/API_ROUTES_MAP.md
    
    # 或查看代码
-   grep -r "route" backend/src/api/mod.rs
+   grep -r "route" IronCore-V2\\src\\api\\mod.rs
    ```
 
 3. **确认服务版本**
@@ -337,8 +340,10 @@ curl http://localhost:8088/api/wallet/create
 
 **症状**（浏览器控制台）:
 ```
-Access to fetch at 'http://localhost:8088/api/wallets' 
+Access to fetch at 'http://localhost:8088/api/v1/wallets/batch' 
 from origin 'http://localhost:3000' has been blocked by CORS policy
+
+（提示：IronCore-V2 的受保护钱包登记端点为 `/api/v1/wallets/batch`）
 ```
 
 **诊断步骤**:
@@ -346,7 +351,7 @@ from origin 'http://localhost:3000' has been blocked by CORS policy
 1. **检查CORS配置**
    ```bash
    # 查看配置
-   grep -A5 "CORS" backend/src/main.rs
+   grep -A5 "CORS" IronCore-V2/src/main.rs
    ```
 
 2. **检查请求来源**
@@ -359,7 +364,7 @@ from origin 'http://localhost:3000' has been blocked by CORS policy
 
 1. **添加 CORS 配置**
    ```rust
-   // backend/src/main.rs
+   // IronCore-V2/src/main.rs
    use tower_http::cors::{CorsLayer, Any};
    
    let cors = CorsLayer::new()
@@ -400,14 +405,15 @@ from origin 'http://localhost:3000' has been blocked by CORS policy
 1. **检查请求频率**
    ```bash
    # 查看日志中的请求时间戳
-   grep "POST /api" backend/debug.log | tail -20
+   # 默认情况下日志输出到运行终端（或容器日志）
+   # 如启用了文件日志，请按 config.toml 中的 logging.file 配置查找对应日志文件
    ```
 
 2. **确认是否在循环中调用**
    ```javascript
    // ❌ 错误
    while (true) {
-     await fetch('/api/wallets');
+       await fetch('/api/v1/wallets');
    }
    ```
 
@@ -458,7 +464,7 @@ Error: Failed to connect to Ethereum RPC: https://mainnet.infura.io/v3/...
 2. **检查RPC配置**
    ```bash
    # 查看配置的RPC端点
-   grep -r "rpc_url" backend/src/
+   grep -r "rpc_url" IronCore-V2/src/
    ```
 
 3. **检查网络**
@@ -498,24 +504,17 @@ Error: Execution reverted: insufficient funds for gas
 
 1. **检查账户余额**
    ```bash
-   curl "http://localhost:8088/api/asset/balance?chain=ethereum&address=0x..."
+   curl "http://localhost:8088/api/v1/balance?chain=ethereum&address=0x..."
    ```
 
 2. **检查Gas价格**
    ```bash
-   curl "http://localhost:8088/api/gas/price?chain=ethereum"
+   curl "http://localhost:8088/api/v1/gas/estimate-all?chain=ethereum"
    ```
 
 3. **手动估算Gas**
    ```bash
-   curl -X POST http://localhost:8088/api/gas/estimate \
-     -H "Content-Type: application/json" \
-     -d '{
-       "chain": "ethereum",
-       "from": "0x...",
-       "to": "0x...",
-       "value": "0.1"
-     }'
+    curl "http://localhost:8088/api/v1/gas/estimate?chain=ethereum&speed=normal"
    ```
 
 **解决方案**:
@@ -541,7 +540,7 @@ Error: Execution reverted: insufficient funds for gas
 
 1. **测量响应时间**
    ```bash
-   curl -w "@curl-format.txt" http://localhost:8088/api/wallets
+   curl -w "@curl-format.txt" http://localhost:8088/api/health
    
    # curl-format.txt:
    # time_total: %{time_total}s\n
@@ -606,7 +605,7 @@ watch -n 1 'ps aux | grep ironforge_backend | grep -v grep'
 2. **检查未关闭的连接**
    ```rust
    // 查找未 drop 的资源
-   grep -r "new(" backend/src/ | grep -v "drop"
+   grep -r "new(" IronCore-V2/src/ | grep -v "drop"
    ```
 
 **解决方案**:

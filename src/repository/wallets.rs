@@ -56,8 +56,21 @@ pub async fn create(pool: &PgPool, input: CreateWalletInput) -> Result<Wallet, s
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING
-            id, tenant_id, user_id, chain_id, address, pubkey, policy_id, created_at,
-            name, derivation_path, curve_type, chain_symbol, account_index, address_index, group_id
+            id,
+            tenant_id,
+            user_id,
+            chain_id::BIGINT as chain_id,
+            address,
+            pubkey,
+            policy_id,
+            created_at,
+            name,
+            derivation_path,
+            curve_type,
+            chain_symbol,
+            account_index::BIGINT as account_index,
+            address_index::BIGINT as address_index,
+            group_id
         "#,
     )
     .bind(input.tenant_id)
@@ -83,8 +96,22 @@ pub async fn create(pool: &PgPool, input: CreateWalletInput) -> Result<Wallet, s
 pub async fn get_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Wallet>, sqlx::Error> {
     let rec = sqlx::query_as::<_, Wallet>(
         r#"
-        SELECT id, tenant_id, user_id, chain_id, address, pubkey, policy_id, created_at,
-               name, derivation_path, curve_type, chain_symbol, account_index, address_index, group_id
+        SELECT
+            id,
+            tenant_id,
+            user_id,
+            chain_id::BIGINT as chain_id,
+            address,
+            pubkey,
+            policy_id,
+            created_at,
+            name,
+            derivation_path,
+            curve_type,
+            chain_symbol,
+            account_index::BIGINT as account_index,
+            address_index::BIGINT as address_index,
+            group_id
         FROM wallets
         WHERE id = $1
         "#,
@@ -103,8 +130,22 @@ pub async fn get_by_address(
 ) -> Result<Option<Wallet>, sqlx::Error> {
     let rec = sqlx::query_as::<_, Wallet>(
         r#"
-        SELECT id, tenant_id, user_id, chain_id, address, pubkey, policy_id, created_at,
-               name, derivation_path, curve_type, chain_symbol, account_index, address_index, group_id
+        SELECT
+            id,
+            tenant_id,
+            user_id,
+            chain_id::BIGINT as chain_id,
+            address,
+            pubkey,
+            policy_id,
+            created_at,
+            name,
+            derivation_path,
+            curve_type,
+            chain_symbol,
+            account_index::BIGINT as account_index,
+            address_index::BIGINT as address_index,
+            group_id
         FROM wallets
         WHERE tenant_id = $1 AND chain_id = $2 AND address = $3
         "#,
@@ -125,8 +166,22 @@ pub async fn list_by_tenant(
 ) -> Result<Vec<Wallet>, sqlx::Error> {
     let recs = sqlx::query_as::<_, Wallet>(
         r#"
-        SELECT id, tenant_id, user_id, chain_id, address, pubkey, policy_id, created_at,
-               name, derivation_path, curve_type, chain_symbol, account_index, address_index, group_id
+        SELECT
+            id,
+            tenant_id,
+            user_id,
+            chain_id::BIGINT as chain_id,
+            address,
+            pubkey,
+            policy_id,
+            created_at,
+            name,
+            derivation_path,
+            curve_type,
+            chain_symbol,
+            account_index::BIGINT as account_index,
+            address_index::BIGINT as address_index,
+            group_id
         FROM wallets
         WHERE tenant_id = $1
         ORDER BY created_at DESC
@@ -150,8 +205,22 @@ pub async fn list_by_user(
 ) -> Result<Vec<Wallet>, sqlx::Error> {
     let recs = sqlx::query_as::<_, Wallet>(
         r#"
-        SELECT id, tenant_id, user_id, chain_id, address, pubkey, policy_id, created_at,
-               name, derivation_path, curve_type, chain_symbol, account_index, address_index, group_id
+        SELECT
+            id,
+            tenant_id,
+            user_id,
+            chain_id::BIGINT as chain_id,
+            address,
+            pubkey,
+            policy_id,
+            created_at,
+            name,
+            derivation_path,
+            curve_type,
+            chain_symbol,
+            account_index::BIGINT as account_index,
+            address_index::BIGINT as address_index,
+            group_id
         FROM wallets
         WHERE tenant_id = $1 AND user_id = $2
         ORDER BY created_at DESC

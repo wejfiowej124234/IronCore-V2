@@ -1,6 +1,6 @@
 # 🧑‍💻 开发者指南
 
-> 如何为 ironforge_backend 贡献代码
+> 如何为 IronCore-V2（crate: ironcore）贡献代码
 
 ## 📋 目录
 
@@ -60,7 +60,7 @@ cargo install cargo-outdated  # 依赖检查
 ```bash
 # 1. 克隆项目
 git clone <repo-url>
-cd backend
+cd IronCore-V2
 
 # 2. 复制配置文件
 cp config.example.toml config.toml
@@ -107,7 +107,7 @@ cargo watch -c -x clippy
 ### 目录架构
 
 ```
-backend/
+IronCore-V2/
 ├── src/
 │   ├── main.rs                    # 入口文件
 │   ├── lib.rs                     # 库入口
@@ -211,41 +211,14 @@ git checkout -b feature/your-feature-name
 **示例: 添加新的API端点**
 
 ```rust
-// 1. 定义请求/响应结构 (src/api/handlers.rs)
-#[derive(Deserialize)]
-pub struct CreateWalletRequest {
-    pub name: String,
-    pub chain: String,
-}
+// ✅ 所有业务路由统一使用 /api/v1 前缀（health 例外：/api/health）
+// 示例：复用现有的「非托管批量创建钱包」端点
+use axum::{routing::post, Router};
+use crate::api::wallet_batch_create_api::batch_create_wallets;
 
-#[derive(Serialize)]
-pub struct CreateWalletResponse {
-    pub wallet_id: Uuid,
-    pub address: String,
-}
-
-// 2. 实现处理器
-pub async fn create_wallet_handler(
-    State(state): State<Arc<AppState>>,
-    Json(req): Json<CreateWalletRequest>,
-) -> Result<Json<CreateWalletResponse>, AppError> {
-    // 调用service层
-    let wallet = wallet_service::create_wallet(
-        &state.pool,
-        req.name,
-        req.chain
-    ).await?;
-    
-    Ok(Json(CreateWalletResponse {
-        wallet_id: wallet.id,
-        address: wallet.address,
-    }))
-}
-
-// 3. 注册路由 (src/api/mod.rs)
 pub fn routes(state: Arc<AppState>) -> Router {
     Router::new()
-        .route("/api/wallets", post(handlers::create_wallet_handler))
+        .route("/api/v1/wallets/batch", post(batch_create_wallets))
         .with_state(state)
 }
 ```
@@ -262,10 +235,11 @@ async fn test_create_wallet() {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/api/wallets")
+                .uri("/api/v1/wallets/batch")
+                // 注意：该端点受 JWT 保护，测试中需带 Authorization: Bearer <token>
                 .header("Content-Type", "application/json")
                 .body(Body::from(
-                    r#"{"name":"Test Wallet","chain":"ethereum"}"#
+                    r#"{"wallets":[{"chain":"ETH","address":"0x0000000000000000000000000000000000000000","public_key":"0x...","name":"Test Wallet"}]}"#
                 ))
                 .unwrap(),
         )
@@ -550,7 +524,7 @@ cargo tarpaulin --out Html --output-dir coverage
 ```bash
 feat(api): add wallet creation endpoint
 
-Implement POST /api/wallets endpoint with the following features:
+Implement POST /api/v1/wallets/batch endpoint with the following features:
 - Support multiple chains
 - Validate wallet address format
 - Store wallet metadata in database
@@ -637,10 +611,10 @@ async fn process_transaction(tx: Transaction) -> Result<()> {
       "request": "launch",
       "name": "Debug backend",
       "cargo": {
-        "args": ["build", "--bin=ironforge_backend"]
+                "args": ["build", "--bin=ironcore"]
       },
       "args": [],
-      "cwd": "${workspaceFolder}/backend"
+            "cwd": "${workspaceFolder}"
     }
   ]
 }
@@ -653,7 +627,7 @@ async fn process_transaction(tx: Transaction) -> Result<()> {
 RUST_LOG=debug cargo run
 
 # 启用特定模块日志
-RUST_LOG=ironforge_backend::service=debug cargo run
+RUST_LOG=ironcore::service=debug cargo run
 
 # 显示SQL查询
 RUST_LOG=sqlx=debug cargo run
@@ -672,7 +646,7 @@ RUST_BACKTRACE=full cargo run
 cargo install flamegraph
 
 # 生成火焰图
-cargo flamegraph --bin ironforge_backend
+cargo flamegraph --bin ironcore
 
 # 使用 criterion 基准测试
 cargo bench

@@ -270,7 +270,7 @@ CONTRIBUTING.md                         # 贡献指南 ⭐
 ### API 规范
 - RESTful API
 - OpenAPI 3.0 规范
-- 文档地址: `http://localhost:8088/api-docs/openapi.yaml`
+- 文档地址: `http://localhost:8088/openapi.yaml`
 
 ## 📝 文档约定
 

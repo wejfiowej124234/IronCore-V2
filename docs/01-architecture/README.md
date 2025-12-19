@@ -38,12 +38,11 @@
 │  │           API Layer (Axum Router)                │  │
 │  │  ┌────────────────────────────────────────────┐ │  │
 │  │  │  46+ REST API Endpoints                    │ │  │
-│  │  │  - Auth: /api/auth/*                       │ │  │
-│  │  │  - Wallet: /api/wallets/*                  │ │  │
-│  │  │  - Transaction: /api/transactions/*        │ │  │
-│  │  │  - Token: /api/tokens/*                    │ │  │
-│  │  │  - Swap: /api/swap/*                       │ │  │
-│  │  │  - Payment: /api/payments/*                │ │  │
+│  │  │  - Business APIs: /api/v1/...              │ │  │
+│  │  │  - Health: /api/health                     │ │  │
+│  │  │  - OpenAPI: /openapi.yaml                  │ │  │
+│  │  │  - Swagger UI: /docs                       │ │  │
+│  │  │  - Metrics: /metrics                       │ │  │
 │  │  └────────────────────────────────────────────┘ │  │
 │  └──────────────────┬───────────────────────────────┘  │
 │                     │                                   │
@@ -134,16 +133,16 @@ Chain Abstraction Layer
 **路由分类**:
 | 分类 | 数量 | 示例 |
 |------|------|------|
-| Auth | 3 | `/api/auth/register`, `/api/auth/login` |
-| Wallet | 8 | `/api/wallets`, `/api/wallets/:id` |
-| Transaction | 6 | `/api/transactions`, `/api/transactions/:id` |
-| Token | 5 | `/api/tokens/balance`, `/api/tokens/price` |
-| Swap | 4 | `/api/swap/quote`, `/api/swap/execute` |
-| Payment | 3 | `/api/payments/moonpay/url` |
-| User | 4 | `/api/users/profile` |
-| Notification | 3 | `/api/notifications` |
-| Stats | 5 | `/api/stats/dashboard` |
-| System | 5 | `/api/health`, `/api/version` |
+| Auth | - | `/api/v1/auth/register`, `/api/v1/auth/login` |
+| Wallets | - | `/api/v1/wallets/batch`, `/api/v1/wallets` |
+| Balance | - | `/api/v1/balance` |
+| Transactions | - | `/api/v1/transactions`, `/api/v1/transactions/{hash}/status` |
+| Tokens | - | `/api/v1/tokens/list`, `/api/v1/tokens/search` |
+| Swap | - | `/api/v1/swap/quote`, `/api/v1/swap/execute` |
+| Bridge | - | `/api/v1/bridge/quote`, `/api/v1/bridge/execute` |
+| Gas | - | `/api/v1/gas/estimate`, `/api/v1/gas/estimate-all` |
+| Admin | - | `/api/v1/admin/*` |
+| System | - | `/api/health`, `/openapi.yaml` |
 
 **阅读时长**: 10 分钟
 
@@ -164,7 +163,7 @@ Chain Abstraction Layer
    ↓
 2. 前端派生地址（BIP44）
    ↓
-3. 前端调用 POST /api/wallets
+3. 前端调用 POST /api/v1/wallets/batch（仅登记地址/公钥等公开信息）
    ↓
 4. 后端验证 JWT Token
    ↓

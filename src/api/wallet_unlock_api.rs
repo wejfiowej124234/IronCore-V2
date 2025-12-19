@@ -85,7 +85,7 @@ pub struct WalletUnlockStatusResponse {
 // API Handlers
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-/// POST /api/wallets/unlock
+/// POST /api/v1/wallets/unlock
 ///
 /// 钱包解锁（钱包锁验证）
 ///
@@ -106,7 +106,7 @@ pub struct WalletUnlockStatusResponse {
 /// - 支持主动锁定
 #[utoipa::path(
     post,
-    path = "/api/wallets/unlock",
+    path = "/api/v1/wallets/unlock",
     request_body = WalletUnlockRequest,
     responses(
         (status = 200, description = "Wallet unlocked", body = ApiResponse<WalletUnlockResponse>),

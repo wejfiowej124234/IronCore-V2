@@ -72,7 +72,7 @@ cargo install cargo-llvm-cov
 
 # 3. 克隆仓库
 git clone https://github.com/your-org/ironcore.git
-cd ironcore/IronCore
+cd ironcore/IronCore-V2
 
 # 4. 配置环境变量
 cp .env.example .env

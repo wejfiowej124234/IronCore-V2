@@ -36,7 +36,7 @@ export DATABASE_URL="postgresql://root@localhost:26257/ironcore?sslmode=disable"
 ### 方法 3: 启动应用自动迁移（推荐）
 
 ```bash
-cd IronCore
+cd IronCore-V2
 cargo run
 ```
 

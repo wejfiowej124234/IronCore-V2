@@ -50,7 +50,7 @@
 
 **复现步骤**
 1. 启动后端 `cargo run`
-2. 调用API `POST /api/wallets`
+2. 调用API `POST /api/v1/wallets/batch`
 3. 看到错误 `...`
 
 **期望行为**
@@ -70,7 +70,7 @@
 ```
 
 **相关代码**
-`backend/src/api/handlers/wallet.rs:45`
+`IronCore-V2/src/api/wallet_batch_create_api.rs`
 ```
 
 ### 2. 提出新功能 💡
@@ -541,17 +541,24 @@ async fn test_create_wallet_api() {
     let app = setup_test_app().await;
 
     let response = app
-        .post("/api/wallets")
+        .post("/api/v1/wallets/batch")
+        // 注意：该端点受 JWT 保护，测试中需带 Authorization: Bearer <token>
         .json(&json!({
-            "chain_id": 1,
-            "name": "Test Wallet"
+            "wallets": [
+                {
+                    "chain": "ETH",
+                    "address": "0x0000000000000000000000000000000000000000",
+                    "public_key": "0x...",
+                    "name": "Test Wallet"
+                }
+            ]
         }))
         .send()
         .await;
 
     assert_eq!(response.status(), StatusCode::OK);
-    let wallet: Wallet = response.json().await;
-    assert_eq!(wallet.chain_id, 1);
+    let body: serde_json::Value = response.json().await;
+    assert_eq!(body["code"], 0);
 }
 ```
 

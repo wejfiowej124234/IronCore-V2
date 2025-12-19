@@ -54,76 +54,50 @@
 ├─────────────────────────────────────────────┤
 │                                              │
 │  🔐 Auth (3 endpoints)                      │
-│     POST   /api/auth/register              │
-│     POST   /api/auth/login                 │
-│     POST   /api/auth/refresh               │
+│     POST   /api/v1/auth/register           │
+│     POST   /api/v1/auth/login              │
+│     POST   /api/v1/auth/refresh            │
 │                                              │
 │  👛 Wallets (8 endpoints)                   │
-│     GET    /api/wallets                    │
-│     POST   /api/wallets                    │
-│     GET    /api/wallets/:id                │
-│     PUT    /api/wallets/:id                │
-│     DELETE /api/wallets/:id                │
-│     POST   /api/wallets/batch              │
-│     GET    /api/wallets/:id/balance        │
-│     GET    /api/wallets/:id/tokens         │
+│     GET    /api/v1/wallets                 │
+│     GET    /api/v1/wallets/:id             │
+│     DELETE /api/v1/wallets/:id             │
+│     POST   /api/v1/wallets/batch           │
+│     POST   /api/v1/wallets/unlock          │
+│     POST   /api/v1/wallets/lock            │
+│     GET    /api/v1/wallets/:id/assets      │
+│     GET    /api/v1/wallets/assets          │
 │                                              │
 │  💸 Transactions (6 endpoints)              │
-│     GET    /api/transactions               │
-│     POST   /api/transactions               │
-│     GET    /api/transactions/:id           │
-│     GET    /api/wallets/:id/transactions   │
-│     POST   /api/transactions/estimate      │
-│     POST   /api/transactions/broadcast     │
+│     GET    /api/v1/transactions            │
+│     POST   /api/v1/transactions            │
+│     GET    /api/v1/transactions/{hash}/status│
+│     GET    /api/v1/transactions/nonce      │
+│     GET    /api/v1/transactions/history    │
+│     POST   /api/v1/tx                       │
 │                                              │
 │  🪙 Tokens (5 endpoints)                    │
-│     GET    /api/tokens                     │
-│     GET    /api/tokens/:address            │
-│     GET    /api/tokens/balance             │
-│     GET    /api/tokens/price               │
-│     GET    /api/tokens/search              │
-│                                              │
-│  🎨 NFTs (4 endpoints)                      │
-│     GET    /api/nfts                       │
-│     GET    /api/nfts/:id                   │
-│     GET    /api/wallets/:id/nfts           │
-│     POST   /api/nfts/transfer              │
+│     GET    /api/v1/tokens/list             │
+│     GET    /api/v1/tokens/:address/info    │
+│     GET    /api/v1/tokens/:token_address/balance│
+│     GET    /api/v1/tokens/search           │
+│     GET    /api/v1/tokens/popular          │
 │                                              │
 │  🔄 Swap (4 endpoints)                      │
-│     POST   /api/swap/quote                 │
-│     POST   /api/swap/execute               │
-│     GET    /api/swap/history               │
-│     GET    /api/swap/pairs                 │
-│                                              │
-│  💳 Payment (3 endpoints)                   │
-│     POST   /api/payments/moonpay/url       │
-│     POST   /api/payments/webhook           │
-│     GET    /api/payments/status/:id        │
-│                                              │
-│  👤 User (4 endpoints)                      │
-│     GET    /api/users/profile              │
-│     PUT    /api/users/profile              │
-│     GET    /api/users/settings             │
-│     PUT    /api/users/settings             │
+│     GET    /api/v1/swap/quote              │
+│     POST   /api/v1/swap/execute            │
+│     GET    /api/v1/swap/history            │
+│     GET    /api/v1/swap/history/:id        │
 │                                              │
 │  🔔 Notification (3 endpoints)              │
-│     GET    /api/notifications              │
-│     PUT    /api/notifications/:id/read     │
-│     DELETE /api/notifications/:id          │
-│                                              │
-│  📊 Stats (5 endpoints)                     │
-│     GET    /api/stats/dashboard            │
-│     GET    /api/stats/portfolio            │
-│     GET    /api/stats/transactions         │
-│     GET    /api/stats/tokens               │
-│     GET    /api/stats/charts               │
+│     POST   /api/v1/notifications/publish   │
+│     GET    /api/v1/notifications/feed      │
 │                                              │
 │  ⚙️ System (5 endpoints)                    │
 │     GET    /api/health                     │
-│     GET    /api/version                    │
-│     GET    /api/info                       │
-│     GET    /api-docs/openapi.json          │
-│     GET    /api-docs/openapi.yaml          │
+│     GET    /openapi.json                   │
+│     GET    /openapi.yaml                   │
+│     GET    /docs                           │
 │                                              │
 └─────────────────────────────────────────────┘
 ```
@@ -145,46 +119,39 @@
 **标准响应格式**:
 ```json
 {
-  "success": true,
-  "data": { ... },
-  "error": null,
-  "timestamp": "2025-12-06T12:00:00Z"
+  "code": 0,
+  "message": "success",
+  "data": { "...": "..." }
 }
 ```
 
 **标准错误格式**:
 ```json
 {
-  "success": false,
-  "data": null,
-  "error": {
-    "code": "WALLET_NOT_FOUND",
-    "message": "Wallet not found",
-    "details": { "wallet_id": "..." }
-  },
-  "timestamp": "2025-12-06T12:00:00Z"
+  "code": "not_found",
+  "message": "Wallet not found",
+  "trace_id": "..."
 }
 ```
 
 **认证示例**:
 ```bash
 # 1. 登录获取 Token
-curl -X POST http://localhost:8088/api/auth/login \
+curl -X POST http://localhost:8088/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "user@example.com", "password": "password123"}'
 
 # Response
 {
-  "success": true,
   "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "refresh_token": "...",
-    "expires_in": 3600
+    "user": { "id": "...", "email": "user@example.com", "created_at": "..." }
   }
 }
 
 # 2. 使用 Token 调用 API
-curl -X GET http://localhost:8088/api/wallets \
+curl -X GET http://localhost:8088/api/v1/wallets \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
@@ -246,31 +213,17 @@ SYSTEM_RATE_LIMIT: "请求频率超限"
 
 **API 示例**:
 ```bash
-# 估算交易手续费
-POST /api/transactions/estimate
-Content-Type: application/json
-Authorization: Bearer <token>
+# 多链 Gas 估算（推荐）
+curl "http://localhost:8088/api/v1/gas/estimate-all?speed=normal"
 
-{
-  "from": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
-  "to": "0x8ba1f109551bD432803012645Ac136ddd64DBA72",
-  "value": "1000000000000000000",  # 1 ETH
-  "chain": "ethereum"
-}
+# 单链 Gas 估算
+curl "http://localhost:8088/api/v1/gas/estimate?chain=ethereum&speed=normal"
 
-# Response
+# Response（字段以 OpenAPI 为准）
 {
-  "success": true,
-  "data": {
-    "gas_price": "30000000000",      # 30 Gwei
-    "gas_limit": "21000",
-    "total_fee": "630000000000000",  # 0.00063 ETH
-    "estimated_usd": "2.52",
-    "eip1559": {
-      "base_fee": "25000000000",
-      "priority_fee": "5000000000"
-    }
-  }
+  "code": 0,
+  "message": "success",
+  "data": { "...": "..." }
 }
 ```
 
@@ -288,14 +241,15 @@ Authorization: Bearer <token>
 - ✅ 版本控制（`/api/v1/wallets`）
 
 ### 2. 命名规范
-- ✅ URL 使用小写 + 中划线（`/api/wallet-groups`）
+- ✅ URL 使用小写 + 中划线（`/api/v1/wallet-groups`）
 - ✅ JSON 字段使用 snake_case（`user_id`, `created_at`）
 - ✅ 错误码使用大写 + 下划线（`WALLET_NOT_FOUND`）
 
 ### 3. 分页规范
 ```json
 {
-  "success": true,
+  "code": 0,
+  "message": "success",
   "data": {
     "items": [...],
     "pagination": {
@@ -310,7 +264,7 @@ Authorization: Bearer <token>
 
 ### 4. 过滤排序
 ```
-GET /api/wallets?chain=ethereum&sort=created_at:desc&page=1&page_size=20
+GET /api/v1/wallets?chain=ethereum&sort=created_at:desc&page=1&page_size=20
 ```
 
 ---
@@ -319,11 +273,11 @@ GET /api/wallets?chain=ethereum&sort=created_at:desc&page=1&page_size=20
 
 | 端点 | 目标延迟 (p95) | 当前延迟 | 状态 |
 |------|----------------|----------|------|
-| GET /api/wallets | < 50ms | 38ms | ✅ |
-| POST /api/wallets | < 100ms | 75ms | ✅ |
-| GET /api/transactions | < 80ms | 65ms | ✅ |
-| POST /api/transactions/estimate | < 200ms | 150ms | ✅ |
-| POST /api/swap/quote | < 500ms | 420ms | ✅ |
+| GET /api/v1/wallets | < 50ms | 38ms | ✅ |
+| POST /api/v1/wallets/batch | < 100ms | 75ms | ✅ |
+| GET /api/v1/transactions | < 80ms | 65ms | ✅ |
+| POST /api/v1/transactions | < 200ms | 150ms | ✅ |
+| GET /api/v1/swap/quote | < 500ms | 420ms | ✅ |
 | GET /api/health | < 10ms | 5ms | ✅ |
 
 ---

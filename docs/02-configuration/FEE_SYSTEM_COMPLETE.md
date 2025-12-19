@@ -280,7 +280,7 @@ transaction_fee_percentage = 0.001 # 交易费 0.1%
 
 ### 相关代码
 
-- 位置：`IronCore/src/api/bridge/`
+- 位置：`IronCore-V2/src/api/`
 - 配置：`backend/config.toml` 中的 `[cross_chain]` 部分
 
 ---
@@ -447,7 +447,7 @@ INSERT INTO gas.platform_fee_rules (
 ### 获取Gas费用
 
 ```http
-GET /api/gas/estimate?chain=ethereum&speed=normal
+GET /api/v1/gas/estimate?chain=ethereum&speed=normal
 
 Response:
 {
@@ -462,7 +462,7 @@ Response:
 ### 计算平台服务费
 
 ```http
-POST /api/fees/calculate
+POST /api/v1/fees/calculate
 Content-Type: application/json
 
 {
@@ -485,22 +485,31 @@ Response:
 ### 计算跨链桥费用
 
 ```http
-POST /api/bridge/fee
+POST /api/v1/bridge/quote
 Content-Type: application/json
 
 {
     "from_chain": "ethereum",
     "to_chain": "bsc",
-    "amount": "10.0"
+    "token": "USDT",
+    "amount": 10.0,
+    "slippage_bps": 50
 }
 
 Response:
 {
-    "from_chain": "ethereum",
-    "to_chain": "bsc",
-    "amount": "10.0",
-    "bridge_fee": "0.02",
-    "total": "10.02"
+    "bridge_fee": 0.00042,
+    "bridge_protocol": "stargate",
+    "estimated_time_seconds": 180,
+    "route": {
+        "provider": "stargate",
+        "source_chain": "ethereum",
+        "destination_chain": "bsc",
+        "token_symbol": "USDT",
+        "amount": "10.0",
+        "message_fee_wei": "420000000000000",
+        "steps": []
+    }
 }
 ```
 

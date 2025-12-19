@@ -28,7 +28,7 @@
 
 ```powershell
 # 1. 进入项目目录
-cd IronCore
+cd IronCore-V2
 
 # 2. 执行自动修复脚本
 .\apply_cockroachdb_fix.ps1
@@ -179,7 +179,7 @@ VALUES (gen_random_uuid(), 'send', 'invalid_status', '0xABC', '0xDEF');
 
 ```bash
 # 1. 编译检查
-cd IronCore
+cd IronCore-V2
 cargo check
 
 # 预期结果：✅ 无编译错误
@@ -227,25 +227,22 @@ cargo run --release
 
 ```bash
 # 1. 用户注册
-curl -X POST http://localhost:8080/api/v1/auth/register \
+curl -X POST http://localhost:8088/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"Test123456"}'
 
 # 2. 创建钱包
-curl -X POST http://localhost:8080/api/v1/wallets \
+curl -X POST http://localhost:8088/api/v1/wallets/batch \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"chain":"ETH","address":"0x..."}'
+   -d '{"wallets":[{"chain":"ETH","address":"0x...","public_key":"0x...","derivation_path":"m/44\u0027/60\u0027/0\u0027/0/0"}]}'
 
 # 3. 查询交易
-curl http://localhost:8080/api/v1/transactions?limit=10 \
+curl http://localhost:8088/api/v1/transactions?limit=10 \
   -H "Authorization: Bearer <token>"
 
-# 4. 创建 Swap 交易
-curl -X POST http://localhost:8080/api/v1/swap \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"from_token":"ETH","to_token":"USDT","amount":"1.0"}'
+# 4. 获取 Swap 报价（同链）
+curl "http://localhost:8088/api/v1/swap/quote?from=ETH&to=USDT&amount=1.0&network=ethereum"
 ```
 
 **预期结果**: 所有 API 调用返回 200 OK，无数据库错误

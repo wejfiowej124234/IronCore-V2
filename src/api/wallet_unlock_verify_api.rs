@@ -59,7 +59,7 @@ pub struct VerifyUnlockTokenResponse {
 // API Handlers
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-/// POST /api/wallets/unlock-token/create
+/// POST /api/v1/wallets/unlock-token/create
 ///
 /// 创建钱包解锁令牌
 ///
@@ -76,7 +76,7 @@ pub struct VerifyUnlockTokenResponse {
 /// 6. 后端验证unlock_token有效性
 #[utoipa::path(
     post,
-    path = "/api/wallets/unlock-token/create",
+    path = "/api/v1/wallets/unlock-token/create",
     request_body = CreateUnlockTokenRequest,
     responses(
         (status = 200, description = "Token created", body = ApiResponse<CreateUnlockTokenResponse>),
@@ -124,7 +124,7 @@ pub async fn create_unlock_token(
     })
 }
 
-/// POST /api/wallets/unlock-token/verify
+/// POST /api/v1/wallets/unlock-token/verify
 ///
 /// 验证钱包解锁令牌
 ///
@@ -132,7 +132,7 @@ pub async fn create_unlock_token(
 /// 所有需要签名的操作（转账、跨链、提现等）都应验证unlock_token
 #[utoipa::path(
     post,
-    path = "/api/wallets/unlock-token/verify",
+    path = "/api/v1/wallets/unlock-token/verify",
     request_body = VerifyUnlockTokenRequest,
     responses(
         (status = 200, description = "Token verified", body = ApiResponse<VerifyUnlockTokenResponse>),

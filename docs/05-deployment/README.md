@@ -104,7 +104,7 @@ services:
 ```bash
 # 1. 克隆仓库
 git clone https://github.com/your-org/ironcore.git
-cd ironcore/IronCore
+cd ironcore/IronCore-V2
 
 # 2. 配置环境变量
 cp .env.example .env.production

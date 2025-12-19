@@ -89,9 +89,10 @@ async fn run_migrations_with_checksum_repair(pool: &PgPool) -> Result<()> {
                 );
             }
             Err(e) => {
-                tracing::warn!("⚠️ Database migrations failed (continuing): {}", e);
-                tracing::info!("💡 Tip: Set SKIP_MIGRATIONS=1 to skip migrations on startup");
-                return Ok(());
+                tracing::error!("❌ Database migrations failed: {}", e);
+                tracing::error!("💡 Tip: Set SKIP_MIGRATIONS=1 to skip migrations on startup");
+                // 🔥 CRITICAL FIX: Return error instead of continuing - force migration failures to be visible
+                anyhow::bail!("Migration failed: {}", e);
             }
         }
     }
@@ -162,9 +163,9 @@ async fn main() -> Result<()> {
 
         // Run migrations; if a previous migration was edited after being applied,
         // repair the recorded checksum so we can continue applying newer migrations.
-        if let Err(e) = run_migrations_with_checksum_repair(&pool).await {
-            tracing::warn!("⚠️ Migration runner failed (continuing): {}", e);
-        }
+        // IMPORTANT: In production, continuing with a partially migrated DB causes silent feature breakage.
+        // If you truly need degraded startup, set SKIP_MIGRATIONS=1 explicitly.
+        run_migrations_with_checksum_repair(&pool).await?;
     } else {
         tracing::info!("⏭️ Database migrations skipped (SKIP_MIGRATIONS=1)");
     }
@@ -298,7 +299,7 @@ async fn main() -> Result<()> {
     // - 钱包: /api/wallets/*, /api/v1/wallets/*
     // - 兑换: /api/swap/*, /api/v1/swap/* (包括 /api/v1/swap/history)
     // - 限价单: /api/v1/limit-orders/*
-    // - Gas: /api/gas/* (estimate, estimate-all, price)
+    // - Gas: /api/v1/gas/* (estimate, estimate-all, price)
     // - 其他所有业务模块...
     // 包含所有中间件：认证、CORS、速率限制、追踪等
     // 健康检查端点在 api::routes 中已定义: /api/health, /healthz

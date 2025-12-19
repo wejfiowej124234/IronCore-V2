@@ -5,18 +5,18 @@
 ### Windows
 双击运行：
 ```
-IronCore/run.bat
+IronCore-V2/run.bat
 ```
 
 或在命令行：
 ```bash
-cd IronCore
+cd IronCore-V2
 run.bat
 ```
 
 ### Git Bash/Linux/Mac
 ```bash
-cd IronCore
+cd IronCore-V2
 chmod +x run.sh
 ./run.sh
 ```
@@ -27,21 +27,21 @@ chmod +x run.sh
 
 ### Windows CMD
 ```cmd
-cd C:\Users\plant\Desktop\Rust-Blockchain\IronCore
+cd C:\Users\plant\Desktop\Rust-Blockchain\IronCore-V2
 set WALLET_ENC_KEY=dev-wallet-encryption-key-32chars!!
 cargo run --profile release-fast
 ```
 
 ### Windows PowerShell
 ```powershell
-cd C:\Users\plant\Desktop\Rust-Blockchain\IronCore
+cd C:\Users\plant\Desktop\Rust-Blockchain\IronCore-V2
 $env:WALLET_ENC_KEY="dev-wallet-encryption-key-32chars!!"
 cargo run --profile release-fast
 ```
 
 ### Git Bash
 ```bash
-cd ~/Desktop/Rust-Blockchain/IronCore
+cd ~/Desktop/Rust-Blockchain/IronCore-V2
 export WALLET_ENC_KEY="dev-wallet-encryption-key-32chars!!"
 cargo run --profile release-fast
 ```
@@ -73,7 +73,7 @@ cargo --version
 ### 检查 4: 查看详细错误
 直接运行 cargo，查看完整错误信息：
 ```bash
-cd IronCore
+cd IronCore-V2
 cargo run --profile release-fast 2>&1 | tee error.log
 ```
 
@@ -90,8 +90,8 @@ export WALLET_ENC_KEY="dev-wallet-encryption-key-32chars!!"
 ### 错误 2: "config.toml not found"
 **解决**: 确保在 IronCore 目录
 ```bash
-cd ~/Desktop/Rust-Blockchain/IronCore
-pwd  # 应该显示 .../IronCore
+cd ~/Desktop/Rust-Blockchain/IronCore-V2
+pwd  # 应该显示 .../IronCore-V2
 ```
 
 ### 错误 3: "Database connection failed"
@@ -114,7 +114,7 @@ docker compose up -d
 sleep 10
 
 # 3. 启动后端
-cd ~/Desktop/Rust-Blockchain/IronCore
+cd ~/Desktop/Rust-Blockchain/IronCore-V2
 export WALLET_ENC_KEY="dev-wallet-encryption-key-32chars!!"
 cargo run --profile release-fast
 ```

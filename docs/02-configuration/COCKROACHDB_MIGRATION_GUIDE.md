@@ -24,7 +24,7 @@ $env:DATABASE_URL = "postgresql://user:password@your-cockroach-host:26257/ironco
 ### 2. 应用所有迁移（推荐）
 
 ```powershell
-cd IronCore
+cd IronCore-V2
 
 # 方法 A: 使用 Cargo SQLx（推荐）
 .\apply_migrations_cargo.ps1
@@ -238,7 +238,7 @@ cargo sqlx migrate run 2>&1 | Tee-Object -FilePath migration.log
 
 ✅ 执行迁移脚本:
 ```powershell
-cd IronCore
+cd IronCore-V2
 .\apply_migrations_cargo.ps1
 ```
 

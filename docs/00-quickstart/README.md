@@ -78,7 +78,7 @@
 
 ```bash
 # 1. 进入后端目录
-cd backend
+cd IronCore-V2
 
 # 2. 创建配置文件
 cat > config.toml << 'EOF'
@@ -126,7 +126,7 @@ export DATABASE_URL="postgres://root@localhost:26257/ironcore?sslmode=disable"
 export REDIS_URL="redis://localhost:6379"
 
 # 3. 启动服务
-cd ../backend
+cd ..
 cargo run
 ```
 
@@ -145,46 +145,28 @@ cargo run
 
 ## 第3步：尝试第一个API (5分钟)
 
-### 创建你的第一个钱包！
+### 先调用一个“无需认证”的 API
 
 ```bash
-# 使用 curl 或 Postman 发送请求
-curl -X POST http://localhost:8088/api/wallets/create \
+# 1) 获取支持的链列表（公开API）
+curl http://localhost:8088/api/v1/chains
+
+# 2) Gas 费预估（公开API）
+curl "http://localhost:8088/api/v1/gas/estimate-all?chain=ethereum"
+
+# 3) 平台服务费计算（公开API）
+curl -X POST http://localhost:8088/api/v1/fees/calculate \
   -H "Content-Type: application/json" \
-  -d '{
-    "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
-    "chains": ["ethereum"]
-  }'
+  -d '{"fee_type":"send","amount_usd":100,"chain":"ethereum"}'
 ```
 
-**返回结果**:
-```json
-{
-  "wallets": [
-    {
-      "chain": "ethereum",
-      "address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
-      "derivation_path": "m/44'/60'/0'/0/0",
-      "public_key": "0x04..."
-    }
-  ]
-}
-```
+> 非托管原则：后端不接收助记词/私钥。
+> 如需登记钱包用于跨设备同步，请先完成注册/登录后，再调用 `POST /api/v1/wallets/batch`（提交地址、公钥等公开信息）。
 
-**🎉 恭喜！你刚创建了一个以太坊钱包！**
-
-### 查看钱包余额
+### 查询地址余额（公开API）
 
 ```bash
-curl "http://localhost:8088/api/asset/balance?chain=ethereum&address=0x9858EfFD232B4033E47d90003D41EC34EcaEda94"
-```
-
-**返回**:
-```json
-{
-  "balance": "0.0",
-  "usd_value": "0.00"
-}
+curl "http://localhost:8088/api/v1/balance?chain=ethereum&address=0x9858EfFD232B4033E47d90003D41EC34EcaEda94"
 ```
 
 ---
@@ -286,25 +268,35 @@ m/44'/501'/0'/0'   → Solana第1个钱包
 
 ### 练习1: 创建多链钱包
 
-**目标**: 用同一个助记词创建3个不同链的钱包
+**目标**: 批量登记 3 条链的钱包公开信息（非托管：客户端派生地址/公钥）
 
 ```bash
-curl -X POST http://localhost:8088/api/wallets/create \
-  -H "Content-Type: application/json" \
-  -d '{
-    "mnemonic": "your twelve word mnemonic phrase here...",
-    "chains": ["ethereum", "bitcoin", "solana"]
-  }'
+# 1) 先登录获取 JWT（示例）
+TOKEN=$(curl -s -X POST http://localhost:8088/api/v1/auth/login \
+   -H "Content-Type: application/json" \
+   -d '{"username":"alice","password":"SecurePass123!"}' | jq -r '.token')
+
+# 2) 批量登记（地址/公钥由客户端派生）
+curl -X POST http://localhost:8088/api/v1/wallets/batch \
+   -H "Authorization: Bearer $TOKEN" \
+   -H "Content-Type: application/json" \
+   -d '{
+      "wallets": [
+         {"chain":"ETH","address":"0x...","public_key":"0x04..."},
+         {"chain":"BTC","address":"bc1...","public_key":"02..."},
+         {"chain":"SOL","address":"...","public_key":"..."}
+      ]
+   }'
 ```
 
-**预期结果**: 返回3个地址，它们都由同一个助记词派生
+**预期结果**: 返回 `success/wallets/failed`，并为每条登记生成 `id`
 
 ### 练习2: 查询Gas价格
 
 **目标**: 了解以太坊当前的手续费
 
 ```bash
-curl "http://localhost:8088/api/gas/price?chain=ethereum"
+curl "http://localhost:8088/api/v1/gas/estimate-all?chain=ethereum"
 ```
 
 **预期结果**:
@@ -318,15 +310,10 @@ curl "http://localhost:8088/api/gas/price?chain=ethereum"
 
 ### 练习3: 验证地址格式
 
-**目标**: 检查地址是否合法
+**目标**: 检查地址是否可查询余额（以余额查询作为“格式可用”的最小验证）
 
 ```bash
-curl -X POST http://localhost:8088/api/wallets/validate-address \
-  -H "Content-Type: application/json" \
-  -d '{
-    "chain": "ethereum",
-    "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1"
-  }'
+curl "http://localhost:8088/api/v1/balance?chain=ethereum&address=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1"
 ```
 
 ---

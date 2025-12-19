@@ -1,6 +1,10 @@
-# IronForge Backend API 路由图
+# IronCore-V2 Backend API 路由图
 
 ## 📍 完整 API 端点清单（Port 8088）
+
+> ✅ 权威来源：`/openapi.yaml`、`/docs` 以及 `IronCore-V2/src/api/mod.rs`（路由注册）。
+>
+> 约定：除健康检查外，业务 API 统一使用 `/api/v1/...` 前缀。
 
 ### 🌐 公开路由（无需认证）
 
@@ -10,23 +14,19 @@
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  🔐 认证                                                    │
-│  ├─ POST   /api/auth/register        用户注册               │
-│  ├─ POST   /api/auth/login           用户登录               │
-│  └─ POST   /api/auth/refresh         刷新Token              │
+│  ├─ POST   /api/v1/auth/register     用户注册               │
+│  ├─ POST   /api/v1/auth/login        用户登录               │
+│  └─ POST   /api/v1/auth/refresh      刷新Token              │
 │                                                             │
-│  💼 多链钱包 API（新系统）⭐                                  │
-│  ├─ POST   /api/wallets/unified-create   统一创建（推荐）   │
-│  ├─ POST   /api/wallets/create           纯派生（不存储）   │
-│  ├─ POST   /api/wallets/create-multi     批量多链创建       │
-│  ├─ POST   /api/v2/wallets/create        前端兼容接口       │
-│  ├─ GET    /api/chains                   链信息列表         │
-│  ├─ GET    /api/chains/by-curve          按曲线分组         │
-│  └─ POST   /api/wallets/validate-address 地址验证           │
+│  🌐 公共查询                                                 │
+│  ├─ GET    /api/v1/chains            链信息列表              │
+│  ├─ GET    /api/v1/chains/by-curve   按曲线分组              │
+│  ├─ GET    /api/v1/gas/estimate      Gas 估算（单档位）       │
+│  └─ GET    /api/v1/gas/estimate-all  Gas 估算（所有档位）     │
 │                                                             │
 │  ❤️ 健康检查                                                 │
 │  ├─ GET    /api/health               API健康状态            │
 │  ├─ GET    /healthz                  K8s探针                │
-│  ├─ GET    /api/errors               错误查询               │
 │  └─ GET    /metrics                  Prometheus指标         │
 │                                                             │
 │  📖 文档                                                     │
@@ -46,31 +46,33 @@
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  🔐 认证管理                                                 │
-│  ├─ POST   /api/auth/logout          登出                   │
-│  ├─ GET    /api/auth/me              当前用户信息           │
-│  ├─ POST   /api/auth/set-password    设置密码               │
-│  ├─ POST   /api/auth/reset-password  重置密码               │
-│  └─ GET    /api/auth/login-history   登录历史               │
+│  ├─ POST   /api/v1/auth/logout       登出                   │
+│  ├─ GET    /api/v1/auth/me           当前用户信息           │
+│  ├─ POST   /api/v1/auth/set-password 设置密码               │
+│  ├─ POST   /api/v1/auth/reset-password 重置密码             │
+│  └─ GET    /api/v1/auth/login-history 登录历史              │
 │                                                             │
-│  💰 钱包管理（简化版）⚠️ 废弃中                               │
-│  ├─ POST   /api/wallets              创建钱包（废弃）        │
-│  ├─ GET    /api/wallets              钱包列表                │
-│  ├─ GET    /api/wallets/:id          钱包详情                │
-│  └─ DELETE /api/wallets/:id          删除钱包                │
-│                                                             │
-│  💰 钱包管理（企业版）⚠️ 废弃中                               │
-│  ├─ POST   /api/v1/wallets           创建钱包（废弃）        │
+│  👛 钱包（非托管）                                            │
+│  ├─ POST   /api/v1/wallets/batch     批量登记钱包（地址/公钥）│
 │  ├─ GET    /api/v1/wallets           钱包列表                │
 │  ├─ GET    /api/v1/wallets/:id       钱包详情                │
-│  └─ DELETE /api/v1/wallets/:id       删除钱包                │
+│  ├─ DELETE /api/v1/wallets/:id       删除钱包                │
+│  ├─ POST   /api/v1/wallets/unlock    钱包解锁（双锁机制）     │
+│  ├─ POST   /api/v1/wallets/lock      钱包锁定                │
+│  ├─ GET    /api/v1/wallets/:wallet_id/unlock-status 解锁状态│
+│  ├─ GET    /api/v1/wallets/assets    用户资产聚合            │
+│  └─ GET    /api/v1/wallets/:id/assets 单钱包资产             │
 │                                                             │
-│  💸 交易管理                                                 │
-│  ├─ POST   /api/transactions/send    发送交易（简化）        │
-│  ├─ GET    /api/transactions         交易列表（简化）        │
-│  ├─ POST   /api/v1/tx                创建交易                │
-│  ├─ GET    /api/v1/tx                交易列表                │
-│  ├─ GET    /api/v1/tx/:id            交易详情                │
-│  └─ PUT    /api/v1/tx/:id/status     更新交易状态            │
+│  💸 交易                                                     │
+│  ├─ POST   /api/v1/transactions      发送交易（需要客户端签名）│
+│  ├─ GET    /api/v1/transactions      交易列表                │
+│  ├─ GET    /api/v1/transactions/:hash/status 交易状态         │
+│  ├─ GET    /api/v1/transactions/nonce 获取 nonce             │
+│  ├─ GET    /api/v1/transactions/history 历史                 │
+│  ├─ POST   /api/v1/transactions/broadcast 广播原始交易        │
+│  ├─ POST   /api/v1/tx                企业交易记录（兼容）     │
+│  ├─ GET    /api/v1/tx                企业交易列表（兼容）     │
+│  └─ PUT    /api/v1/tx/:id/status     更新交易状态（兼容）     │
 │                                                             │
 │  🏢 租户管理                                                 │
 │  ├─ POST   /api/v1/tenants           创建租户                │
@@ -115,10 +117,33 @@
 │  └─ GET    /api/v1/tx-broadcasts/by-tx-hash/:hash 按哈希查询│
 │                                                             │
 │  ⛽ 区块链查询                                               │
-│  ├─ GET    /api/fees                 Gas费用查询             │
-│  ├─ GET    /api/gas/estimate-all     Gas估算（所有档位）      │
-│  ├─ GET    /api/network/status       网络状态                │
-│  └─ GET    /balance                  余额查询                │
+│  ├─ POST   /api/v1/fees/calculate    平台服务费计算          │
+│  ├─ GET    /api/v1/gas/estimate-all  Gas估算（所有档位）      │
+│  └─ GET    /api/v1/balance            余额查询               │
+│                                                             │
+│  🔄 Bridge（跨链）                                            │
+│  ├─ POST   /api/v1/bridge/quote      跨链报价                │
+│  ├─ POST   /api/v1/bridge/execute    执行跨链（需要签名/授权） │
+│  ├─ GET    /api/v1/bridge/:id/status 执行状态                │
+│  └─ GET    /api/v1/bridge/history    历史记录                │
+│                                                             │
+│  🪙 Tokens                                                   │
+│  ├─ GET    /api/v1/tokens/list       Token 列表              │
+│  ├─ GET    /api/v1/tokens/search     Token 搜索              │
+│  ├─ GET    /api/v1/tokens/popular    热门 Token              │
+│  ├─ GET    /api/v1/tokens/metadata   Token 元数据            │
+│  └─ GET    /api/v1/tokens/:token_address/balance 余额         │
+│                                                             │
+│  🔁 Swap                                                     │
+│  ├─ GET    /api/v1/swap/quote        报价                    │
+│  ├─ POST   /api/v1/swap/execute      执行                    │
+│  ├─ GET    /api/v1/swap/history      历史                    │
+│  └─ GET    /api/v1/swap/:id/status   状态                    │
+│                                                             │
+│  🛠️ Admin                                                    │
+│  ├─ GET    /api/v1/admin/fee-rules   平台费规则              │
+│  ├─ POST   /api/v1/admin/fee-rules   创建规则                │
+│  └─ ...（更多请以 OpenAPI 为准）                             │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -129,95 +154,37 @@
 
 ### ✅ 推荐使用
 
-#### 多链钱包创建
+#### 钱包登记（非托管）
 ```bash
-# 1. 统一创建（最推荐）⭐
-POST /api/wallets/unified-create
-{
-  "name": "My Wallet",
-  "chain": "eth"
-}
+# 后端只接收公开信息（地址/公钥），助记词/私钥永远不上传
+POST /api/v1/wallets/batch
+Authorization: Bearer <token>
+Content-Type: application/json
 
-# 2. 前端兼容接口
-POST /api/v2/wallets/create
 {
-  "name": "My Wallet",
-  "address": "0x...",
-  "chain": "ethereum"
-}
-
-# 3. 纯派生（高级用户）
-POST /api/wallets/create
-{
-  "chain": "sol",
-  "mnemonic": "word1 word2..."
+  "wallets": [
+    {
+      "chain": "ethereum",
+      "address": "0xYourDerivedAddress",
+      "public_key": "0xYourDerivedPublicKey",
+      "name": "My Wallet"
+    }
+  ]
 }
 ```
 
 #### 钱包查询
 ```bash
 # 列表
-GET /api/wallets
+GET /api/v1/wallets
 Authorization: Bearer <token>
 
 # 详情
-GET /api/wallets/{id}
+GET /api/v1/wallets/{id}
 Authorization: Bearer <token>
 ```
 
----
-
-### ⚠️ 废弃但可用（需迁移）
-
-```bash
-# 简化版（将在 2025-12-08 删除）
-POST /api/wallets
-{
-  "name": "My Wallet",
-  "address": "0x...",
-  "chain": "ethereum"
-}
-
-# 企业版（将在 2025-12-08 删除）
-POST /api/v1/wallets
-{
-  "tenant_id": "uuid",
-  "user_id": "uuid",
-  "chain_id": 1,
-  "address": "0x...",
-  "pubkey": "0x..."
-}
-```
-
-**迁移指南**: 请使用 `POST /api/wallets/unified-create` 替代
-
----
-
-## 📊 端点统计
-
-### 总计
-- **公开端点**: 15 个
-- **受保护端点**: 57 个
-- **总计**: 72 个
-
-### 分类统计
-| 分类 | 端点数量 | 状态 |
-|------|---------|------|
-| 多链钱包（新） | 7 | ✅ 活跃 |
-| 钱包管理（旧） | 8 | ⚠️ 废弃中 |
-| 认证管理 | 8 | ✅ 活跃 |
-| 交易管理 | 6 | ✅ 活跃 |
-| 租户管理 | 5 | 🟡 可选 |
-| 用户管理 | 5 | 🟡 可选 |
-| 策略管理 | 5 | 🟡 可选 |
-| 审批管理 | 5 | 🟡 可选 |
-| API密钥管理 | 5 | 🟡 可选 |
-| 交易广播 | 5 | 🟡 可选 |
-| 区块链查询 | 4 | ✅ 活跃 |
-| 健康检查 | 4 | ✅ 活跃 |
-| 文档 | 2 | ✅ 活跃 |
-
----
+> 完整端点列表与认证要求请以 `/openapi.yaml` 与 Swagger UI(`/docs`) 为准。
 
 ## 🔄 中间件栈
 

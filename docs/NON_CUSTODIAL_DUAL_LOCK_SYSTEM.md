@@ -48,8 +48,9 @@ async function registerAccount(email: string, accountPassword: string) {
   // 1.2 后端使用Argon2id哈希密码
   // 1.3 存储到数据库
   
-  const response = await fetch("/api/auth/register", {
+  const response = await fetch("/api/v1/auth/register", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       email,
       password: accountPassword // ✅ 账户密码（登录用）
@@ -57,8 +58,10 @@ async function registerAccount(email: string, accountPassword: string) {
   });
   
   if (response.ok) {
-    const { jwt_token } = await response.json();
-    localStorage.setItem("auth_token", jwt_token);
+    const result = await response.json();
+    if (result.code === 0 && result.data?.access_token) {
+      localStorage.setItem("auth_token", result.data.access_token);
+    }
   }
 }
 
@@ -92,8 +95,9 @@ async function createWallet(walletPassword: string) {
 ```typescript
 // Step 1: 使用账户密码登录后端（锁1）
 async function loginAccount(email: string, accountPassword: string) {
-  const response = await fetch("/api/auth/login", {
+  const response = await fetch("/api/v1/auth/login", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       email,
       password: accountPassword // ✅ 账户密码
@@ -101,9 +105,13 @@ async function loginAccount(email: string, accountPassword: string) {
   });
   
   if (response.ok) {
-    const { jwt_token, user } = await response.json();
-    localStorage.setItem("auth_token", jwt_token);
-    localStorage.setItem("user", JSON.stringify(user));
+    const result = await response.json();
+    if (result.code === 0 && result.data?.access_token) {
+      localStorage.setItem("auth_token", result.data.access_token);
+    }
+    if (result.code === 0 && result.data?.user) {
+      localStorage.setItem("user", JSON.stringify(result.data.user));
+    }
     
     // ✅ 登录成功，但钱包仍然锁定
     console.log("✅ 账户已登录");
@@ -174,7 +182,7 @@ async function executeBridgeTransfer(params: BridgeParams) {
   mnemonic.fill(0);
   
   // 6. 发送到后端（只发送已签名交易）
-  const response = await fetch("/api/bridge/execute", {
+  const response = await fetch("/api/v1/bridge/execute", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${jwt_token}`,
@@ -235,13 +243,13 @@ async function executeBridgeTransfer(params: BridgeParams) {
 │                                                         │
 │  每次登录:                                              │
 │    1. 输入账户密码（锁1）                               │
-│       ├─ POST /api/auth/login                          │
+│       ├─ POST /api/v1/auth/login                       │
 │       └─ 返回JWT token                                 │
 │                                                         │
 │  查看余额:                                              │
 │    ✅ 不需要钱包密码                                    │
 │    ├─ 使用JWT token查询                                │
-│    └─ GET /api/balances                                │
+│    └─ GET /api/v1/balance                              │
 │                                                         │
 │  发送交易:                                              │
 │    ⚠️ 需要钱包密码（锁2）                               │
@@ -391,7 +399,7 @@ class WalletSessionManager {
 1. **永远不要上传钱包密码到后端**
    ```typescript
    // ❌ 错误
-   await fetch("/api/wallets/unlock", {
+   await fetch("/api/v1/wallets/unlock", {
      body: JSON.stringify({ wallet_password })
    });
    

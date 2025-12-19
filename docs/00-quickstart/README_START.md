@@ -2,11 +2,11 @@
 
 ## 当前目录问题
 
-如果你在 `IronCore/ops` 目录，需要先回到 `IronCore` 目录：
+如果你在 `IronCore-V2/ops` 目录，需要先回到 `IronCore-V2` 目录：
 
 ```bash
 cd ..
-# 现在你在 IronCore 目录了
+# 现在你在 IronCore-V2 目录了
 ```
 
 ## 启动后端
@@ -15,14 +15,14 @@ cd ..
 
 **Git Bash**:
 ```bash
-cd IronCore
+cd IronCore-V2
 chmod +x start-backend.sh
 ./start-backend.sh
 ```
 
 **Windows CMD**:
 ```bash
-cd IronCore
+cd IronCore-V2
 start-backend.bat
 ```
 
@@ -30,14 +30,14 @@ start-backend.bat
 
 **Git Bash**:
 ```bash
-cd IronCore
+cd IronCore-V2
 export WALLET_ENC_KEY="dev-wallet-encryption-key-32chars!!"
 cargo run --profile release-fast
 ```
 
 **PowerShell**:
 ```powershell
-cd IronCore
+cd IronCore-V2
 $env:WALLET_ENC_KEY="dev-wallet-encryption-key-32chars!!"
 cargo run --profile release-fast
 ```
@@ -56,7 +56,7 @@ Start-Production-Stack.bat
 
 ```
 Rust-Blockchain/
-├── IronCore/              ← 后端代码在这里
+├── IronCore-V2/           ← 后端代码在这里
 │   ├── start-backend.sh   ← 快速启动脚本
 │   ├── start-backend.bat  ← Windows 启动脚本
 │   ├── config.toml        ← 配置文件
@@ -70,7 +70,7 @@ Rust-Blockchain/
 ## ✅ 检查清单
 
 启动前：
-- [ ] 在正确的目录（`IronCore`）
+- [ ] 在正确的目录（`IronCore-V2`）
 - [ ] `config.toml` 存在
 - [ ] Docker 服务运行中（CockroachDB, Redis, ImmuDB）
 - [ ] `WALLET_ENC_KEY` 已设置

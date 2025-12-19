@@ -129,8 +129,11 @@ impl WalletRepository for PgWalletRepository {
                 chrono::DateTime<chrono::Utc>,
             ),
         >(
-            "SELECT id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
-                    derivation_path, curve_type, account_index, address_index, policy_id, created_at
+                "SELECT id, tenant_id, user_id, chain_id::BIGINT as chain_id, chain_symbol, address, pubkey, name,
+                    derivation_path, curve_type,
+                    account_index::BIGINT as account_index,
+                    address_index::BIGINT as address_index,
+                    policy_id, created_at
              FROM wallets WHERE id = $1",
         )
         .bind(wallet_id)
@@ -194,8 +197,11 @@ impl WalletRepository for PgWalletRepository {
                 chrono::DateTime<chrono::Utc>,
             ),
         >(
-            "SELECT id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
-                    derivation_path, curve_type, account_index, address_index, policy_id, created_at
+                "SELECT id, tenant_id, user_id, chain_id::BIGINT as chain_id, chain_symbol, address, pubkey, name,
+                    derivation_path, curve_type,
+                    account_index::BIGINT as account_index,
+                    address_index::BIGINT as address_index,
+                    policy_id, created_at
              FROM wallets WHERE address = $1",
         )
         .bind(address)
@@ -251,8 +257,11 @@ impl WalletRepository for PgWalletRepository {
             "INSERT INTO wallets (id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
                                   derivation_path, curve_type, account_index, address_index, policy_id)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-             RETURNING id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
-                       derivation_path, curve_type, account_index, address_index, policy_id, created_at"
+             RETURNING id, tenant_id, user_id, chain_id::BIGINT as chain_id, chain_symbol, address, pubkey, name,
+                       derivation_path, curve_type,
+                       account_index::BIGINT as account_index,
+                       address_index::BIGINT as address_index,
+                       policy_id, created_at"
         )
         .bind(wallet_id)
         .bind(params.tenant_id)
@@ -325,8 +334,11 @@ impl WalletRepository for PgWalletRepository {
                 chrono::DateTime<chrono::Utc>,
             ),
         >(
-            "SELECT id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
-                    derivation_path, curve_type, account_index, address_index, policy_id, created_at
+                "SELECT id, tenant_id, user_id, chain_id::BIGINT as chain_id, chain_symbol, address, pubkey, name,
+                    derivation_path, curve_type,
+                    account_index::BIGINT as account_index,
+                    address_index::BIGINT as address_index,
+                    policy_id, created_at
              FROM wallets
              WHERE user_id = $1
              ORDER BY created_at DESC",
@@ -396,8 +408,11 @@ impl WalletRepository for PgWalletRepository {
                 chrono::DateTime<chrono::Utc>,
             ),
         >(
-            "SELECT id, tenant_id, user_id, chain_id, chain_symbol, address, pubkey, name,
-                    derivation_path, curve_type, account_index, address_index, policy_id, created_at
+                "SELECT id, tenant_id, user_id, chain_id::BIGINT as chain_id, chain_symbol, address, pubkey, name,
+                    derivation_path, curve_type,
+                    account_index::BIGINT as account_index,
+                    address_index::BIGINT as address_index,
+                    policy_id, created_at
              FROM wallets
              WHERE user_id = $1 AND chain_symbol = $2
              ORDER BY created_at DESC",

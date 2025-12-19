@@ -161,7 +161,7 @@ SELECT * FROM generate_non_custodial_compliance_report();
 
 ### 正确的执行方式
 ```bash
-cd IronCore
+cd IronCore-V2
 
 # 1. 确保PostgreSQL数据库运行
 # DATABASE_URL=postgresql://user:pass@localhost/ironcore

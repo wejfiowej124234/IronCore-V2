@@ -129,7 +129,7 @@ impl RpcSelector {
                 Ok(resp) if resp.status().is_success() => {
                     // Success: reset fail_count, update latency
                     let row = sqlx::query(
-                        "SELECT avg_latency_ms, fail_count FROM admin.rpc_endpoints WHERE id=$1",
+                        "SELECT avg_latency_ms::BIGINT AS avg_latency_ms, fail_count::BIGINT AS fail_count FROM admin.rpc_endpoints WHERE id=$1",
                     )
                     .bind(id)
                     .fetch_one(&self.pool)
@@ -146,7 +146,9 @@ impl RpcSelector {
                 }
                 _ => {
                     // Failure: increment fail_count, possibly open circuit
-                    let row = sqlx::query("SELECT fail_count FROM admin.rpc_endpoints WHERE id=$1")
+                    let row = sqlx::query(
+                        "SELECT fail_count::BIGINT AS fail_count FROM admin.rpc_endpoints WHERE id=$1",
+                    )
                         .bind(id)
                         .fetch_one(&self.pool)
                         .await?;
@@ -173,7 +175,14 @@ impl RpcSelector {
 
     async fn refresh(&self) -> Result<()> {
         let rows = sqlx::query(
-            "SELECT id, chain, url, priority, healthy, fail_count, avg_latency_ms, last_latency_ms, circuit_state, last_checked_at
+            "SELECT id, chain, url,
+                    priority::BIGINT AS priority,
+                    healthy,
+                    fail_count::BIGINT AS fail_count,
+                    avg_latency_ms::BIGINT AS avg_latency_ms,
+                    last_latency_ms::BIGINT AS last_latency_ms,
+                    circuit_state,
+                    last_checked_at
              FROM admin.rpc_endpoints"
         )
         .fetch_all(&self.pool)

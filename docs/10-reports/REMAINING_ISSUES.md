@@ -47,9 +47,9 @@ fn extract_resource_type(req: &Request) -> &str {
 ### 2. ⚠️ 一些unwrap()调用（低优先级）
 
 **发现的位置**:
-1. `backend/src/api/middleware/rate_limit.rs` - Header值解析
-2. `backend/src/api/middleware/csrf.rs` - Mutex锁
-3. `backend/src/infrastructure/encryption.rs` - 测试代码
+1. `IronCore-V2/src/api/middleware/rate_limit.rs` - Header值解析
+2. `IronCore-V2/src/api/middleware/csrf.rs` - Mutex锁
+3. `IronCore-V2/src/infrastructure/encryption.rs` - 测试代码
 
 **分析**:
 - **rate_limit.rs**: Header值解析的unwrap()是合理的，因为Header值格式是固定的
@@ -71,7 +71,7 @@ fn extract_resource_type(req: &Request) -> &str {
 - 根据之前的报告，CSRF防护是可选的（已有Bearer Token保护）
 
 **当前状态**:
-- CSRF中间件已实现：`backend/src/api/middleware/csrf.rs`
+- CSRF中间件已实现：`IronCore-V2/src/api/middleware/csrf.rs`
 - 但未在路由中应用
 
 **改进建议**:
