@@ -17,10 +17,28 @@ use crate::{
     service::gas_estimator::{GasEstimate, GasEstimateResponse, GasSpeed},
 };
 
+fn chain_name_from_chain_id(chain_id: i64) -> Option<&'static str> {
+    match chain_id {
+        1 => Some("ethereum"),
+        56 => Some("bsc"),
+        137 => Some("polygon"),
+        42161 => Some("arbitrum"),
+        10 => Some("optimism"),
+        43114 => Some("avalanche"),
+        501 => Some("solana"),
+        0 => Some("bitcoin"),
+        607 => Some("ton"),
+        _ => None,
+    }
+}
+
 /// 单速度预估请求
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct EstimateGasQuery {
-    pub chain: String,
+    /// Chain name (preferred). Examples: ethereum, bsc, polygon
+    pub chain: Option<String>,
+    /// Backward-compatible numeric chain id (e.g., 1 for Ethereum)
+    pub chain_id: Option<i64>,
     #[serde(default = "default_speed")]
     pub speed: GasSpeed,
 }
@@ -32,7 +50,10 @@ fn default_speed() -> GasSpeed {
 /// 批量预估请求
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct EstimateAllQuery {
-    pub chain: String,
+    /// Chain name (preferred). Examples: ethereum, bsc, polygon
+    pub chain: Option<String>,
+    /// Backward-compatible numeric chain id (e.g., 1 for Ethereum)
+    pub chain_id: Option<i64>,
 }
 
 // 响应类型直接使用 GasEstimate 和 GasEstimateResponse，由 ApiResponse 包装
@@ -71,16 +92,26 @@ pub async fn estimate_gas(
     State(state): State<Arc<AppState>>,
     Query(query): Query<EstimateGasQuery>,
 ) -> Result<Json<crate::api::response::ApiResponse<GasEstimate>>, AppError> {
-    let chain_lower = query.chain.to_lowercase();
+    let chain_input = if let Some(chain) = &query.chain {
+        chain.clone()
+    } else if let Some(chain_id) = query.chain_id {
+        chain_name_from_chain_id(chain_id)
+            .ok_or_else(|| AppError::bad_request(format!("Unsupported chain_id: {chain_id}")))?
+            .to_string()
+    } else {
+        return Err(AppError::bad_request("Missing required query param: chain (or chain_id)"));
+    };
+
+    let chain_lower = chain_input.to_lowercase();
     if !is_supported_chain(&chain_lower) {
         return Err(AppError::bad_request(format!(
             "Unsupported: {}. Use: ETH/BSC/Polygon/Solana/BTC/TON",
-            query.chain
+            chain_input
         )));
     }
 
     tracing::info!(
-        chain=%query.chain,
+        chain=%chain_input,
         speed=?query.speed,
         "estimating_gas"
     );
@@ -88,7 +119,7 @@ pub async fn estimate_gas(
     // ✅ 企业级优化：使用 AppState 中的单例 GasEstimator，避免重复创建和配置读取
     let estimate = state
         .gas_estimator
-        .estimate_gas(&query.chain, query.speed)
+        .estimate_gas(&chain_input, query.speed)
         .await
         .map_err(|e| {
             tracing::error!(error=%e, "gas_estimation_failed");
@@ -96,7 +127,7 @@ pub async fn estimate_gas(
         })?;
 
     tracing::info!(
-        chain=%query.chain,
+        chain=%chain_input,
         speed=?query.speed,
         max_fee_gwei=estimate.max_fee_per_gas_gwei,
         "gas_estimated"
@@ -133,21 +164,31 @@ pub async fn estimate_all_speeds(
     State(state): State<Arc<AppState>>,
     Query(query): Query<EstimateAllQuery>,
 ) -> Result<Json<crate::api::response::ApiResponse<GasEstimateResponse>>, AppError> {
+    let chain_input = if let Some(chain) = &query.chain {
+        chain.clone()
+    } else if let Some(chain_id) = query.chain_id {
+        chain_name_from_chain_id(chain_id)
+            .ok_or_else(|| AppError::bad_request(format!("Unsupported chain_id: {chain_id}")))?
+            .to_string()
+    } else {
+        return Err(AppError::bad_request("Missing required query param: chain (or chain_id)"));
+    };
+
     // 验证链名称
-    let chain_lower = query.chain.to_lowercase();
+    let chain_lower = chain_input.to_lowercase();
     if !is_supported_chain(&chain_lower) {
         return Err(AppError::bad_request(format!(
             "Unsupported chain: {}. Supported chains: ethereum, bsc, polygon, arbitrum, optimism, avalanche, solana, bitcoin, ton",
-            query.chain
+            chain_input
         )));
     }
 
-    tracing::info!(chain=%query.chain, "estimating_all_speeds");
+    tracing::info!(chain=%chain_input, "estimating_all_speeds");
 
     // ✅ 企业级优化：使用 AppState 中的单例 GasEstimator，避免重复创建和配置读取
     let estimates = state
         .gas_estimator
-        .estimate_all_speeds(&query.chain)
+        .estimate_all_speeds(&chain_input)
         .await
         .map_err(|e| {
             tracing::error!(error=%e, "batch_gas_estimation_failed");
@@ -155,7 +196,7 @@ pub async fn estimate_all_speeds(
         })?;
 
     tracing::info!(
-        chain=%query.chain,
+        chain=%chain_input,
         slow_gwei=estimates.slow.max_fee_per_gas_gwei,
         normal_gwei=estimates.normal.max_fee_per_gas_gwei,
         fast_gwei=estimates.fast.max_fee_per_gas_gwei,

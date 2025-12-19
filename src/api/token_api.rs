@@ -216,13 +216,37 @@ pub async fn get_token_balance(
         token_address, query.address, query.chain
     );
 
-    // 转换网络名称为chain_id
-    let chain_id = network_to_chain_id(&query.chain).ok_or_else(|| {
+    // 统一链标识符（支持 eth/ETH/1/Ethereum 等）
+    let chain_cfg = crate::utils::chain_normalizer::get_chain_config(&query.chain).map_err(|e| {
         convert_error(
             StatusCode::BAD_REQUEST,
-            format!("Unsupported network: {}", query.chain),
+            format!("Unsupported network: {} ({})", query.chain, e),
         )
     })?;
+    let chain_id: u64 = u64::try_from(chain_cfg.chain_id).map_err(|_| {
+        convert_error(
+            StatusCode::BAD_REQUEST,
+            format!("Unsupported chain_id for token lookup: {}", chain_cfg.chain_id),
+        )
+    })?;
+    let canonical_chain = chain_cfg.canonical_name;
+
+    // 代币余额接口目前只支持EVM链（ERC-20 / 原生币）
+    if !crate::utils::chain_normalizer::is_evm_chain(canonical_chain) {
+        return Err(convert_error(
+            StatusCode::BAD_REQUEST,
+            format!("Token balance only supports EVM chains, got: {}", query.chain),
+        ));
+    }
+
+    // 校验钱包地址格式
+    let wallet_address = crate::infrastructure::rpc_validator::validate_address(&query.address)
+        .map_err(|e| {
+            convert_error(
+                StatusCode::BAD_REQUEST,
+                format!("Invalid wallet address: {} ({})", query.address, e),
+            )
+        })?;
 
     // 从数据库获取代币信息
     let repository = PgTokenRepository::new(state.pool.clone());
@@ -240,8 +264,53 @@ pub async fn get_token_balance(
             )
         })?;
 
-    // TODO: 实际实现需要调用区块链RPC获取真实余额
-    // 这里暂时返回mock数据
+    // 调用链上RPC获取真实余额（非托管：后端只做查询，不触碰私钥）
+    let raw_balance_u128 = if token.is_native {
+        state
+            .blockchain_client
+            .get_native_balance(canonical_chain, &wallet_address)
+            .await
+            .map_err(|e| {
+                error!(
+                    "Native balance RPC failed: chain={}, wallet={}, err={:?}",
+                    canonical_chain, wallet_address, e
+                );
+                convert_error(
+                    StatusCode::BAD_GATEWAY,
+                    format!("Failed to fetch on-chain native balance: {e}"),
+                )
+            })?
+    } else {
+        // 校验合约地址格式（优先使用DB里的地址，避免路径大小写/别名问题）
+        let contract_address = crate::infrastructure::rpc_validator::validate_address(&token.address)
+            .map_err(|e| {
+                convert_error(
+                    StatusCode::BAD_REQUEST,
+                    format!("Invalid token contract address: {} ({})", token.address, e),
+                )
+            })?;
+
+        state
+            .blockchain_client
+            .get_erc20_balance(canonical_chain, &contract_address, &wallet_address)
+            .await
+            .map_err(|e| {
+                error!(
+                    "ERC20 balance RPC failed: chain={}, token={}, wallet={}, err={:?}",
+                    canonical_chain, contract_address, wallet_address, e
+                );
+                convert_error(
+                    StatusCode::BAD_GATEWAY,
+                    format!("Failed to fetch on-chain token balance: {e}"),
+                )
+            })?
+    };
+
+    // 计算格式化余额（balance / 10^decimals）
+    let decimals_u32 = u32::from((token.decimals as i32).max(0) as u8);
+    let divisor = 10u128.checked_pow(decimals_u32).unwrap_or(1);
+    let balance_formatted = (raw_balance_u128 as f64) / (divisor as f64);
+
     success_response(TokenBalanceResponse {
         token: TokenInfoResponse {
             address: token.address.clone(),
@@ -251,10 +320,10 @@ pub async fn get_token_balance(
             is_native: token.is_native,
             is_stablecoin: token.is_stablecoin,
             logo_url: token.logo_url.clone(),
-            chain: query.chain.clone(),
+            chain: canonical_chain.to_string(),
         },
-        balance_raw: "0".to_string(), // TODO: 调用链上RPC
-        balance_formatted: 0.0,
+        balance_raw: raw_balance_u128.to_string(),
+        balance_formatted,
     })
 }
 

@@ -54,7 +54,5 @@ ton_rpc_url = "https://toncenter.com/api/v2/jsonRPC"
 
 [cross_chain]
 bridge_fee_percentage = 0.003  # 0.3%跨链桥费率
-min_bridge_amount_usdt = 10.0
-max_bridge_amount_usdt = 100000.0
-default_slippage = 0.005        # 0.5%默认滑点
+transaction_fee_percentage = 0.001 # 0.1%交易费率
 

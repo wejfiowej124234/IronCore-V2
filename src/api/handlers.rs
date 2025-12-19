@@ -154,8 +154,12 @@ pub struct FeesQuery {
     pub chain_id: i64,
     /// 链标识（可选，用于从chain_id或symbol推断链）
     pub chain: Option<String>,
+    /// 可选：发送方地址（用于合约调用的 eth_estimateGas）
+    pub from: Option<String>,
     pub to: String,
     pub amount: String,
+    /// 可选：交易 calldata（用于合约调用的 eth_estimateGas）
+    pub data: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -182,14 +186,19 @@ pub async fn api_fees(
     Query(q): Query<FeesQuery>,
 ) -> Result<Json<crate::api::response::ApiResponse<FeesResponse>>, AppError> {
     // 企业级标准：统一chain参数处理，支持多种格式
-    let chain_str = q.chain.as_deref().unwrap_or("");
-    let chain_id = if let Ok(chain_id) = chain_str.parse::<i64>() {
-        chain_id
+    // - 如果提供了 chain：允许链名/符号 或 chain_id 字符串
+    // - 否则使用 chain_id（与前端现有调用兼容）
+    let chain_id = if let Some(chain_str) = q.chain.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+        if let Ok(chain_id) = chain_str.parse::<i64>() {
+            chain_id
+        } else {
+            // 尝试从链名称/符号转换为chain_id
+            crate::service::token_service::network_to_chain_id(chain_str)
+                .ok_or_else(|| AppError::bad_request(format!("Invalid chain: {}", chain_str)))?
+                as i64
+        }
     } else {
-        // 尝试从链名称/符号转换为chain_id
-        crate::service::token_service::network_to_chain_id(chain_str)
-            .ok_or_else(|| AppError::bad_request(format!("Invalid chain: {}", chain_str)))?
-            as i64
+        q.chain_id
     };
 
     // 校验
@@ -226,9 +235,10 @@ pub async fn api_fees(
     let gas_price = hex_to_dec_string(&gas_estimate.max_fee_per_gas);
 
     // 企业级实现：根据交易类型估算gas_limit
-    // 基础转账：21,000 gas（ETH标准，这是固定的，不是硬编码）
-    // 合约调用：应该调用 eth_estimateGas RPC 方法（企业级实现）
-    let gas_limit = if q.to.starts_with("0x") && q.to.len() == 42 {
+    // - 合约调用（提供 data）：优先调用 eth_estimateGas
+    // - 基础转账（无 data）：21,000 gas（ETH标准，这是固定的，不是硬编码）
+    let gas_limit = if q.data.as_deref().unwrap_or("").trim().is_empty() {
+        if q.to.starts_with("0x") && q.to.len() == 42 {
         // 企业级实现：从环境变量读取标准ETH转账gas limit（支持动态调整）
         // 注意：21000 gas是EIP-1559协议规定的标准ETH转账gas limit，但可以通过环境变量覆盖
         std::env::var("STANDARD_ETH_TRANSFER_GAS_LIMIT")
@@ -256,7 +266,7 @@ pub async fn api_fees(
                 );
                 21_000u64 // 安全默认值：标准ETH转账（协议规定，仅作为最后保障）
             })
-    } else {
+            } else {
         // 企业级实现：合约调用应该使用 eth_estimateGas RPC 方法
         // 当前实现：使用配置的默认值（从环境变量或配置读取）
         // 生产环境建议：调用 eth_estimateGas({from, to, data}) 获取精确值
@@ -433,6 +443,44 @@ pub async fn api_fees(
         );
 
         default_contract_gas_limit
+        }
+    } else {
+        // ✅ 合约调用：优先使用 eth_estimateGas 获取精确 gas_limit
+        let gas_svc = crate::service::gas_estimation_service::GasEstimationService::new(
+            st.rpc_selector.clone(),
+            Some(st.redis.clone()),
+        );
+
+        let from = q
+            .from
+            .clone()
+            .unwrap_or_else(|| "0x0000000000000000000000000000000000000000".to_string());
+
+        let value_hex = dec_wei_to_hex_quantity(&q.amount)
+            .unwrap_or_else(|| "0x0".to_string());
+
+        let req = crate::service::gas_estimation_service::GasEstimationRequest {
+            chain: chain_name.to_string(),
+            from,
+            to: q.to.clone(),
+            value: Some(value_hex),
+            data: q.data.clone(),
+        };
+
+        match gas_svc.estimate_gas(req).await {
+            Ok(r) => r
+                .gas_limit
+                .parse::<u64>()
+                .unwrap_or_else(|_| 150_000u64),
+            Err(e) => {
+                tracing::warn!(error=%e, chain=%chain_name, "eth_estimateGas failed; falling back to default contract gas limit");
+                std::env::var("DEFAULT_CONTRACT_GAS_LIMIT")
+                    .ok()
+                    .and_then(|v| v.parse::<u64>().ok())
+                    .filter(|&limit| limit > 0 && limit <= 10_000_000)
+                    .unwrap_or(150_000u64)
+            }
+        }
     };
 
     // 企业级实现：计算Gas费用（区块链网络费用）
@@ -481,6 +529,22 @@ fn hex_to_dec_string(hex: &str) -> String {
             "0".into()
         }
     }
+}
+
+/// 将十进制 wei 字符串转换为 JSON-RPC quantity (0x...)。
+///
+/// - 输入允许带前导 0。
+/// - 失败则返回 None。
+fn dec_wei_to_hex_quantity(dec: &str) -> Option<String> {
+    let s = dec.trim();
+    if s.is_empty() {
+        return None;
+    }
+    if s == "0" {
+        return Some("0x0".to_string());
+    }
+    let v = ethers::types::U256::from_dec_str(s).ok()?;
+    Some(format!("0x{:x}", v))
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -768,11 +832,6 @@ pub struct WalletTransactionsQuery {
     pub chain: Option<String>,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
-pub struct WalletTransactionsResponse {
-    pub transactions: Vec<serde_json::Value>,
-}
-
 #[utoipa::path(
     get,
     path = "/api/wallet/{address}/transactions",
@@ -781,20 +840,79 @@ pub struct WalletTransactionsResponse {
         ("chain" = Option<String>, Query, description = "链标识，如 ethereum/solana/bitcoin"),
     ),
     responses(
-        (status = 200, description = "Transactions list", body = crate::api::response::ApiResponse<WalletTransactionsResponse>),
+        (status = 200, description = "Transactions list", body = crate::api::response::ApiResponse<Vec<TxHistoryItem>>),
         (status = 400, description = "Bad request", body = crate::error_body::ErrorBodyDoc)
     )
 )]
 pub async fn wallet_transactions_public(
-    Path(_address): Path<String>,
-    Query(_q): Query<WalletTransactionsQuery>,
-) -> Result<Json<crate::api::response::ApiResponse<WalletTransactionsResponse>>, AppError> {
+    State(st): State<Arc<AppState>>,
+    Path(address): Path<String>,
+    Query(q): Query<WalletTransactionsQuery>,
+) -> Result<Json<crate::api::response::ApiResponse<Vec<TxHistoryItem>>>, AppError> {
     crate::metrics::count_ok("GET /api/wallets/:address/transactions");
-    // 返回空列表，实际实现可以从区块链查询或数据库获取
+
+    let address_norm = address.to_lowercase();
+    let chain_norm = q.chain.map(|c| c.to_lowercase());
+
+    let rows = sqlx::query(
+        r#"SELECT tx_hash,
+                  tx_type,
+                  status,
+                  from_address,
+                  to_address,
+                  amount::TEXT as amount,
+                  COALESCE(token_symbol, '') as token_symbol,
+                  COALESCE(gas_fee, '0') as gas_fee,
+                  EXTRACT(EPOCH FROM created_at)::BIGINT as ts
+           FROM transactions
+           WHERE (LOWER(from_address) = $1 OR LOWER(to_address) = $1)
+             AND ($2::TEXT IS NULL OR chain = $2)
+           ORDER BY created_at DESC
+           LIMIT 50"#,
+    )
+    .bind(&address_norm)
+    .bind(chain_norm.as_deref())
+    .fetch_all(&st.pool)
+    .await
+    .map_err(|e| AppError::internal(format!("Failed to query transactions: {}", e)))?;
+
+    let items = rows
+        .into_iter()
+        .map(|row| {
+            use sqlx::Row;
+            let from: String = row.get("from_address");
+            let to: String = row.get("to_address");
+            let derived_type = if from.to_lowercase() == address_norm {
+                "send"
+            } else {
+                "receive"
+            };
+
+            TxHistoryItem {
+                hash: row.get::<Option<String>, _>("tx_hash").unwrap_or_default(),
+                tx_type: derived_type.to_string(),
+                status: row.get::<String, _>("status"),
+                from,
+                to,
+                amount: row
+                    .get::<Option<String>, _>("amount")
+                    .unwrap_or_else(|| "0".to_string()),
+                token: {
+                    let sym: String = row.get("token_symbol");
+                    if sym.trim().is_empty() {
+                        "NATIVE".to_string()
+                    } else {
+                        sym
+                    }
+                },
+                timestamp: row.get::<i64, _>("ts").max(0) as u64,
+                fee: row.get::<String, _>("gas_fee"),
+            }
+        })
+        .collect::<Vec<_>>();
+
     use crate::api::response::success_response;
-    success_response(WalletTransactionsResponse {
-        transactions: vec![],
-    })
+    success_response(items)
 }
 
 /// 废弃版本：使用单数形式 /api/wallet/，请迁移到 /api/wallets/
@@ -802,7 +920,7 @@ pub async fn wallet_transactions_public(
 pub async fn wallet_transactions_public_deprecated(
     _path: Path<String>,
     _query: Query<WalletTransactionsQuery>,
-) -> Result<Json<crate::api::response::ApiResponse<WalletTransactionsResponse>>, AppError> {
+) -> Result<Json<crate::api::response::ApiResponse<Vec<TxHistoryItem>>>, AppError> {
     tracing::warn!(
         "[DEPRECATED] GET /api/wallet/:address/transactions called. Please migrate to GET /api/wallets/:address/transactions"
     );
@@ -848,6 +966,7 @@ pub async fn token_metadata(
     use crate::repository::{PgTokenRepository, TokenRepository};
 
     // 从数据库读取代币元数据（替代硬编码）
+
     let repository = PgTokenRepository::new(state.pool.clone());
     let normalized_address = query.address.to_lowercase();
 
@@ -883,7 +1002,7 @@ pub struct BroadcastRawTxData {
 
 #[utoipa::path(
     post,
-    path = "/api/tx/broadcast",
+    path = "/api/v1/transactions/broadcast",
     request_body = BroadcastRawTxRequest,
     responses(
         (status = 200, description = "Broadcast result", body = crate::api::response::ApiResponse<BroadcastRawTxData>),
@@ -892,6 +1011,7 @@ pub struct BroadcastRawTxData {
 )]
 pub async fn broadcast_raw_transaction(
     State(st): State<Arc<AppState>>,
+    AuthInfoExtractor(auth): AuthInfoExtractor,
     Json(req): Json<BroadcastRawTxRequest>,
 ) -> Result<Json<crate::api::response::ApiResponse<BroadcastRawTxData>>, AppError> {
     crate::metrics::count_ok("POST /api/tx/broadcast");
@@ -911,6 +1031,73 @@ pub async fn broadcast_raw_transaction(
         .await
         .map_err(|e| AppError::internal(format!("Broadcast failed: {}", e)))?;
 
+    // Best-effort: persist tx record for user history/status lookups.
+    // For EVM chains we parse the signed tx to extract from/to/value/nonce.
+    let (from_address, to_address, amount_decimal, token_symbol, gas_fee, nonce_i64) =
+        match req.chain.to_lowercase().as_str() {
+            "ethereum" | "eth" | "bsc" | "polygon" | "matic" | "binance" => {
+                match parse_evm_signed_tx_details(&req.signed_tx) {
+                    Ok(details) => (
+                        details.from,
+                        details.to,
+                        details.amount_decimal,
+                        Some("NATIVE".to_string()),
+                        details.gas_fee,
+                        details.nonce,
+                    ),
+                    Err(e) => {
+                        tracing::warn!(error=?e, chain=%req.chain, "Failed to parse EVM signed tx; storing minimal transaction record");
+                        (
+                            "unknown".to_string(),
+                            "unknown".to_string(),
+                            None,
+                            None,
+                            None,
+                            None,
+                        )
+                    }
+                }
+            }
+            _ => (
+                "unknown".to_string(),
+                "unknown".to_string(),
+                None,
+                None,
+                None,
+                None,
+            ),
+        };
+
+    // NOTE: wallet_id is optional in schema; we may not know it during raw broadcast.
+    // Store tx_type as "send" to match frontend expectations.
+    if let Err(e) = sqlx::query(
+        r#"INSERT INTO transactions
+           (id, tenant_id, user_id, wallet_id, chain, tx_hash, tx_type, status,
+            from_address, to_address, amount, token_symbol, gas_fee, nonce, metadata,
+            created_at, updated_at)
+           VALUES ($1, $2, $3, NULL, $4, $5, $6, $7,
+                   $8, $9, $10, $11, $12, $13, NULL,
+                   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"#,
+    )
+    .bind(uuid::Uuid::new_v4())
+    .bind(auth.tenant_id)
+    .bind(auth.user_id)
+    .bind(req.chain.to_lowercase())
+    .bind(&resp.tx_hash)
+    .bind("send")
+    .bind("submitted")
+    .bind(from_address)
+    .bind(to_address)
+    .bind(amount_decimal)
+    .bind(token_symbol)
+    .bind(gas_fee)
+    .bind(nonce_i64)
+    .execute(&st.pool)
+    .await
+    {
+        tracing::warn!(error=?e, tx_hash=%resp.tx_hash, chain=%req.chain, user_id=%auth.user_id, "Failed to persist broadcasted transaction; continuing");
+    }
+
     use crate::api::response::success_response;
     success_response(BroadcastRawTxData {
         tx_hash: resp.tx_hash,
@@ -920,7 +1107,7 @@ pub async fn broadcast_raw_transaction(
 
 #[derive(Debug, Deserialize, IntoParams)]
 pub struct TxStatusQuery {
-    pub chain: String,
+    pub chain: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -933,10 +1120,10 @@ pub struct TxStatusData {
 
 #[utoipa::path(
     get,
-    path = "/api/tx/{hash}/status",
+    path = "/api/v1/transactions/{hash}/status",
     params(
         ("hash" = String, Path, description = "交易哈希"),
-        ("chain" = String, Query, description = "链标识，如 ethereum/polygon/bsc"),
+        ("chain" = Option<String>, Query, description = "链标识（可选）。如不提供，将从用户交易记录中推断"),
     ),
     responses(
         (status = 200, description = "Tx status", body = crate::api::response::ApiResponse<TxStatusData>),
@@ -945,14 +1132,32 @@ pub struct TxStatusData {
 )]
 pub async fn tx_status(
     State(st): State<Arc<AppState>>,
+    AuthInfoExtractor(auth): AuthInfoExtractor,
     Path(hash): Path<String>,
     Query(query): Query<TxStatusQuery>,
 ) -> Result<Json<crate::api::response::ApiResponse<TxStatusData>>, AppError> {
     crate::metrics::count_ok("GET /api/tx/:hash/status");
 
+    // Frontend does not always provide `chain` for status.
+    // Prefer query param; otherwise infer from user's recorded transactions.
+    let chain = if let Some(chain) = query.chain.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        chain.to_string()
+    } else {
+        let inferred: Option<String> = sqlx::query_scalar(
+            "SELECT chain FROM transactions WHERE tx_hash = $1 AND user_id = $2 ORDER BY created_at DESC LIMIT 1",
+        )
+        .bind(&hash)
+        .bind(auth.user_id)
+        .fetch_optional(&st.pool)
+        .await
+        .map_err(|e| AppError::internal(format!("Failed to infer chain from database: {}", e)))?;
+
+        inferred.unwrap_or_else(|| "ethereum".to_string())
+    };
+
     let data = match st
         .blockchain_client
-        .get_transaction_receipt(&query.chain, &hash)
+        .get_transaction_receipt(&chain, &hash)
         .await
     {
         Ok(Some(receipt)) => {
@@ -3450,6 +3655,66 @@ pub async fn simple_send_transaction(
             }
         }
     }
+
+    // Best-effort: persist transaction record for history/status.
+    // NOTE: We never store private keys/mnemonics; only metadata about the broadcast.
+    {
+        use rust_decimal::Decimal;
+
+        let amount_decimal = req.amount.parse::<Decimal>().ok();
+        let status_for_db = if enable_real_broadcast && !req.signed_tx.is_empty() {
+            "submitted"
+        } else {
+            "pending"
+        };
+
+        let (gas_fee, nonce_i64) = match req.chain.to_lowercase().as_str() {
+            "ethereum" | "eth" | "bsc" | "polygon" | "matic" | "binance" => {
+                match parse_evm_signed_tx_details(&req.signed_tx) {
+                    Ok(details) => (details.gas_fee, details.nonce),
+                    Err(e) => {
+                        tracing::debug!(error=?e, chain=%req.chain, "Failed to parse EVM tx details for persistence");
+                        (None, None)
+                    }
+                }
+            }
+            _ => (None, None),
+        };
+
+        let metadata = serde_json::json!({
+            "platform_fee": platform_fee,
+            "fee_applied": fee_applied,
+        });
+
+        if let Err(e) = sqlx::query(
+            r#"INSERT INTO transactions
+               (id, tenant_id, user_id, wallet_id, chain, tx_hash, tx_type, status,
+                from_address, to_address, amount, token_symbol, gas_fee, nonce, metadata,
+                created_at, updated_at)
+               VALUES ($1, $2, $3, NULL, $4, $5, $6, $7,
+                       $8, $9, $10, $11, $12, $13, $14,
+                       CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"#,
+        )
+        .bind(uuid::Uuid::new_v4())
+        .bind(tenant_id)
+        .bind(user_id)
+        .bind(req.chain.to_lowercase())
+        .bind(&tx_hash)
+        .bind("send")
+        .bind(status_for_db)
+        .bind(&req.from)
+        .bind(&req.to)
+        .bind(amount_decimal)
+        .bind("NATIVE")
+        .bind(gas_fee.unwrap_or_else(|| "0".to_string()))
+        .bind(nonce_i64)
+        .bind(metadata)
+        .execute(&st.pool)
+        .await
+        {
+            tracing::warn!(error=?e, tx_hash=%tx_hash, user_id=%user_id, "Failed to persist transaction; continuing");
+        }
+    }
     // 构造响应
     let tx_resp = SimpleTransactionResp {
         tx_hash: tx_hash.clone(),
@@ -3957,7 +4222,7 @@ pub struct NonceResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/tx/nonce",
+    path = "/api/v1/transactions/nonce",
     params(GetNonceQuery),
     responses(
         (status = 200, description = "Nonce retrieved", body = crate::api::response::ApiResponse<NonceResponse>),
@@ -3970,12 +4235,23 @@ pub async fn get_nonce(
 ) -> Result<Json<crate::api::response::ApiResponse<NonceResponse>>, AppError> {
     crate::metrics::count_ok("GET /api/tx/nonce");
 
-    // 根据chain_id确定链名称
+    // 根据chain_id确定链名称（与 gas_api 的 chain_id 映射保持一致）
     let chain = match query.chain_id {
-        1 => "eth",
+        1 => "ethereum",
         56 => "bsc",
         137 => "polygon",
-        _ => "eth", // 默认使用eth
+        42161 => "arbitrum",
+        10 => "optimism",
+        43114 => "avalanche",
+        501 => "solana",
+        0 => "bitcoin",
+        607 => "ton",
+        _ => {
+            return Err(AppError::bad_request(format!(
+                "Unsupported chain_id: {}",
+                query.chain_id
+            )))
+        }
     };
 
     let blockchain_client =
@@ -4013,42 +4289,118 @@ pub struct TxHistoryItem {
     pub fee: String,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
-pub struct TxHistoryResponse {
-    pub transactions: Vec<TxHistoryItem>,
-    pub total: u64,
-    pub page: u32,
-    pub page_size: u32,
-}
-
 #[utoipa::path(
     get,
-    path = "/api/tx/history",
+    path = "/api/v1/transactions/history",
     params(GetTxHistoryQuery),
     responses(
-        (status = 200, description = "Transaction history", body = crate::api::response::ApiResponse<TxHistoryResponse>),
+        (status = 200, description = "Transaction history", body = crate::api::response::ApiResponse<Vec<TxHistoryItem>>),
         (status = 400, description = "Invalid input", body = crate::error_body::ErrorBodyDoc)
     )
 )]
 pub async fn get_tx_history(
-    State(_st): State<Arc<AppState>>,
+    State(st): State<Arc<AppState>>,
+    AuthInfoExtractor(auth): AuthInfoExtractor,
     Query(query): Query<GetTxHistoryQuery>,
-) -> Result<Json<crate::api::response::ApiResponse<TxHistoryResponse>>, AppError> {
-    crate::metrics::count_ok("GET /api/tx/history");
+) -> Result<Json<crate::api::response::ApiResponse<Vec<TxHistoryItem>>>, AppError> {
+    crate::metrics::count_ok("GET /api/v1/transactions/history");
 
-    // 企业级实现：从区块链查询交易历史
-    // 注意：这是一个简化实现，实际应该根据地址查询链上交易
-    // 当前返回空列表，实际实现需要调用RPC查询交易历史
+    let page = query.page.unwrap_or(1).max(1);
+    let page_size = query.page_size.unwrap_or(20).clamp(1, 100);
+    let offset = ((page - 1) as i64) * (page_size as i64);
 
-    let page = query.page.unwrap_or(1);
-    let page_size = query.page_size.unwrap_or(20);
+    let rows = sqlx::query(
+        r#"SELECT tx_hash,
+                  tx_type,
+                  status,
+                  from_address,
+                  to_address,
+                  amount::TEXT as amount,
+                  COALESCE(token_symbol, '') as token_symbol,
+                  COALESCE(gas_fee, '0') as gas_fee,
+                  EXTRACT(EPOCH FROM created_at)::BIGINT as ts
+           FROM transactions
+           WHERE user_id = $1
+           ORDER BY created_at DESC
+           LIMIT $2 OFFSET $3"#,
+    )
+    .bind(auth.user_id)
+    .bind(page_size as i64)
+    .bind(offset)
+    .fetch_all(&st.pool)
+    .await
+    .map_err(|e| AppError::internal(format!("Failed to query transactions: {}", e)))?;
+
+    let items = rows
+        .into_iter()
+        .map(|row| {
+            use sqlx::Row;
+            TxHistoryItem {
+                hash: row.get::<Option<String>, _>("tx_hash").unwrap_or_default(),
+                tx_type: row.get::<String, _>("tx_type"),
+                status: row.get::<String, _>("status"),
+                from: row.get::<String, _>("from_address"),
+                to: row.get::<String, _>("to_address"),
+                amount: row.get::<Option<String>, _>("amount").unwrap_or_else(|| "0".to_string()),
+                token: {
+                    let sym: String = row.get("token_symbol");
+                    if sym.trim().is_empty() { "NATIVE".to_string() } else { sym }
+                },
+                timestamp: row.get::<i64, _>("ts").max(0) as u64,
+                fee: row.get::<String, _>("gas_fee"),
+            }
+        })
+        .collect::<Vec<_>>();
 
     use crate::api::response::success_response;
-    success_response(TxHistoryResponse {
-        transactions: vec![],
-        total: 0,
-        page,
-        page_size,
+    success_response(items)
+}
+
+#[derive(Debug)]
+struct EvmTxDetails {
+    from: String,
+    to: String,
+    amount_decimal: Option<rust_decimal::Decimal>,
+    gas_fee: Option<String>,
+    nonce: Option<i64>,
+}
+
+fn parse_evm_signed_tx_details(signed_tx: &str) -> anyhow::Result<EvmTxDetails> {
+    use anyhow::Context;
+    use ethers::types::{Address, Transaction, H160, U256};
+    use ethers::utils::format_units;
+    use rust_decimal::Decimal;
+    use std::str::FromStr;
+
+    let tx_bytes =
+        hex::decode(signed_tx.trim_start_matches("0x")).context("Invalid hex transaction")?;
+    let tx: Transaction = rlp::decode(&tx_bytes).context("Failed to decode transaction")?;
+
+    let from: Address = tx.from;
+
+    let to_addr: H160 = match tx.to {
+        Some(to) => to,
+        None => Address::from_str("0x0000000000000000000000000000000000000000")?,
+    };
+
+    let amount_str = format_units(tx.value, 18).unwrap_or_else(|_| "0".to_string());
+    let amount_decimal = amount_str.parse::<Decimal>().ok();
+
+    // Estimate max fee in native token.
+    let gas_limit: U256 = tx.gas;
+    let gas_price: U256 = tx
+        .max_fee_per_gas
+        .or(tx.gas_price)
+        .unwrap_or_else(|| U256::from(0u64));
+    let fee_wei = gas_limit.saturating_mul(gas_price);
+    let fee_str = format_units(fee_wei, 18).ok();
+
+    Ok(EvmTxDetails {
+        from: format!("{:#x}", from),
+        to: format!("{:#x}", to_addr),
+        amount_decimal,
+        gas_fee: fee_str,
+        nonce: Some(tx.nonce.as_u64() as i64),
     })
 }
 

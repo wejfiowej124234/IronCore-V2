@@ -5,6 +5,340 @@
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
+-- 0. 防御性修复：确保 notify 相关表存在
+--
+-- 背景：早期迁移只创建了 notify schema，但未创建通知系统表；
+--      本迁移在创建唯一索引/外键时会引用 notify.* 表，从而在新库上失败。
+-- 策略：在添加约束/索引前先 CREATE TABLE IF NOT EXISTS（保持幂等）。
+-- ----------------------------------------------------------------------------
+
+-- ----------------------------------------------------------------------------
+-- 0.1 防御性修复：确保 tokens / events / fiat / asset 相关表存在
+--
+-- 背景：部分表在后续迁移（本文件/0011/0012/0017 等）中被引用，但在新库上没有被任何迁移创建。
+--      这会导致 fresh DB 在 migrations early stage 直接失败（例如 tokens.registry / events.domain_events）。
+-- 策略：在添加约束/索引前先 CREATE TABLE IF NOT EXISTS（保持幂等），确保新库能跑完整套迁移。
+-- ----------------------------------------------------------------------------
+
+CREATE SCHEMA IF NOT EXISTS tokens;
+CREATE SCHEMA IF NOT EXISTS events;
+CREATE SCHEMA IF NOT EXISTS fiat;
+
+-- 代币注册表（用于 tokens/list 等接口 & 0010/0011/0012/0013）
+CREATE TABLE IF NOT EXISTS tokens.registry (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    symbol TEXT NOT NULL,
+    name TEXT NOT NULL,
+    chain_id BIGINT NOT NULL,
+    address TEXT NOT NULL,
+    decimals BIGINT NOT NULL,
+    is_native BOOLEAN NOT NULL DEFAULT false,
+    is_stablecoin BOOLEAN NOT NULL DEFAULT false,
+    logo_url TEXT,
+    coingecko_id TEXT,
+    is_enabled BOOLEAN NOT NULL DEFAULT true,
+    priority BIGINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 事件订阅（0010/0011 约束/索引依赖）
+CREATE TABLE IF NOT EXISTS events.event_subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    handler_name TEXT NOT NULL,
+    event_type TEXT,
+    active BOOLEAN NOT NULL DEFAULT true,
+    last_processed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 领域事件持久化（event_bus.rs 使用，0011 索引依赖）
+CREATE TABLE IF NOT EXISTS events.domain_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_type TEXT NOT NULL,
+    event_data JSONB NOT NULL,
+    published_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    retry_count INT NOT NULL DEFAULT 0,
+    processed BOOLEAN NOT NULL DEFAULT false,
+    processed_at TIMESTAMPTZ,
+    last_error TEXT
+);
+
+-- 失败事件（0011 索引依赖；当前代码未强依赖但迁移引用）
+CREATE TABLE IF NOT EXISTS events.failed_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID,
+    handler_name TEXT,
+    error TEXT,
+    retry_count INT NOT NULL DEFAULT 0,
+    retry_scheduled_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 资产快照（0011 索引依赖；此前资产表迁移被移到 migrations_backup）
+CREATE TABLE IF NOT EXISTS asset_snapshots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    wallet_id UUID NOT NULL,
+    chain_symbol TEXT NOT NULL,
+    balance DECIMAL(30, 18) NOT NULL DEFAULT 0,
+    balance_usdt DECIMAL(20, 8) NOT NULL DEFAULT 0,
+    token_balances JSONB,
+    snapshot_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 跨链交易记录（0011 索引依赖；cross_chain_bridge_service.rs 使用）
+CREATE TABLE IF NOT EXISTS cross_chain_swaps (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    source_chain TEXT NOT NULL,
+    source_token TEXT NOT NULL,
+    source_amount DECIMAL(30, 18) NOT NULL,
+    source_wallet_id UUID NOT NULL,
+    target_chain TEXT NOT NULL,
+    target_token TEXT NOT NULL,
+    target_amount DECIMAL(30, 18),
+    estimated_amount DECIMAL(30, 18) NOT NULL,
+    target_wallet_id UUID,
+    exchange_rate DECIMAL(20, 8) NOT NULL,
+    fee_usdt DECIMAL(20, 8) NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'pending',
+    bridge_protocol TEXT,
+    bridge_tx_hash TEXT,
+    error_message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMPTZ
+);
+
+-- 法币服务商（0010/0011/0012/0017 依赖；ProviderService 使用）
+CREATE TABLE IF NOT EXISTS fiat.providers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    is_enabled BOOLEAN NOT NULL DEFAULT true,
+    priority BIGINT NOT NULL DEFAULT 0,
+    fee_min_percent DECIMAL(10, 4) NOT NULL DEFAULT 0,
+    fee_max_percent DECIMAL(10, 4) NOT NULL DEFAULT 0,
+    api_url TEXT NOT NULL DEFAULT '',
+    webhook_url TEXT,
+    timeout_seconds BIGINT NOT NULL DEFAULT 30,
+    supported_countries TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+    supported_payment_methods TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+    health_status TEXT NOT NULL DEFAULT 'unknown',
+    last_health_check TIMESTAMPTZ,
+    consecutive_failures BIGINT NOT NULL DEFAULT 0,
+    total_requests BIGINT NOT NULL DEFAULT 0,
+    successful_requests BIGINT NOT NULL DEFAULT 0,
+    average_response_time_ms BIGINT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 法币服务商国家支持（0010/0011 依赖；ProviderService 使用）
+CREATE TABLE IF NOT EXISTS fiat.provider_country_support (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    provider_id UUID NOT NULL,
+    country_code TEXT NOT NULL,
+    is_supported BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 法币订单（0011/0012 依赖；FiatService/ReconciliationService/AuditService 使用）
+CREATE TABLE IF NOT EXISTS fiat.orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    order_type TEXT NOT NULL,
+    payment_method TEXT NOT NULL,
+    fiat_amount DECIMAL(18, 6) NOT NULL,
+    fiat_currency TEXT NOT NULL,
+    crypto_amount DECIMAL(36, 18) NOT NULL,
+    crypto_token TEXT NOT NULL,
+    exchange_rate DECIMAL(18, 6) NOT NULL,
+    fee_amount DECIMAL(18, 6) NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    provider TEXT NOT NULL DEFAULT 'unknown',
+    provider_name TEXT,
+    provider_order_id TEXT,
+    payment_url TEXT,
+    wallet_address TEXT,
+    recipient_info JSONB,
+    quote_expires_at TIMESTAMPTZ,
+    order_expires_at TIMESTAMPTZ,
+    review_status TEXT NOT NULL DEFAULT 'auto_approved',
+    reviewed_by UUID,
+    reviewed_at TIMESTAMPTZ,
+    swap_tx_hash TEXT,
+    withdrawal_tx_hash TEXT,
+    completed_at TIMESTAMPTZ,
+    metadata JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 法币交易（0011/0012 依赖；当前代码弱依赖但迁移引用）
+CREATE TABLE IF NOT EXISTS fiat.transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID,
+    user_id UUID,
+    fiat_order_id UUID,
+    wallet_id UUID,
+    tx_type TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    tx_hash TEXT,
+    provider TEXT,
+    amount DECIMAL(36, 18),
+    currency TEXT,
+    metadata JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 已存在表的增量修复（确保后续外键可创建）
+ALTER TABLE fiat.transactions ADD COLUMN IF NOT EXISTS wallet_id UUID;
+
+-- 法币审计日志（0011 索引依赖；AuditService/FiatService 使用）
+CREATE TABLE IF NOT EXISTS fiat.audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL,
+    user_id UUID,
+    order_id UUID,
+    action TEXT NOT NULL,
+    amount DECIMAL(36, 18),
+    status TEXT,
+    provider TEXT,
+    ip_address TEXT,
+    user_agent TEXT,
+    metadata JSONB,
+    immudb_proof_hash TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 法币对账记录（0010/0011/0012 依赖；ReconciliationService 使用）
+CREATE TABLE IF NOT EXISTS fiat.reconciliation_records (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reconciliation_date DATE NOT NULL,
+    provider TEXT NOT NULL,
+    total_orders BIGINT NOT NULL DEFAULT 0,
+    matched_orders BIGINT NOT NULL DEFAULT 0,
+    unmatched_orders BIGINT NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'pending',
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 法币告警（0011/0012 依赖；ReconciliationService 使用）
+CREATE TABLE IF NOT EXISTS fiat.alerts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID,
+    alert_type TEXT NOT NULL,
+    severity TEXT NOT NULL,
+    message TEXT NOT NULL,
+    order_id UUID,
+    provider TEXT,
+    status TEXT NOT NULL DEFAULT 'open',
+    acknowledged_by UUID,
+    acknowledged_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE fiat.alerts ADD COLUMN IF NOT EXISTS acknowledged_by UUID;
+ALTER TABLE fiat.alerts ADD COLUMN IF NOT EXISTS acknowledged_at TIMESTAMPTZ;
+
+CREATE SCHEMA IF NOT EXISTS notify;
+
+-- 通知模板
+CREATE TABLE IF NOT EXISTS notify.templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code TEXT NOT NULL,
+    name TEXT,
+    title_template TEXT,
+    body_template TEXT,
+    channel TEXT NOT NULL DEFAULT 'in_app',
+    active BOOLEAN NOT NULL DEFAULT true,
+    metadata JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 通知实例
+CREATE TABLE IF NOT EXISTS notify.notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    category TEXT NOT NULL,
+    severity TEXT NOT NULL DEFAULT 'info',
+    scope TEXT NOT NULL DEFAULT 'global',
+    creator_role TEXT NOT NULL DEFAULT 'system',
+    revoked BOOLEAN NOT NULL DEFAULT false,
+    metadata JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 通知投递记录
+CREATE TABLE IF NOT EXISTS notify.deliveries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    notification_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    channel TEXT NOT NULL DEFAULT 'in_app',
+    status TEXT NOT NULL DEFAULT 'pending',
+    error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 用户通知偏好
+CREATE TABLE IF NOT EXISTS notify.user_preferences (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    notification_type TEXT NOT NULL,
+    channels JSONB NOT NULL DEFAULT '[]'::jsonb,
+    frequency TEXT NOT NULL DEFAULT '"immediate"',
+    enabled BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 用户通知端点（如推送/邮件等）
+CREATE TABLE IF NOT EXISTS notify.endpoints (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    endpoint_type TEXT NOT NULL,
+    endpoint TEXT NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT true,
+    metadata JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 活动/通知活动批次
+CREATE TABLE IF NOT EXISTS notify.campaigns (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    category TEXT NOT NULL,
+    name TEXT,
+    status TEXT NOT NULL DEFAULT 'draft',
+    metadata JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 通知历史（发送记录/审计）
+CREATE TABLE IF NOT EXISTS notify.notification_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    notification_id UUID,
+    channel TEXT,
+    status TEXT,
+    sent_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    metadata JSONB
+);
+
+-- ----------------------------------------------------------------------------
 -- 1. 唯一约束
 -- ----------------------------------------------------------------------------
 

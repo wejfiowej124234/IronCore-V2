@@ -124,7 +124,11 @@ impl PriceService {
 
     /// 从 CoinGecko 获取价格并更新
     async fn fetch_and_update_price(&self, symbol: &str) -> Result<Decimal> {
-        let coin_id = self.symbol_to_coingecko_id(symbol);
+        let symbol_upper = symbol.trim().to_uppercase();
+        let symbol_lower = symbol_upper.to_lowercase();
+        let is_stablecoin = matches!(symbol_lower.as_str(), "usdt" | "usdc" | "dai" | "busd");
+
+        let coin_id = self.symbol_to_coingecko_id(&symbol_upper);
 
         let url = format!(
             "https://api.coingecko.com/api/v3/simple/price?ids={}&vs_currencies=usd",
@@ -133,16 +137,36 @@ impl PriceService {
 
         tracing::info!("Fetching price from CoinGecko: {}", url);
 
-        let response = self
+        let response = match self
             .client
             .get(&url)
             .header("User-Agent", "IronForge/1.0")
             .timeout(std::time::Duration::from_secs(10))
             .send()
             .await
-            .context("Failed to fetch price from CoinGecko")?;
+        {
+            Ok(r) => r,
+            Err(e) => {
+                if is_stablecoin {
+                    tracing::warn!(
+                        symbol = %symbol_upper,
+                        "CoinGecko fetch failed; using static stablecoin price=1: {e}"
+                    );
+                    return self.store_static_price(&symbol_upper).await;
+                }
+                return Err(anyhow::Error::new(e)).context("Failed to fetch price from CoinGecko");
+            }
+        };
 
         if !response.status().is_success() {
+            if is_stablecoin {
+                tracing::warn!(
+                    symbol = %symbol_upper,
+                    status = %response.status(),
+                    "CoinGecko returned error; using static stablecoin price=1"
+                );
+                return self.store_static_price(&symbol_upper).await;
+            }
             anyhow::bail!("CoinGecko API error: {}", response.status());
         }
 
@@ -151,11 +175,20 @@ impl PriceService {
             .await
             .context("Failed to parse CoinGecko response")?;
 
-        let price_f64 = data
-            .prices
-            .get(&coin_id)
-            .ok_or_else(|| anyhow::anyhow!("Price not found for {}", coin_id))?
-            .usd;
+        let price_f64 = match data.prices.get(&coin_id) {
+            Some(v) => v.usd,
+            None => {
+                if is_stablecoin {
+                    tracing::warn!(
+                        symbol = %symbol_upper,
+                        coingecko_id = %coin_id,
+                        "CoinGecko response missing id; using static stablecoin price=1"
+                    );
+                    return self.store_static_price(&symbol_upper).await;
+                }
+                anyhow::bail!("Price not found for {}", coin_id);
+            }
+        };
 
         // 转换为Decimal以保持精度
         let price = Decimal::from_f64_retain(price_f64)
@@ -169,7 +202,7 @@ impl PriceService {
              ON CONFLICT (symbol, source)
              DO UPDATE SET price_usdt = EXCLUDED.price_usdt, last_updated = CURRENT_TIMESTAMP",
         )
-        .bind(symbol.to_uppercase())
+        .bind(&symbol_upper)
         .bind(price)
         .execute(&self.pool)
         .await
@@ -177,7 +210,7 @@ impl PriceService {
 
         // 更新缓存
         self.update_cache(
-            symbol.to_string(),
+            symbol_upper.clone(),
             price,
             "coingecko".to_string(),
             Utc::now(),
@@ -185,7 +218,35 @@ impl PriceService {
         .await;
 
         // 更新 Redis
-        self.set_to_redis_decimal(symbol, price).await?;
+        self.set_to_redis_decimal(&symbol_upper, price).await?;
+
+        Ok(price)
+    }
+
+    async fn store_static_price(&self, symbol_upper: &str) -> Result<Decimal> {
+        let price = Decimal::ONE;
+
+        sqlx::query(
+            "INSERT INTO prices (symbol, price_usdt, source, last_updated)
+             VALUES ($1, $2, 'static', CURRENT_TIMESTAMP)
+             ON CONFLICT (symbol, source)
+             DO UPDATE SET price_usdt = EXCLUDED.price_usdt, last_updated = CURRENT_TIMESTAMP",
+        )
+        .bind(symbol_upper)
+        .bind(price)
+        .execute(&self.pool)
+        .await
+        .context("Failed to update static price in database")?;
+
+        self.update_cache(
+            symbol_upper.to_string(),
+            price,
+            "static".to_string(),
+            Utc::now(),
+        )
+        .await;
+
+        let _ = self.set_to_redis_decimal(symbol_upper, price).await;
 
         Ok(price)
     }
@@ -193,17 +254,25 @@ impl PriceService {
     /// 符号转 CoinGecko ID
     fn symbol_to_coingecko_id(&self, symbol: &str) -> String {
         match symbol.to_lowercase().as_str() {
-            "eth" => "ethereum",
-            "btc" => "bitcoin",
-            "sol" => "solana",
-            "bnb" => "binancecoin",
-            "matic" => "matic-network",
-            "avax" => "avalanche-2",
-            "dot" => "polkadot",
-            "ada" => "cardano",
-            _ => symbol,
+            // majors
+            "eth" => "ethereum".to_string(),
+            "btc" => "bitcoin".to_string(),
+            "sol" => "solana".to_string(),
+            "bnb" => "binancecoin".to_string(),
+            "matic" => "matic-network".to_string(),
+            "avax" => "avalanche-2".to_string(),
+            "dot" => "polkadot".to_string(),
+            "ada" => "cardano".to_string(),
+
+            // stablecoins (critical for bridge quote in prod)
+            "usdt" => "tether".to_string(),
+            "usdc" => "usd-coin".to_string(),
+            "dai" => "dai".to_string(),
+            "busd" => "binance-usd".to_string(),
+
+            // default: try lowercase symbol as id (best-effort)
+            other => other.to_string(),
         }
-        .to_string()
     }
 
     /// 更新内存缓存
@@ -254,7 +323,9 @@ impl PriceService {
 
     /// 后台任务：定时更新所有支持的币种价格
     pub async fn start_price_updater(self: Arc<Self>) {
-        let supported_symbols = vec!["ETH", "SOL", "BTC", "BNB", "MATIC", "AVAX", "DOT", "ADA"];
+        let supported_symbols = vec![
+            "ETH", "SOL", "BTC", "BNB", "MATIC", "AVAX", "DOT", "ADA", "USDT", "USDC", "DAI", "BUSD",
+        ];
 
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300)); // 5分钟
@@ -304,5 +375,10 @@ mod tests {
         assert_eq!(service.symbol_to_coingecko_id("ETH"), "ethereum");
         assert_eq!(service.symbol_to_coingecko_id("SOL"), "solana");
         assert_eq!(service.symbol_to_coingecko_id("BTC"), "bitcoin");
+
+        assert_eq!(service.symbol_to_coingecko_id("USDT"), "tether");
+        assert_eq!(service.symbol_to_coingecko_id("USDC"), "usd-coin");
+        assert_eq!(service.symbol_to_coingecko_id("DAI"), "dai");
+        assert_eq!(service.symbol_to_coingecko_id("BUSD"), "binance-usd");
     }
 }

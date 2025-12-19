@@ -49,6 +49,7 @@ pub mod auth_api; // ✅ 认证 API（注册、登录、登出）
 pub mod bitcoin_api; // ✅ Bitcoin特定功能API
 pub mod bridge_api; // NEW: 跨链桥 API
 pub mod bridge_enhanced_api; // ✅ 增强版跨链桥API
+pub mod bridge_route_api; // ✅ Phase A: Route-based bridge quote (approve + swap)
 pub mod config_api; // ✅ 公共配置API（前端获取token配置）
 pub mod country_support_api; // ✅ 国家支持查询API
 pub mod cross_chain_enhanced_api; // ✅ G项深度优化: 跨链桥状态机+双锁验证
@@ -569,7 +570,9 @@ pub fn routes(state: Arc<AppState>) -> Router {
         // ✅ 企业级标准：Bridge API v1版本（跨链转移相同代币到不同链）
         .route(
             "/api/v1/bridge/quote",
-            axum::routing::get(bridge_api::get_bridge_quote).options(preflight_ok),
+            axum::routing::post(bridge_route_api::quote_bridge_route)
+                .get(bridge_api::get_bridge_quote)
+                .options(preflight_ok),
         )
         .route(
             "/api/v1/bridge/execute",
@@ -578,6 +581,10 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/v1/bridge/:id/status",
             axum::routing::get(bridge_enhanced_api::get_bridge_status).options(preflight_ok),
+        )
+        .route(
+            "/api/v1/bridge/history",
+            axum::routing::get(bridge_enhanced_api::get_bridge_history).options(preflight_ok),
         )
         // 管理员 API（需要管理员权限）
         .merge(admin_api::create_admin_routes())

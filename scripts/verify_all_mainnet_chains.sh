@@ -5,7 +5,7 @@
 
 set -e
 
-BASE_URL="${API_BASE_URL:-http://localhost:8088}"
+BASE_URL="${1:-${API_BASE_URL:-http://localhost:8088}}"
 BOLD='\033[1m'
 GREEN='\033[0;32m'
 RED='\033[0;31m'

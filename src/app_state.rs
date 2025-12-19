@@ -132,15 +132,23 @@ impl AppState {
 
         tracing::info!("Initializing default RPC endpoints...");
 
-        // 插入默认端点
+        // 插入默认端点（MAINNET）
+        // 注意：chain字段用于RpcSelector选择，必须与业务侧传入的链标识一致。
         let endpoints = vec![
-            ("ethereum", "https://ethereum-sepolia-rpc.publicnode.com", 1),
-            ("ethereum", "https://rpc.sepolia.org", 2),
-            (
-                "ethereum",
-                "https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
-                3,
-            ),
+            // Ethereum mainnet
+            ("ethereum", "https://eth.llamarpc.com", 1),
+            ("ethereum", "https://rpc.ankr.com/eth", 2),
+            ("ethereum", "https://cloudflare-eth.com", 3),
+            // BSC mainnet
+            ("bsc", "https://bsc-dataseed1.binance.org", 1),
+            ("bsc", "https://rpc.ankr.com/bsc", 2),
+            // Polygon mainnet
+            ("polygon", "https://polygon-rpc.com", 1),
+            ("polygon", "https://rpc.ankr.com/polygon", 2),
+            // L2s
+            ("arbitrum", "https://arb1.arbitrum.io/rpc", 1),
+            ("optimism", "https://mainnet.optimism.io", 1),
+            ("avalanche", "https://api.avax.network/ext/bc/C/rpc", 1),
         ];
 
         for (chain, url, priority) in endpoints {
