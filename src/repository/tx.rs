@@ -33,7 +33,7 @@ pub async fn create(pool: &PgPool, input: CreateTxInput) -> Result<TxRequest, sq
         r#"
         INSERT INTO tx_requests (tenant_id, wallet_id, chain_id, to_addr, amount, status, metadata)
         VALUES ($1, $2, $3, $4, $5, 'draft', $6)
-        RETURNING id, tenant_id, wallet_id, chain_id, to_addr, amount, status, metadata, created_at
+        RETURNING id, tenant_id, wallet_id, chain_id::BIGINT AS chain_id, to_addr, amount, status, metadata, created_at
         "#,
     )
     .bind(input.tenant_id)
@@ -50,7 +50,7 @@ pub async fn create(pool: &PgPool, input: CreateTxInput) -> Result<TxRequest, sq
 pub async fn get_by_id(pool: &PgPool, id: Uuid) -> Result<Option<TxRequest>, sqlx::Error> {
     let rec = sqlx::query_as::<_, TxRequest>(
         r#"
-        SELECT id, tenant_id, wallet_id, chain_id, to_addr, amount, status, metadata, created_at
+        SELECT id, tenant_id, wallet_id, chain_id::BIGINT AS chain_id, to_addr, amount, status, metadata, created_at
         FROM tx_requests
         WHERE id = $1
         "#,
@@ -70,7 +70,7 @@ pub async fn list_by_wallet(
 ) -> Result<Vec<TxRequest>, sqlx::Error> {
     let recs = sqlx::query_as::<_, TxRequest>(
         r#"
-        SELECT id, tenant_id, wallet_id, chain_id, to_addr, amount, status, metadata, created_at
+        SELECT id, tenant_id, wallet_id, chain_id::BIGINT AS chain_id, to_addr, amount, status, metadata, created_at
         FROM tx_requests
         WHERE tenant_id = $1 AND wallet_id = $2
         ORDER BY created_at DESC
@@ -94,7 +94,7 @@ pub async fn list_by_tenant(
 ) -> Result<Vec<TxRequest>, sqlx::Error> {
     let recs = sqlx::query_as::<_, TxRequest>(
         r#"
-        SELECT id, tenant_id, wallet_id, chain_id, to_addr, amount, status, metadata, created_at
+        SELECT id, tenant_id, wallet_id, chain_id::BIGINT AS chain_id, to_addr, amount, status, metadata, created_at
         FROM tx_requests
         WHERE tenant_id = $1
         ORDER BY created_at DESC
@@ -119,7 +119,7 @@ pub async fn update_status(
         r#"
         UPDATE tx_requests SET status = $3
         WHERE id = $1 AND tenant_id = $2
-        RETURNING id, tenant_id, wallet_id, chain_id, to_addr, amount, status, metadata, created_at
+        RETURNING id, tenant_id, wallet_id, chain_id::BIGINT AS chain_id, to_addr, amount, status, metadata, created_at
         "#,
     )
     .bind(id)
