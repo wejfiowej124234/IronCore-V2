@@ -453,7 +453,7 @@ const amount = Number(transaction.amount);
 
 **自动化方式**:
 ```powershell
-cd IronCore
+cd IronCore-V2
 .\apply_cockroachdb_fix.ps1
 ```
 
@@ -490,7 +490,7 @@ Get-Content migrations\0021_unified_transaction_status.sql | Select-String "::tr
 cargo run --release
 
 # 测试 API
-curl http://localhost:8080/api/v1/health
+curl http://localhost:8088/api/health
 ```
 
 ### 短期（本周）

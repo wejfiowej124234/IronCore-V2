@@ -183,7 +183,7 @@ pub async fn get_wallet_handler(
     "error": "Wallet not found",
     "trace_id": "abc123xyz",
     "user_id": "123",
-    "request_path": "/api/wallets/550e8400"
+    "request_path": "/api/v1/wallets/550e8400"
   }
 }
 ```

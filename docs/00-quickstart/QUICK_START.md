@@ -13,7 +13,7 @@
 ### 方法 1: 启动应用自动迁移（最简单，推荐）
 
 ```bash
-cd IronCore
+cd IronCore-V2
 cargo run
 ```
 
@@ -33,14 +33,14 @@ cargo install sqlx-cli
 export DATABASE_URL="postgresql://root@localhost:26257/ironcore?sslmode=disable"
 
 # 执行迁移
-cd IronCore
+cd IronCore-V2
 sqlx migrate run
 ```
 
 ### 方法 3: 使用迁移脚本
 
 ```bash
-cd IronCore
+cd IronCore-V2
 ./scripts/run-migrations-cockroachdb.sh
 ```
 
@@ -79,7 +79,7 @@ docker logs ironwallet-cockroachdb
 
 **解决**: 重置数据库
 ```bash
-cd IronCore
+cd IronCore-V2
 RESET_DB=true cargo run
 ```
 

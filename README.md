@@ -143,32 +143,18 @@ enable_prometheus = true
 ## 📡 API 端点
 
 ### 健康检查
-- `GET /api/health` - 服务状态
-- `GET /api/health/ready` - 就绪检查
-- `GET /api/health/live` - 存活检查
+- `GET /api/health` - 基础健康检查（兼容别名：`GET /health`）
+- `GET /healthz` - 详细探活（推荐用于 readiness 探针）
 
-### 认证
-- `POST /api/auth/register` - 用户注册
-- `POST /api/auth/login` - 用户登录
-- `POST /api/auth/logout` - 用户登出
+### 监控
+- `GET /metrics` - Prometheus 指标
 
-### 钱包
-- `GET /api/wallets` - 钱包列表
-- `POST /api/wallets` - 创建钱包
-- `GET /api/wallets/:id` - 钱包详情
-- `PUT /api/wallets/:id` - 更新钱包
-- `DELETE /api/wallets/:id` - 删除钱包
+### OpenAPI（权威）
+- `GET /openapi.yaml` - OpenAPI 文档
+- `GET /docs` - Swagger UI
 
-### 交易
-- `GET /api/transactions` - 交易列表
-- `POST /api/transactions` - 创建交易
-- `GET /api/transactions/:id` - 交易详情
-
-### 资产
-- `GET /api/assets` - 资产列表
-- `GET /api/assets/:id` - 资产详情
-
-**完整 API 文档**: [API 路由映射](./docs/01-architecture/API_ROUTES_MAP.md)
+### 业务 API（权威）
+- 所有业务接口统一在 `/api/v1/...`，请以 OpenAPI 为准（避免复制 README 中的历史清单）。
 
 ---
 

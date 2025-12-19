@@ -102,16 +102,14 @@ async fn test_wallet_api_integration() {
     
     // 3. 创建钱包
     let response = app
-        .post("/api/wallets")
+        .post("/api/v1/wallets/batch")
         .header("Authorization", format!("Bearer {}", token))
-        .json(&create_wallet_request)
+        .json(&batch_create_wallets_request)
         .send()
         .await;
     
     // 4. 验证响应
-    assert_eq!(response.status(), 201);
-    let wallet: Wallet = response.json().await;
-    assert_eq!(wallet.name, "Test Wallet");
+    assert_eq!(response.status(), 200);
 }
 ```
 
@@ -197,7 +195,7 @@ mock_repo
 
 ### 运行所有测试
 ```bash
-cd IronCore
+cd IronCore-V2
 cargo test --workspace
 ```
 
@@ -227,7 +225,7 @@ cargo llvm-cov --json --output-path coverage.json
 
 ### 运行性能基准测试
 ```bash
-cd IronCore
+cd IronCore-V2
 cargo bench
 ```
 

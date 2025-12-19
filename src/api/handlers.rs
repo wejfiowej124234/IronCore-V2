@@ -611,8 +611,8 @@ pub async fn calculate_platform_fee(
 }
 
 // 企业级标准：GasSuggestQuery 和 GasSuggestResponse 已移除
-// api_gas_suggest 函数已移除，统一使用 /api/gas/estimate-all
-// 如需获取Gas费用估算，请使用 GET /api/gas/estimate-all 端点
+// api_gas_suggest 函数已移除，统一使用 /api/v1/gas/estimate-all
+// 如需获取Gas费用估算，请使用 GET /api/v1/gas/estimate-all 端点
 
 #[derive(Debug, Deserialize, ToSchema, IntoParams)]
 pub struct NetworkStatusQuery {

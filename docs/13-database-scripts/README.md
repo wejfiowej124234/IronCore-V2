@@ -8,7 +8,7 @@
 完全重置数据库 - Windows PowerShell 版本
 
 ```powershell
-cd IronCore
+cd IronCore-V2
 .\scripts\reset-database.ps1
 .\scripts\reset-database.ps1 -Force  # 跳过确认
 ```
@@ -17,7 +17,7 @@ cd IronCore
 完全重置数据库 - Windows CMD 版本
 
 ```cmd
-cd IronCore
+cd IronCore-V2
 scripts\reset-database.bat
 ```
 
@@ -25,7 +25,7 @@ scripts\reset-database.bat
 完全重置数据库 - Linux/Mac/Git Bash 版本
 
 ```bash
-cd IronCore
+cd IronCore-V2
 ./scripts/reset-database.sh
 ./scripts/reset-database.sh --force  # 跳过确认
 ```
@@ -44,7 +44,7 @@ cd IronCore
 运行数据库迁移 - Windows CMD 版本
 
 ```cmd
-cd IronCore
+cd IronCore-V2
 scripts\run-migrations-cockroachdb.bat
 ```
 
@@ -52,7 +52,7 @@ scripts\run-migrations-cockroachdb.bat
 运行数据库迁移 - Linux/Mac/Git Bash 版本
 
 ```bash
-cd IronCore
+cd IronCore-V2
 ./scripts/run-migrations-cockroachdb.sh
 ```
 
@@ -69,7 +69,7 @@ cd IronCore
 通过环境变量触发重置
 
 ```cmd
-cd IronCore
+cd IronCore-V2
 scripts\reset-db-simple.bat
 ```
 
@@ -77,7 +77,7 @@ scripts\reset-db-simple.bat
 通过环境变量触发重置
 
 ```bash
-cd IronCore
+cd IronCore-V2
 ./scripts/reset-db-simple.sh
 ```
 
@@ -94,7 +94,7 @@ cd IronCore
 
 ```bash
 # 1. 进入项目目录
-cd IronCore
+cd IronCore-V2
 
 # 2. 重置数据库（完全清空）
 ./scripts/reset-database.sh
@@ -107,7 +107,7 @@ cargo run
 
 ```powershell
 # 1. 进入项目目录
-cd IronCore
+cd IronCore-V2
 
 # 2. 重置数据库（完全清空）
 .\scripts\reset-database.ps1
@@ -120,7 +120,7 @@ cargo run
 
 ```cmd
 # 1. 进入项目目录
-cd IronCore
+cd IronCore-V2
 
 # 2. 重置数据库（完全清空）
 scripts\reset-database.bat

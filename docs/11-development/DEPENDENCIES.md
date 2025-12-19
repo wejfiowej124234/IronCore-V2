@@ -414,10 +414,10 @@ utoipa = { version = "4", features = [
 ```rust
 #[utoipa::path(
     post,
-    path = "/api/wallets",
-    request_body = CreateWalletRequest,
+    path = "/api/v1/wallets/batch",
+    request_body = BatchCreateWalletsRequest,
     responses(
-        (status = 200, description = "Success", body = Wallet),
+        (status = 200, description = "Success", body = ApiResponse<BatchCreateWalletsResponse>),
         (status = 400, description = "Bad Request")
     )
 )]

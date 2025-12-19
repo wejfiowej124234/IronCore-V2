@@ -509,7 +509,7 @@ lazy_static! {
 use tower_http::compression::CompressionLayer;
 
 let app = Router::new()
-    .route("/api/wallets", get(list_wallets))
+    .route("/api/v1/wallets", get(list_wallets))
     .layer(CompressionLayer::new());  // 自动 gzip 压缩
 ```
 
@@ -608,7 +608,7 @@ cargo bench
 # 使用 wrk
 wrk -t12 -c400 -d30s \
     -s scripts/load_test.lua \
-    http://localhost:8088/api/wallets
+    http://localhost:8088/api/v1/wallets
 
 # 使用 k6
 k6 run --vus 100 --duration 30s scripts/load_test.js

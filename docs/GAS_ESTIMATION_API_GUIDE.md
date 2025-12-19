@@ -8,7 +8,7 @@ Gas 费预估 API 基于 **EIP-1559** 标准，提供三档速度的 Gas 费预�
 
 ### 1. 单速度预估
 
-**GET** `/api/gas/estimate`
+**GET** `/api/v1/gas/estimate`
 
 预估指定速度档位的 Gas 费用。
 
@@ -40,18 +40,18 @@ Gas 费预估 API 基于 **EIP-1559** 标准，提供三档速度的 Gas 费预�
 
 ```bash
 # 预估以太坊正常速度 Gas 费
-curl "http://localhost:8088/api/gas/estimate?chain=ethereum&speed=normal"
+curl "http://localhost:8088/api/v1/gas/estimate?chain=ethereum&speed=normal"
 
 # 预估 BSC 快速 Gas 费
-curl "http://localhost:8088/api/gas/estimate?chain=bsc&speed=fast"
+curl "http://localhost:8088/api/v1/gas/estimate?chain=bsc&speed=fast"
 
 # 预估 Polygon 慢速 Gas 费
-curl "http://localhost:8088/api/gas/estimate?chain=polygon&speed=slow"
+curl "http://localhost:8088/api/v1/gas/estimate?chain=polygon&speed=slow"
 ```
 
 ### 2. 批量预估（所有速度）
 
-**GET** `/api/gas/estimate-all`
+**GET** `/api/v1/gas/estimate-all`
 
 一次性返回三档速度的 Gas 费预估，便于前端展示。
 
@@ -102,10 +102,10 @@ curl "http://localhost:8088/api/gas/estimate?chain=polygon&speed=slow"
 
 ```bash
 # 批量预估以太坊所有速度
-curl "http://localhost:8088/api/gas/estimate-all?chain=ethereum"
+curl "http://localhost:8088/api/v1/gas/estimate-all?chain=ethereum"
 
 # 批量预估 Polygon 所有速度
-curl "http://localhost:8088/api/gas/estimate-all?chain=polygon"
+curl "http://localhost:8088/api/v1/gas/estimate-all?chain=polygon"
 ```
 
 ## 支持的链
@@ -143,11 +143,11 @@ curl "http://localhost:8088/api/gas/estimate-all?chain=polygon"
 ```typescript
 async function estimateGas(chain: string, speed: 'slow' | 'normal' | 'fast') {
   const response = await fetch(
-    `http://localhost:8088/api/gas/estimate?chain=${chain}&speed=${speed}`
+    `http://localhost:8088/api/v1/gas/estimate?chain=${chain}&speed=${speed}`
   );
   const result = await response.json();
   
-  if (result.success) {
+  if (result.code === 0) {
     console.log(`Max Fee: ${result.data.max_fee_per_gas_gwei} Gwei`);
     console.log(`Estimated Time: ${result.data.estimated_time_seconds}s`);
     return result.data;
@@ -156,11 +156,11 @@ async function estimateGas(chain: string, speed: 'slow' | 'normal' | 'fast') {
 
 async function estimateAllSpeeds(chain: string) {
   const response = await fetch(
-    `http://localhost:8088/api/gas/estimate-all?chain=${chain}`
+    `http://localhost:8088/api/v1/gas/estimate-all?chain=${chain}`
   );
   const result = await response.json();
   
-  if (result.success) {
+  if (result.code === 0) {
     return {
       slow: result.data.slow,
       normal: result.data.normal,
@@ -187,10 +187,12 @@ function useGasEstimate(chain: string) {
     async function fetchGas() {
       try {
         const res = await fetch(
-          `http://localhost:8088/api/gas/estimate-all?chain=${chain}`
+          `http://localhost:8088/api/v1/gas/estimate-all?chain=${chain}`
         );
         const data = await res.json();
-        setGasData(data.data);
+        if (data.code === 0) {
+          setGasData(data.data);
+        }
       } catch (err) {
         console.error('Failed to fetch gas', err);
       } finally {

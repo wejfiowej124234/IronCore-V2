@@ -126,12 +126,12 @@
 ### 修改文件（6个）
 
 ```
-✓ IronCore/src/api/multi_chain_api.rs                 (完全重写)
-✓ IronCore/src/api/fiat_offramp_enhanced.rs           (移除重复定义)
-✓ IronCore/src/api/mod.rs                              (添加新模块)
-✓ IronCore/src/service/mod.rs                          (添加新服务)
-✓ IronCore/src/domain/mod.rs                           (添加验证器)
-✓ IronCore/src/infrastructure/mod.rs                   (添加脱敏器)
+✓ IronCore-V2/src/api/multi_chain_api.rs                 (完全重写)
+✓ IronCore-V2/src/api/fiat_offramp_enhanced.rs           (移除重复定义)
+✓ IronCore-V2/src/api/mod.rs                              (添加新模块)
+✓ IronCore-V2/src/service/mod.rs                          (添加新服务)
+✓ IronCore-V2/src/domain/mod.rs                           (添加验证器)
+✓ IronCore-V2/src/infrastructure/mod.rs                   (添加脱敏器)
 ✓ IronCore/Cargo.toml                                  (添加regex依赖)
 ```
 
@@ -174,7 +174,7 @@
 ### 1. 运行数据库迁移
 
 ```bash
-cd IronCore
+cd IronCore-V2
 sqlx database create
 sqlx migrate run
 ```
@@ -242,7 +242,7 @@ const wallets = [
 ];
 
 // 步骤2：注册到后端（不发送私钥！）
-const response = await fetch('/api/wallets/create-multi', {
+const response = await fetch('/api/v1/wallets/batch', {
   method: 'POST',
   headers: {
     'Authorization': `Bearer ${jwt_token}`,
@@ -266,7 +266,7 @@ const challenge = `unlock_${Date.now()}_${walletAddress}`;
 const unlockProof = await signMessage(challenge, privateKey);
 
 // 步骤4：提交解锁证明到后端（钱包锁）
-const response = await fetch('/api/wallets/unlock', {
+const response = await fetch('/api/v1/wallets/unlock', {
   method: 'POST',
   headers: {
     'Authorization': `Bearer ${jwt}`,  // 登录锁
@@ -297,7 +297,7 @@ const tx = {
 const signedTx = await wallet.signTransaction(tx);
 
 // 步骤3：提交到后端广播
-const response = await fetch('/api/transactions/send', {
+const response = await fetch('/api/v1/transactions', {
   method: 'POST',
   headers: {
     'Authorization': `Bearer ${jwt}`,

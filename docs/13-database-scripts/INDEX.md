@@ -22,7 +22,7 @@ scripts\setup\start-backend.bat
 #### Linux/Mac
 ```bash
 # 使用 Cargo
-cd IronCore
+cd IronCore-V2
 cargo run
 
 # 或使用配置文件
@@ -69,7 +69,7 @@ CONFIG_PATH=config.toml cargo run
 ```batch
 @echo off
 REM 启动 IronCore 后端服务
-cd IronCore
+cd IronCore-V2
 cargo run
 ```
 
@@ -91,20 +91,37 @@ cargo run
 # 测试多链钱包 API
 set -e
 
-echo "Testing Ethereum API..."
-curl -X POST http://localhost:8088/api/wallet/create \
-  -H "Content-Type: application/json" \
-  -d '{"chain":"ethereum"}'
+API_BASE_URL=${API_BASE_URL:-http://localhost:8088}
 
-echo "Testing BSC API..."
-curl -X POST http://localhost:8088/api/wallet/create \
-  -H "Content-Type: application/json" \
-  -d '{"chain":"bsc"}'
+echo "Listing supported chains..."
+curl -sS "$API_BASE_URL/api/v1/chains" | head
 
-echo "Testing Polygon API..."
-curl -X POST http://localhost:8088/api/wallet/create \
+echo "Registering wallets (non-custodial, public info only)..."
+echo "NOTE: This endpoint is authenticated. Export TOKEN first (JWT from /api/v1/auth/login or /api/v1/auth/refresh)."
+: "${TOKEN:?Missing TOKEN env var}"
+
+curl -sS -X POST "$API_BASE_URL/api/v1/wallets/batch" \
   -H "Content-Type: application/json" \
-  -d '{"chain":"polygon"}'
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "wallets": [
+      {
+        "chain": "ETH",
+        "address": "0x0000000000000000000000000000000000000001",
+        "public_key": "04aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      {
+        "chain": "BSC",
+        "address": "0x0000000000000000000000000000000000000002",
+        "public_key": "04bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      {
+        "chain": "POLYGON",
+        "address": "0x0000000000000000000000000000000000000003",
+        "public_key": "04cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    ]
+  }'
 ```
 
 **测试内容**:
@@ -152,7 +169,7 @@ tail -f IronCore/backend.log
 
 # 或手动测试
 curl http://localhost:8088/api/health
-curl http://localhost:8088/api-docs/openapi.yaml
+curl http://localhost:8088/openapi.yaml
 ```
 
 ### 问题排查
@@ -260,10 +277,10 @@ curl http://localhost:8088/api/health
 ### OpenAPI 文档
 ```bash
 # 查看 API 文档
-curl http://localhost:8088/api-docs/openapi.yaml
+curl http://localhost:8088/openapi.yaml
 
 # 浏览器访问
-http://localhost:8088/api-docs
+http://localhost:8088/docs
 ```
 
 ### Prometheus 指标

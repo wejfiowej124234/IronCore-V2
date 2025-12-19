@@ -51,7 +51,7 @@
 
 ### JWT 认证
 
-**实现位置**: `IronCore/src/api/middleware/auth.rs`
+**实现位置**: `IronCore-V2/src/api/middleware/auth.rs`
 
 **认证流程**:
 1. ✅ 提取 Authorization 头
@@ -72,7 +72,7 @@
 
 ### RBAC 权限控制
 
-**实现位置**: `IronCore/src/api/middleware/rbac.rs`
+**实现位置**: `IronCore-V2/src/api/middleware/rbac.rs`
 
 **角色定义**:
 - ✅ `admin` - 管理员
@@ -98,26 +98,10 @@ require_admin(&auth)?;
 
 ### 端点保护验证
 
-**受保护端点**:
-- ✅ 所有 `/api/v1/*` 端点需要认证
-- ✅ 所有 `/api/wallets/*` 端点需要认证（除公开查询）
-- ✅ 所有 `/api/transactions/*` 端点需要认证
-- ✅ 所有 `/api/fiat/*` 端点需要认证
-- ✅ 所有 `/api/swap/*` 端点需要认证
-- ✅ 所有 `/api/bridge/*` 端点需要认证
-- ✅ 所有 `/api/admin/*` 端点需要管理员权限
-
-**公开端点**:
-- ✅ `/api/auth/register` - 用户注册
-- ✅ `/api/auth/login` - 用户登录
-- ✅ `/api/auth/refresh` - 刷新Token
-- ✅ `/api/health` - 健康检查
-- ✅ `/api/chains` - 链信息查询
-- ✅ `/api/wallets/unified-create` - 钱包创建（公开演示）
-- ✅ `/api/wallets/validate-address` - 地址验证
-- ✅ `/api/tx/nonce` - 获取nonce（公开查询）
-- ✅ `/api/tx/history` - 交易历史（公开查询）
-- ✅ `/api/gas/estimate-all` - Gas估算（公开查询）
+**原则**（以代码为准）:
+- ✅ 业务接口统一使用 `/api/v1/...`，默认需要认证（除非 OpenAPI 明确标注为公开）
+- ✅ 健康检查为公开端点：`GET /api/health`
+- ✅ 具体“公开/受保护/管理员”端点列表以 OpenAPI 为准：`GET /openapi.yaml`
 
 **验证状态**: ✅ 符合企业级标准
 
@@ -125,7 +109,7 @@ require_admin(&auth)?;
 
 ## 🛡️ Webhook 签名验证
 
-**实现位置**: `IronCore/src/api/webhook_api.rs`
+**实现位置**: `IronCore-V2/src/api/webhook_api.rs`
 
 **签名算法**: HMAC-SHA256
 - ✅ 使用 HMAC-SHA256 计算签名

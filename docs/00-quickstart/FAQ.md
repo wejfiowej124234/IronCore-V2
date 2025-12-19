@@ -134,7 +134,7 @@ JWT_SECRET=your-secret-key
 **方法1: 浏览器（GET请求）**
 ```
 http://localhost:8088/api/health
-http://localhost:8088/api/chains
+http://localhost:8088/api/v1/chains
 ```
 
 **方法2: curl命令**
@@ -142,14 +142,14 @@ http://localhost:8088/api/chains
 # GET请求
 curl http://localhost:8088/api/health
 
-# POST请求
-curl -X POST http://localhost:8088/api/wallets/create \
+# POST请求（公开API示例：平台服务费计算）
+curl -X POST http://localhost:8088/api/v1/fees/calculate \
   -H "Content-Type: application/json" \
-  -d '{"mnemonic":"...","chains":["ethereum"]}'
+  -d '{"fee_type":"send","amount_usd":100,"chain":"ethereum"}'
 ```
 
 **方法3: Postman/Apifox**
-- 导入OpenAPI文档: `http://localhost:8088/api-docs/openapi.yaml`
+- 导入OpenAPI文档: `http://localhost:8088/openapi.yaml`
 - 直接可视化测试所有API
 
 ### Q7: API返回401 Unauthorized？
@@ -158,7 +158,7 @@ curl -X POST http://localhost:8088/api/wallets/create \
 
 1. **先注册/登录获取token**
    ```bash
-   curl -X POST http://localhost:8088/api/auth/login \
+  curl -X POST http://localhost:8088/api/v1/auth/login \
      -H "Content-Type: application/json" \
      -d '{"username":"admin","password":"password"}'
    
@@ -167,7 +167,7 @@ curl -X POST http://localhost:8088/api/wallets/create \
 
 2. **带token访问API**
    ```bash
-   curl http://localhost:8088/api/wallets \
+  curl http://localhost:8088/api/v1/wallets \
      -H "Authorization: Bearer eyJhbGc..."
    ```
 
@@ -178,13 +178,13 @@ curl -X POST http://localhost:8088/api/wallets/create \
 **常见错误**:
 ```bash
 # ❌ 错误：缺少 Content-Type
-curl -X POST http://localhost:8088/api/wallets/create \
-  -d '{"mnemonic":"..."}'
+curl -X POST http://localhost:8088/api/v1/fees/calculate \
+  -d '{"fee_type":"send","amount_usd":100,"chain":"ethereum"}'
 
 # ✅ 正确：加上 Content-Type
-curl -X POST http://localhost:8088/api/wallets/create \
+curl -X POST http://localhost:8088/api/v1/fees/calculate \
   -H "Content-Type: application/json" \
-  -d '{"mnemonic":"..."}'
+  -d '{"fee_type":"send","amount_usd":100,"chain":"ethereum"}'
 ```
 
 **JSON格式错误**:
@@ -200,9 +200,13 @@ curl -X POST http://localhost:8088/api/wallets/create \
 
 **A**: 三种方式
 
-1. **OpenAPI文档**: `http://localhost:8088/api-docs/openapi.yaml`
+1. **OpenAPI文档**: `http://localhost:8088/openapi.yaml`
 2. **文档**: [API路由映射](../01-architecture/API_ROUTES_MAP.md)
-3. **Swagger UI**: `http://localhost:8088/swagger-ui` (如果启用)
+3. **Swagger UI**: `http://localhost:8088/docs`
+
+
+> 非托管提醒：IronCore-V2 不接收助记词/私钥。
+> 如需登记钱包用于跨设备同步，请使用 `POST /api/v1/wallets/batch`（提交地址、公钥等公开信息，需JWT）。
 
 ---
 
@@ -228,8 +232,7 @@ abandon abandon abandon abandon abandon about
 **生成新助记词**:
 ```rust
 // 使用在线工具: https://iancoleman.io/bip39/
-// 或者调用API（如果实现了）
-POST /api/wallets/generate-mnemonic
+// IronCore-V2 非托管：不提供“生成助记词”后端API（助记词只应在客户端/本地生成）
 ```
 
 ### Q11: 同一个助记词能生成多少个地址？
@@ -272,20 +275,16 @@ POST /api/wallets/generate-mnemonic
 
 ### Q14: 如何验证地址是否有效？
 
-**A**: 使用验证API
+**A**: 使用余额查询作为最小验证（地址格式错误会返回 400）
 
 ```bash
-curl -X POST http://localhost:8088/api/wallets/validate-address \
-  -H "Content-Type: application/json" \
-  -d '{
-    "chain": "ethereum",
-    "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1"
-  }'
+curl "http://localhost:8088/api/v1/balance?chain=ethereum&address=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1"
 
 # 返回
 {
-  "valid": true,
-  "normalized": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1"
+  "balance": "0",
+  "chain_id": 1,
+  "confirmed": true
 }
 ```
 
@@ -315,14 +314,15 @@ Total Fee = Gas Used × Gas Price
 **A**: 根据优先级
 
 ```bash
-# 查询当前Gas价格
-curl http://localhost:8088/api/gas/price?chain=ethereum
+# 查询当前Gas建议（estimate-all）
+curl "http://localhost:8088/api/v1/gas/estimate-all?chain=ethereum"
 
 # 返回
 {
-  "slow": { "gwei": 10, "time": "10-30分钟" },
-  "normal": { "gwei": 20, "time": "3-5分钟" },
-  "fast": { "gwei": 50, "time": "30秒-1分钟" }
+  "slow": { "max_fee_per_gas_gwei": "...", "estimated_time_seconds": 600 },
+  "normal": { "max_fee_per_gas_gwei": "...", "estimated_time_seconds": 180 },
+  "fast": { "max_fee_per_gas_gwei": "...", "estimated_time_seconds": 30 },
+  "timestamp": "..."
 }
 ```
 
@@ -362,16 +362,19 @@ curl http://localhost:8088/api/gas/price?chain=ethereum
 **A**: 使用交易ID查询
 
 ```bash
-curl http://localhost:8088/api/transactions/{tx_id} \
+curl "http://localhost:8088/api/v1/transactions/{tx_hash}/status" \
   -H "Authorization: Bearer <token>"
 
 # 返回
 {
-  "tx_id": "550e8400-...",
-  "tx_hash": "0xabcd...",
+  "code": 0,
+  "message": "success",
+  "data": {
+    "tx_hash": "0xabcd...",
   "status": "confirmed",
-  "confirmations": 12,
-  "timestamp": "2025-11-24T10:15:00Z"
+    "confirmations": 12,
+    "last_seen": 1732443300
+  }
 }
 ```
 
@@ -400,7 +403,7 @@ curl http://localhost:8088/api/transactions/{tx_id} \
 **检查清单**:
 ```bash
 # 1. 查询余额
-curl "http://localhost:8088/api/asset/balance?chain=ethereum&address=0x..."
+curl "http://localhost:8088/api/v1/balance?chain=ethereum&address=0x..."
 
 # 2. 确认有足够的币
 # 需要: 转账金额 + Gas费
@@ -421,7 +424,7 @@ curl "http://localhost:8088/api/asset/balance?chain=ethereum&address=0x..."
 **解决方案**:
 ```bash
 # 1. 查询当前nonce
-curl "http://localhost:8088/api/wallets/nonce?chain=ethereum&address=0x..."
+curl "http://localhost:8088/api/v1/transactions/nonce?chain_id=1&address=0x..."
 
 # 2. 等待前一笔交易确认
 # 3. 使用正确的nonce重新发送
@@ -539,12 +542,12 @@ curl -w "@curl-format.txt" http://localhost:8088/api/health
 
 ```bash
 # 方法1: 重新登录
-curl -X POST http://localhost:8088/api/auth/login \
+curl -X POST http://localhost:8088/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"password"}'
 
 # 方法2: 刷新token（如果实现了）
-curl -X POST http://localhost:8088/api/auth/refresh \
+curl -X POST http://localhost:8088/api/v1/auth/refresh \
   -H "Authorization: Bearer <old_token>"
 ```
 
@@ -557,11 +560,8 @@ curl -X POST http://localhost:8088/api/auth/refresh \
 ### 查看日志
 
 ```bash
-# 查看最新日志
-tail -f backend/debug.log
-
-# 搜索错误
-grep "ERROR" backend/debug.log
+# 默认情况下日志输出到运行终端（或容器日志）
+# 如启用了文件日志，请按 config.toml 中的 logging.file 配置查找对应日志文件
 ```
 
 ### 联系支持

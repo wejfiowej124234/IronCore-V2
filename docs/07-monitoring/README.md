@@ -254,11 +254,11 @@ criterion_main!(benches);
 **性能指标目标**:
 | 操作 | p50 | p95 | p99 |
 |------|-----|-----|-----|
-| GET /api/wallets | 15ms | 50ms | 80ms |
-| POST /api/wallets | 30ms | 100ms | 150ms |
-| GET /api/transactions | 20ms | 80ms | 120ms |
-| POST /api/transactions/estimate | 50ms | 200ms | 300ms |
-| POST /api/swap/quote | 100ms | 500ms | 800ms |
+| GET /api/v1/wallets | 15ms | 50ms | 80ms |
+| POST /api/v1/wallets/batch | 30ms | 100ms | 150ms |
+| GET /api/v1/tx | 20ms | 80ms | 120ms |
+| GET /api/v1/gas/estimate | 50ms | 200ms | 300ms |
+| GET /api/v1/swap/quote | 100ms | 500ms | 800ms |
 
 **阅读时长**: 35 分钟
 

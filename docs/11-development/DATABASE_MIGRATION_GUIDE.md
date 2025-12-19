@@ -48,7 +48,7 @@
 启动应用时自动执行：
 
 ```bash
-cd IronCore
+cd IronCore-V2
 cargo run
 ```
 
@@ -78,7 +78,7 @@ scripts\run-migrations-cockroachdb.bat
 cargo install sqlx-cli
 
 # 执行迁移
-cd IronCore
+cd IronCore-V2
 sqlx migrate run --database-url "postgresql://root@localhost:26257/ironcore?sslmode=disable"
 ```
 

@@ -29,6 +29,10 @@
 
 ## 准备工作
 
+> ✅ 路由权威说明：除健康检查外，IronCore-V2 的现行 API 统一使用 `/api/v1/...` 前缀。
+> 
+> ✅ 非托管原则：**不要把私钥/助记词/密码发送到后端**；后端只接收地址、公钥等公开信息。
+
 ### 环境检查
 
 ```bash
@@ -43,28 +47,19 @@ curl http://localhost:8088/api/health
 **方案1: curl（命令行）**
 ```bash
 # 适合：脚本自动化、快速测试
-curl -X POST http://localhost:8088/api/wallets/create \
-  -H "Content-Type: application/json" \
-  -d '{"mnemonic":"...","chains":["ethereum"]}'
+curl http://localhost:8088/api/v1/chains
 ```
 
 **方案2: Postman（图形界面）**
 ```
 1. 下载 Postman: https://www.postman.com/downloads/
-2. 导入 OpenAPI: http://localhost:8088/api-docs/openapi.yaml
+2. 导入 OpenAPI: http://localhost:8088/openapi.yaml
 3. 可视化测试所有API
 ```
 
 **方案3: JavaScript（前端集成）**
 ```javascript
-const response = await fetch('http://localhost:8088/api/wallets/create', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    mnemonic: '...',
-    chains: ['ethereum']
-  })
-});
+const response = await fetch('http://localhost:8088/api/v1/chains');
 const data = await response.json();
 ```
 
@@ -75,9 +70,9 @@ const data = await response.json();
 ### 1. 注册用户
 
 ```bash
-POST /api/auth/register
+POST /api/v1/auth/register
 
-curl -X POST http://localhost:8088/api/auth/register \
+curl -X POST http://localhost:8088/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "username": "alice",
@@ -99,9 +94,9 @@ curl -X POST http://localhost:8088/api/auth/register \
 ### 2. 登录获取Token
 
 ```bash
-POST /api/auth/login
+POST /api/v1/auth/login
 
-curl -X POST http://localhost:8088/api/auth/login \
+curl -X POST http://localhost:8088/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "username": "alice",
@@ -128,7 +123,7 @@ curl -X POST http://localhost:8088/api/auth/login \
 
 ```bash
 # 在请求头加上 Authorization
-curl http://localhost:8088/api/wallets \
+curl http://localhost:8088/api/v1/wallets \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
@@ -138,98 +133,57 @@ curl http://localhost:8088/api/wallets \
 
 ## 钱包管理
 
-### 1. 创建钱包（纯派生，无需认证）
+### 1. 批量登记钱包（非托管，需认证）
 
 ```bash
-POST /api/wallets/create
-
-curl -X POST http://localhost:8088/api/wallets/create \
-  -H "Content-Type: application/json" \
-  -d '{
-    "mnemonic": "witch collapse practice feed shame open despair creek road again ice least",
-    "chains": ["ethereum", "bitcoin", "solana"]
-  }'
-```
-
-**响应**:
-```json
-{
-  "wallets": [
-    {
-      "chain": "ethereum",
-      "address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
-      "derivation_path": "m/44'/60'/0'/0/0",
-      "public_key": "0x04..."
-    },
-    {
-      "chain": "bitcoin",
-      "address": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-      "derivation_path": "m/84'/0'/0'/0/0",
-      "public_key": "02..."
-    },
-    {
-      "chain": "solana",
-      "address": "DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK",
-      "derivation_path": "m/44'/501'/0'/0'",
-      "public_key": "..."
-    }
-  ]
-}
-```
-
-**注意**: 
-- 这个API不存储任何数据到后端
-- 适合快速测试和演示
-
-### 2. 创建钱包（存储元数据）
-
-```bash
-POST /api/wallets/unified-create
+POST /api/v1/wallets/batch
 Authorization: Bearer <token>
 
-curl -X POST http://localhost:8088/api/wallets/unified-create \
+curl -X POST http://localhost:8088/api/v1/wallets/batch \
   -H "Authorization: Bearer eyJhbGc..." \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "My Main Wallet",
-    "mnemonic": "witch collapse practice...",
-    "chains": ["ethereum", "bsc", "polygon"]
+    "wallets": [
+      {
+        "chain": "ETH",
+        "address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
+        "public_key": "0x04...",
+        "derivation_path": "m/44\u0027/60\u0027/0\u0027/0/0",
+        "curve_type": "secp256k1",
+        "name": "My Main Wallet"
+      }
+    ]
   }'
 ```
 
 **响应**:
 ```json
 {
-  "wallet_id": "660e8400-e29b-41d4-a716-446655440001",
-  "name": "My Main Wallet",
-  "chains": [
+  "success": true,
+  "wallets": [
     {
-      "chain": "ethereum",
-      "address": "0x9858...",
-      "wallet_record_id": "770e8400-..."
-    },
-    {
-      "chain": "bsc",
-      "address": "0x9858...",
-      "wallet_record_id": "880e8400-..."
+      "id": "...",
+      "chain": "ETH",
+      "address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
+      "created_at": "2025-11-24T10:00:00Z",
+      "status": "created"
     }
   ],
-  "created_at": "2025-11-24T10:00:00Z"
+  "failed": []
 }
 ```
 
-**优点**:
-- 后端存储钱包名称、地址
-- 支持跨设备同步
-- 适合生产环境
+**注意**:
+- ✅ 必须由客户端先派生地址/公钥，再调用本接口登记
+- ❌ 不要把助记词/私钥发给后端
 
 ### 3. 查询我的钱包列表
 
 ```bash
-GET /api/wallets
+GET /api/v1/wallets
 Authorization: Bearer <token>
 
-curl http://localhost:8088/api/wallets \
+curl http://localhost:8088/api/v1/wallets \
   -H "Authorization: Bearer eyJhbGc..."
 ```
 
@@ -256,34 +210,23 @@ curl http://localhost:8088/api/wallets \
 }
 ```
 
-### 4. 验证地址
+### 4. 最小验证：查询余额（用于验证地址可用）
+
+> IronCore-V2 当前不提供独立的“validate-address”接口；
+> 推荐使用余额查询作为最小验证（格式错误会返回 400）。
 
 ```bash
-POST /api/wallets/validate-address
+GET /api/v1/balance?chain=ethereum&address=0x742d...
 
-curl -X POST http://localhost:8088/api/wallets/validate-address \
-  -H "Content-Type: application/json" \
-  -d '{
-    "chain": "ethereum",
-    "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1"
-  }'
-```
-
-**响应**:
-```json
-{
-  "valid": true,
-  "normalized": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1",
-  "checksum": true
-}
+curl "http://localhost:8088/api/v1/balance?chain=ethereum&address=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1"
 ```
 
 ### 5. 获取支持的链列表
 
 ```bash
-GET /api/chains
+GET /api/v1/chains
 
-curl http://localhost:8088/api/chains
+curl http://localhost:8088/api/v1/chains
 ```
 
 **响应**:
@@ -317,16 +260,16 @@ curl http://localhost:8088/api/chains
 ### 1. 发送交易
 
 ```bash
-POST /api/transactions/send
+POST /api/v1/transactions
 Authorization: Bearer <token>
 
-curl -X POST http://localhost:8088/api/transactions/send \
+curl -X POST http://localhost:8088/api/v1/transactions \
   -H "Authorization: Bearer eyJhbGc..." \
   -H "Content-Type: application/json" \
   -d '{
-    "from_address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
-    "to_address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1",
-    "value": "0.1",
+    "from": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
+    "to": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1",
+    "amount": "0.1",
     "chain": "ethereum",
     "signed_tx": "0xf86c808504a817c800825208947..." 
   }'
@@ -352,10 +295,10 @@ curl -X POST http://localhost:8088/api/transactions/send \
 ### 2. 查询交易状态
 
 ```bash
-GET /api/transactions/{tx_id}
+GET /api/v1/transactions/:hash/status
 Authorization: Bearer <token>
 
-curl http://localhost:8088/api/transactions/990e8400-e29b-41d4-a716-446655440003 \
+curl http://localhost:8088/api/v1/transactions/0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890/status \
   -H "Authorization: Bearer eyJhbGc..."
 ```
 
@@ -383,10 +326,10 @@ curl http://localhost:8088/api/transactions/990e8400-e29b-41d4-a716-446655440003
 ### 3. 查询交易历史
 
 ```bash
-GET /api/transactions?address=0x9858...&chain=ethereum&page=1&limit=20
+GET /api/v1/transactions
 Authorization: Bearer <token>
 
-curl "http://localhost:8088/api/transactions?address=0x9858EfFD232B4033E47d90003D41EC34EcaEda94&chain=ethereum&page=1&limit=20" \
+curl "http://localhost:8088/api/v1/transactions" \
   -H "Authorization: Bearer eyJhbGc..."
 ```
 
@@ -416,30 +359,27 @@ curl "http://localhost:8088/api/transactions?address=0x9858EfFD232B4033E47d90003
 ### 1. 查询钱包余额
 
 ```bash
-GET /api/asset/balance?chain=ethereum&address=0x9858...
+GET /api/v1/balance?chain=ethereum&address=0x9858...
 
-curl "http://localhost:8088/api/asset/balance?chain=ethereum&address=0x9858EfFD232B4033E47d90003D41EC34EcaEda94"
+curl "http://localhost:8088/api/v1/balance?chain=ethereum&address=0x9858EfFD232B4033E47d90003D41EC34EcaEda94"
 ```
 
 **响应**:
 ```json
 {
-  "chain": "ethereum",
-  "address": "0x9858...",
-  "balance": "1.5",
-  "symbol": "ETH",
-  "usd_value": "2400.00",
-  "price_per_unit": "1600.00"
+  "balance": "0",
+  "chain_id": 1,
+  "confirmed": true
 }
 ```
 
 ### 2. 查询所有资产（含代币）
 
 ```bash
-GET /api/wallets/{wallet_id}/assets
+GET /api/v1/wallets/{wallet_id}/assets
 Authorization: Bearer <token>
 
-curl http://localhost:8088/api/wallets/660e8400-.../assets \
+curl http://localhost:8088/api/v1/wallets/660e8400-.../assets \
   -H "Authorization: Bearer eyJhbGc..."
 ```
 
@@ -472,77 +412,58 @@ curl http://localhost:8088/api/wallets/660e8400-.../assets \
 }
 ```
 
-### 3. 查询Gas价格
+### 3. 估算Gas费（单档）
 
 ```bash
-GET /api/gas/price?chain=ethereum
+GET /api/v1/gas/estimate?chain=ethereum&speed=normal
 
-curl "http://localhost:8088/api/gas/price?chain=ethereum"
+curl "http://localhost:8088/api/v1/gas/estimate?chain=ethereum&speed=normal"
 ```
 
-**响应**:
+**响应（data 示例）**:
 ```json
 {
-  "chain": "ethereum",
-  "timestamp": "2025-11-24T10:00:00Z",
-  "prices": {
-    "slow": {
-      "gwei": 10,
-      "eth": 0.00021,
-      "usd": 0.34,
-      "estimated_time": "10-30 minutes"
-    },
-    "normal": {
-      "gwei": 20,
-      "eth": 0.00042,
-      "usd": 0.67,
-      "estimated_time": "3-5 minutes"
-    },
-    "fast": {
-      "gwei": 50,
-      "eth": 0.00105,
-      "usd": 1.68,
-      "estimated_time": "30 seconds"
-    }
-  }
+  "base_fee": "0x12a05f200",
+  "max_priority_fee": "0x1dcd6500",
+  "max_fee_per_gas": "0x165a0bc00",
+  "estimated_time_seconds": 180,
+  "base_fee_gwei": 5.0,
+  "max_priority_fee_gwei": 0.5,
+  "max_fee_per_gas_gwei": 5.5
 }
 ```
 
 ### 4. 估算Gas费
 
 ```bash
-POST /api/gas/estimate
+GET /api/v1/gas/estimate-all?chain=ethereum
 
-curl -X POST http://localhost:8088/api/gas/estimate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "chain": "ethereum",
-    "from": "0x9858...",
-    "to": "0x742d...",
-    "value": "0.1",
-    "data": ""
-  }'
+curl "http://localhost:8088/api/v1/gas/estimate-all?chain=ethereum"
 ```
 
 **响应**:
 ```json
 {
-  "gas_limit": 21000,
-  "gas_price": {
-    "slow": 10,
-    "normal": 20,
-    "fast": 50
+  "chain": "ethereum",
+  "slow": {
+    "max_fee_per_gas": "0x12a05f200",
+    "max_priority_fee": "0x1dcd6500",
+    "max_fee_per_gas_gwei": "5.0",
+    "estimated_time_seconds": 300
   },
-  "total_cost": {
-    "slow": "0.00021 ETH",
-    "normal": "0.00042 ETH",
-    "fast": "0.00105 ETH"
+  "normal": {
+    "max_fee_per_gas": "0x165a0bc00",
+    "max_priority_fee": "0x3b9aca00",
+    "max_fee_per_gas_gwei": "6.0",
+    "estimated_time_seconds": 60
   },
-  "usd_value": {
-    "slow": 0.34,
-    "normal": 0.67,
-    "fast": 1.68
-  }
+  "fast": {
+    "max_fee_per_gas": "0x1a13b8600",
+    "max_priority_fee": "0x5d21dba00",
+    "max_fee_per_gas_gwei": "7.0",
+    "estimated_time_seconds": 30
+  },
+  "timestamp": "2025-11-24T10:00:00Z"
 }
 ```
 
@@ -553,60 +474,36 @@ curl -X POST http://localhost:8088/api/gas/estimate \
 ### 1. 发布通知
 
 ```bash
-POST /api/notify/publish
-Authorization: Bearer <token>
+POST /api/v1/notifications/publish
+Authorization: Bearer <admin_token>
 
-curl -X POST http://localhost:8088/api/notify/publish \
-  -H "Authorization: Bearer eyJhbGc..." \
+curl -X POST http://localhost:8088/api/v1/notifications/publish \
+  -H "Authorization: Bearer <admin_token>" \
   -H "Content-Type: application/json" \
   -d '{
-    "type": "transaction_confirmed",
     "title": "交易已确认",
     "body": "您的 0.1 ETH 转账已成功确认",
-    "data": {
-      "tx_hash": "0xabcdef...",
-      "amount": "0.1",
-      "chain": "ethereum"
-    }
+    "category": "transaction",
+    "severity": "info",
+    "scope": "global"
   }'
 ```
 
 ### 2. 获取通知列表
 
 ```bash
-GET /api/notify/feed?page=1&limit=20
+GET /api/v1/notifications/feed
 Authorization: Bearer <token>
 
-curl "http://localhost:8088/api/notify/feed?page=1&limit=20" \
+curl "http://localhost:8088/api/v1/notifications/feed" \
   -H "Authorization: Bearer eyJhbGc..."
 ```
 
 **响应**:
 ```json
 {
-  "notifications": [
-    {
-      "id": "aa0e8400-...",
-      "type": "transaction_confirmed",
-      "title": "交易已确认",
-      "body": "您的 0.1 ETH 转账已成功确认",
-      "read": false,
-      "created_at": "2025-11-24T10:15:00Z"
-    }
-  ],
-  "unread_count": 5,
-  "total": 50
+  "items": []
 }
-```
-
-### 3. 标记为已读
-
-```bash
-PUT /api/notify/{notification_id}/read
-Authorization: Bearer <token>
-
-curl -X PUT http://localhost:8088/api/notify/aa0e8400-.../read \
-  -H "Authorization: Bearer eyJhbGc..."
 ```
 
 ---
@@ -616,10 +513,10 @@ curl -X PUT http://localhost:8088/api/notify/aa0e8400-.../read \
 ### 1. 创建费用规则（需要Admin角色）
 
 ```bash
-POST /api/admin/fee-rules
+POST /api/v1/admin/fee-rules
 Authorization: Bearer <admin_token>
 
-curl -X POST http://localhost:8088/api/admin/fee-rules \
+curl -X POST http://localhost:8088/api/v1/admin/fee-rules \
   -H "Authorization: Bearer <admin_token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -643,9 +540,9 @@ curl -X POST http://localhost:8088/api/admin/fee-rules \
 ```json
 {
   "error": "InvalidRequest",
-  "message": "Missing required field: mnemonic",
+  "message": "Missing required field",
   "details": {
-    "field": "mnemonic",
+    "field": "wallets",
     "reason": "required"
   }
 }
@@ -674,7 +571,7 @@ curl -X POST http://localhost:8088/api/admin/fee-rules \
 // JavaScript示例
 async function callAPI() {
   try {
-    const response = await fetch('http://localhost:8088/api/wallets');
+    const response = await fetch('http://localhost:8088/api/v1/wallets');
     
     if (!response.ok) {
       const error = await response.json();
@@ -714,34 +611,39 @@ async function callAPI() {
 
 ```bash
 # 1. 登录获取token
-TOKEN=$(curl -s -X POST http://localhost:8088/api/auth/login \
+TOKEN=$(curl -s -X POST http://localhost:8088/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"alice","password":"SecurePass123!"}' \
-  | jq -r '.token')
+  -d '{"email":"alice@example.com","password":"SecurePass123!"}' \
+  | jq -r '.data.access_token')
 
-# 2. 创建钱包
-WALLET=$(curl -s -X POST http://localhost:8088/api/wallets/unified-create \
+# 2. 登记钱包（非托管：只提交地址/公钥；助记词/私钥永远不上传后端）
+WALLET_BATCH=$(curl -s -X POST http://localhost:8088/api/v1/wallets/batch \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "My Wallet",
-    "mnemonic": "witch collapse practice...",
-    "chains": ["ethereum"]
+    "wallets": [
+      {
+        "name": "My Wallet",
+        "chain": "ethereum",
+        "address": "0xYourDerivedAddress",
+        "public_key": "0xYourDerivedPublicKey"
+      }
+    ]
   }')
 
-ADDRESS=$(echo $WALLET | jq -r '.chains[0].address')
+ADDRESS=$(echo $WALLET_BATCH | jq -r '.data.wallets[0].address')
 
 # 3. 查询余额
-curl "http://localhost:8088/api/asset/balance?chain=ethereum&address=$ADDRESS"
+curl "http://localhost:8088/api/v1/balance?chain=ethereum&address=$ADDRESS"
 
 # 4. 发送交易（需要客户端签名）
-curl -X POST http://localhost:8088/api/transactions/send \
+curl -X POST http://localhost:8088/api/v1/transactions \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "from_address": "'$ADDRESS'",
-    "to_address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1",
-    "value": "0.1",
+    "from": "'$ADDRESS'",
+    "to": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1",
+    "amount": "0.1",
     "chain": "ethereum",
     "signed_tx": "0x..."
   }'

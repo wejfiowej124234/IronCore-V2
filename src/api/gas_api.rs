@@ -1,6 +1,6 @@
 // Gas 费预估 API - EIP-1559 标准
-// GET /api/gas/estimate?chain=ethereum&speed=normal
-// GET /api/gas/estimate-all?chain=ethereum
+// GET /api/v1/gas/estimate?chain=ethereum&speed=normal
+// GET /api/v1/gas/estimate-all?chain=ethereum
 
 use std::sync::Arc;
 
@@ -58,7 +58,7 @@ pub struct EstimateAllQuery {
 
 // 响应类型直接使用 GasEstimate 和 GasEstimateResponse，由 ApiResponse 包装
 
-/// GET /api/gas/estimate?chain=ethereum&speed=normal
+/// GET /api/v1/gas/estimate?chain=ethereum&speed=normal
 ///
 /// ✅多链Gas费用预估 支持:ETH/BSC/Polygon/Solana/BTC/TON
 ///
@@ -76,7 +76,7 @@ pub struct EstimateAllQuery {
 /// - max_fee_per_gas_gwei: 最大费用（Gwei）
 #[utoipa::path(
     get,
-    path = "/api/gas/estimate",
+    path = "/api/v1/gas/estimate",
     params(
         ("chain" = String, Query, description = "Chain name (ethereum/bsc/polygon)"),
         ("speed" = Option<GasSpeed>, Query, description = "Speed tier (slow/normal/fast), defaults to normal")
@@ -136,7 +136,7 @@ pub async fn estimate_gas(
     success_response(estimate)
 }
 
-/// GET /api/gas/estimate-all?chain=ethereum
+/// GET /api/v1/gas/estimate-all?chain=ethereum
 ///
 /// ✅批量Gas预估(全速度) 支持:ETH/BSC/Polygon/Solana/BTC/TON
 ///
@@ -149,7 +149,7 @@ pub async fn estimate_gas(
 /// - fast: 快速档位（<1 分钟）
 #[utoipa::path(
     get,
-    path = "/api/gas/estimate-all",
+    path = "/api/v1/gas/estimate-all",
     params(
         ("chain" = String, Query, description = "Chain name (ethereum/bsc/polygon)")
     ),

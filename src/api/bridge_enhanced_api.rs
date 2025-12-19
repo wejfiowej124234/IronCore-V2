@@ -179,7 +179,7 @@ pub fn routes() -> Router<Arc<AppState>> {
 // Handlers
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-/// GET /api/bridge/quote
+/// GET /api/v1/bridge/quote
 /// 获取跨链桥报价（企业级：比较多个桥选最优）
 pub async fn get_bridge_quote(
     State(state): State<Arc<AppState>>,
@@ -240,7 +240,7 @@ pub async fn get_bridge_quote(
     })
 }
 
-/// POST /api/bridge/execute
+/// POST /api/v1/bridge/execute
 /// 执行跨链转账（非托管模式：接受客户端签名的交易）
 pub async fn execute_bridge(
     State(state): State<Arc<AppState>>,

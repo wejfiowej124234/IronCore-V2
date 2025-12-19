@@ -13,10 +13,10 @@
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │                     API Layer (统一接口)                        │
-│  POST /api/wallets/create { chain, mnemonic?, ... }            │
-│  POST /api/wallets/create-multi { chains: [...] }              │
-│  GET  /api/chains                                               │
-│  GET  /api/chains/by-curve                                      │
+│  POST /api/v1/wallets/batch { wallets: [...] }                 │
+│  GET  /api/v1/balance { chain, address }                        │
+│  POST /api/v1/transactions { signed_tx, ... }                   │
+│  (以 /openapi.yaml 与 /docs 为准)                               │
 └────────────────────────────────────────────────────────────────┘
                               ↓
 ┌────────────────────────────────────────────────────────────────┐
@@ -65,192 +65,41 @@
 
 ---
 
-## 💻 使用示例
+## 💻 使用示例（非托管：客户端派生 + 后端登记）
 
-### 1. 创建单链钱包
+> 关键原则：助记词/私钥只存在于客户端本地；后端只接收地址、公钥等公开信息，以及已签名交易。
+> 具体端点与认证要求以 `/openapi.yaml` 与 `/docs` 为准。
+
+### 1. 客户端本地派生地址（示意）
+
+- 客户端生成助记词与私钥（BIP39/BIP44 等）
+- 客户端按链的派生路径得到 `address` 与 `public_key`
+
+### 2. 批量登记钱包到后端
 
 ```bash
-curl -X POST http://localhost:8088/api/wallets/create \
+curl -X POST http://localhost:8088/api/v1/wallets/batch \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your_token>" \
   -d '{
-    "chain": "ETH",
-    "word_count": 12
-  }'
-```
-
-**响应：**
-```json
-{
-  "chain": {
-    "chain_id": 1,
-    "name": "Ethereum",
-    "symbol": "ETH",
-    "curve_type": "Secp256k1"
-  },
-  "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
-  "wallet": {
-    "address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
-    "public_key": "0x...",
-    "derivation_path": "m/44'/60'/0'/0/0"
-  }
-}
-```
-
-### 2. 从同一助记词创建多链钱包
-
-```bash
-curl -X POST http://localhost:8088/api/wallets/create-multi \
-  -H "Content-Type: application/json" \
-  -d '{
-    "chains": ["ETH", "BSC", "SOL", "BTC"],
-    "word_count": 12
-  }'
-```
-
-**响应：**
-```json
-[
-  {
-    "chain": {
-      "chain_id": 1,
-      "name": "Ethereum",
-      "symbol": "ETH",
-      "curve_type": "Secp256k1"
-    },
-    "mnemonic": "abandon abandon abandon...",
-    "wallet": {
-      "address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
-      "public_key": "0x...",
-      "derivation_path": "m/44'/60'/0'/0/0"
-    }
-  },
-  {
-    "chain": {
-      "chain_id": 56,
-      "name": "BNB Smart Chain",
-      "symbol": "BNB",
-      "curve_type": "Secp256k1"
-    },
-    "wallet": {
-      "address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
-      "public_key": "0x...",
-      "derivation_path": "m/44'/60'/0'/0/0"
-    }
-  },
-  {
-    "chain": {
-      "chain_id": 501,
-      "name": "Solana",
-      "symbol": "SOL",
-      "curve_type": "Ed25519"
-    },
-    "wallet": {
-      "address": "DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK",
-      "public_key": "0x...",
-      "derivation_path": "m/44'/501'/0'/0'"
-    }
-  },
-  {
-    "chain": {
-      "chain_id": 0,
-      "name": "Bitcoin",
-      "symbol": "BTC",
-      "curve_type": "Secp256k1"
-    },
-    "wallet": {
-      "address": "bc1q...",
-      "public_key": "0x...",
-      "derivation_path": "m/84'/0'/0'/0/0"
-    }
-  }
-]
-```
-
-### 3. 列出所有支持的链
-
-```bash
-curl http://localhost:8088/api/chains
-```
-
-**响应：**
-```json
-{
-  "total": 7,
-  "chains": [
-    {
-      "chain_id": 1,
-      "name": "Ethereum",
-      "symbol": "ETH",
-      "curve_type": "Secp256k1"
-    },
-    {
-      "chain_id": 501,
-      "name": "Solana",
-      "symbol": "SOL",
-      "curve_type": "Ed25519"
-    },
-    ...
-  ]
-}
-```
-
-### 4. 按曲线类型分组查询
-
-```bash
-curl http://localhost:8088/api/chains/by-curve
-```
-
-**响应：**
-```json
-{
-  "groups": {
-    "Secp256k1": [
+    "wallets": [
       {
-        "chain_id": 1,
-        "name": "Ethereum",
-        "symbol": "ETH",
-        "curve_type": "Secp256k1"
-      },
-      {
-        "chain_id": 56,
-        "name": "BNB Smart Chain",
-        "symbol": "BNB",
-        "curve_type": "Secp256k1"
-      },
-      ...
-    ],
-    "Ed25519": [
-      {
-        "chain_id": 501,
-        "name": "Solana",
-        "symbol": "SOL",
-        "curve_type": "Ed25519"
-      },
-      ...
+        "chain": "ethereum",
+        "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb6",
+        "public_key": "0x...",
+        "name": "Main Wallet"
+      }
     ]
-  }
-}
-```
-
-### 5. 验证地址格式
-
-```bash
-curl -X POST http://localhost:8088/api/wallets/validate-address \
-  -H "Content-Type: application/json" \
-  -d '{
-    "chain": "ETH",
-    "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb6"
   }'
 ```
 
-**响应：**
-```json
-{
-  "valid": true,
-  "chain": "ETH",
-  "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb6"
-}
+### 3. 查询余额（示意）
+
+```bash
+curl "http://localhost:8088/api/v1/balance?chain=ethereum&address=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb6"
 ```
+
+---
 
 ---
 
@@ -258,7 +107,7 @@ curl -X POST http://localhost:8088/api/wallets/validate-address \
 
 ### 步骤 1: 在 `ChainRegistry` 中注册链
 
-编辑 `backend/src/domain/chain_config.rs`:
+编辑 `IronCore-V2/src/domain/chain_config.rs`:
 
 ```rust
 // Avalanche C-Chain
@@ -278,7 +127,7 @@ self.register(ChainConfig {
 
 ### 步骤 2: 如果是新曲线类型，实现 DerivationStrategy
 
-编辑 `backend/src/domain/derivation.rs`:
+编辑 `IronCore-V2/src/domain/derivation.rs`:
 
 ```rust
 pub struct NewCurveStrategy;

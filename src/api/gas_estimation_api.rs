@@ -45,11 +45,11 @@ pub fn routes() -> Router<Arc<AppState>> {
 // Handlers
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-/// GET /api/gas/estimate
+/// GET /api/v1/gas/estimate
 /// 获取Gas估算（三档速度）
 #[utoipa::path(
     get,
-    path = "/api/gas/estimate",
+    path = "/api/v1/gas/estimate",
     params(GasEstimationQuery),
     responses(
         (status = 200, description = "Gas estimation", body = ApiResponse<serde_json::Value>),
@@ -85,11 +85,11 @@ pub async fn estimate_gas(
     success_response(serde_json::to_value(estimation)?)
 }
 
-/// GET /api/gas/price
+/// GET /api/v1/gas/price
 /// 获取当前Gas价格
 #[utoipa::path(
     get,
-    path = "/api/gas/price",
+    path = "/api/v1/gas/price",
     params(
         ("chain" = String, Query, description = "Chain symbol (ETH, BSC, POLYGON)")
     ),

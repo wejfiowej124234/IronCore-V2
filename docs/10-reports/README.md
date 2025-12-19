@@ -228,10 +228,10 @@ API 统计
 
 | 端点 | 并发数 | QPS | p50 | p95 | p99 | 状态 |
 |------|--------|-----|-----|-----|-----|------|
-| GET /api/wallets | 1000 | 8500 | 12ms | 45ms | 75ms | ✅ |
-| POST /api/wallets | 500 | 4200 | 25ms | 85ms | 130ms | ✅ |
-| GET /api/transactions | 1000 | 7800 | 18ms | 65ms | 95ms | ✅ |
-| POST /api/swap/quote | 200 | 1500 | 80ms | 380ms | 650ms | ✅ |
+| GET /api/v1/wallets | 1000 | 8500 | 12ms | 45ms | 75ms | ✅ |
+| POST /api/v1/wallets/batch | 500 | 4200 | 25ms | 85ms | 130ms | ✅ |
+| GET /api/v1/transactions | 1000 | 7800 | 18ms | 65ms | 95ms | ✅ |
+| GET /api/v1/swap/quote | 200 | 1500 | 80ms | 380ms | 650ms | ✅ |
 
 ### 系统资源使用
 

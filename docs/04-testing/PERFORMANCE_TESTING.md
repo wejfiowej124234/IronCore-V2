@@ -160,7 +160,7 @@ export TEST_TOKEN="your_jwt_token_here"
 # 测试钱包API（500请求，20并发）
 ab -n 500 -c 20 \
    -H "Authorization: Bearer $TEST_TOKEN" \
-   http://localhost:8088/api/wallets
+  http://localhost:8088/api/v1/wallets
 ```
 
 #### POST请求测试
@@ -169,8 +169,13 @@ ab -n 500 -c 20 \
 # 创建测试数据文件
 cat > test_payload.json <<EOF
 {
-  "chain_id": 1,
-  "name": "Test Wallet"
+  "wallets": [
+    {
+      "chain": "ETH",
+      "address": "0x0000000000000000000000000000000000000001",
+      "public_key": "04aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ]
 }
 EOF
 
@@ -179,7 +184,7 @@ ab -n 100 -c 5 \
    -p test_payload.json \
    -T application/json \
    -H "Authorization: Bearer $TEST_TOKEN" \
-   http://localhost:8088/api/wallets
+  http://localhost:8088/api/v1/wallets/batch
 ```
 
 ### 使用 wrk (推荐)
@@ -222,7 +227,7 @@ wrk -t10 -c100 -d10s http://localhost:8088/api/health
 ```lua
 -- Lua脚本用于复杂场景测试
 wrk.method = "POST"
-wrk.body   = '{"chain_id": 1, "name": "Test"}'
+wrk.body   = '{"wallets": [{"chain": "ETH", "address": "0x0000000000000000000000000000000000000001", "public_key": "04aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]}'
 wrk.headers["Content-Type"] = "application/json"
 wrk.headers["Authorization"] = "Bearer YOUR_TOKEN"
 
@@ -236,7 +241,7 @@ end
 运行:
 ```bash
 wrk -t10 -c100 -d30s -s scripts/load-test.lua \
-    http://localhost:8088/api/wallets
+  http://localhost:8088/api/v1/wallets/batch
 ```
 
 ### 使用 k6 (现代化工具)
@@ -289,7 +294,7 @@ export default function () {
       'Authorization': 'Bearer YOUR_TOKEN',
     },
   };
-  const walletsRes = http.get('http://localhost:8088/api/wallets', params);
+  const walletsRes = http.get('http://localhost:8088/api/v1/wallets', params);
   check(walletsRes, {
     'wallets status is 200': (r) => r.status === 200,
     'response time < 500ms': (r) => r.timings.duration < 500,
@@ -333,7 +338,7 @@ k6 run scripts/k6-load-test.js
 
 ```bash
 # 查询请求延迟
-http_request_duration_seconds{endpoint="/api/wallets",quantile="0.95"}
+http_request_duration_seconds{endpoint="/api/v1/wallets",quantile="0.95"}
 
 # 查询请求速率
 rate(http_requests_total[5m])

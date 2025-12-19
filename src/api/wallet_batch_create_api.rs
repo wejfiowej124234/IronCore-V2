@@ -71,7 +71,7 @@ pub struct WalletCreateError {
 // Handler
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-/// POST /api/wallets/batch-create
+/// POST /api/v1/wallets/batch
 ///
 /// 批量创建钱包（非托管模式）
 ///
@@ -82,7 +82,7 @@ pub struct WalletCreateError {
 /// - ✅ 防止重复地址
 #[utoipa::path(
     post,
-    path = "/api/wallets/batch-create",
+    path = "/api/v1/wallets/batch",
     request_body = BatchCreateWalletsRequest,
     responses(
         (status = 200, description = "Wallets created", body = ApiResponse<BatchCreateWalletsResponse>),

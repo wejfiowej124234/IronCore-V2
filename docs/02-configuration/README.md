@@ -190,7 +190,7 @@ CREATE INDEX idx_wallets_created_at ON wallets(created_at DESC);
 
 **认证流程**:
 ```
-1. 用户登录 POST /api/auth/login
+1. 用户登录 POST /api/v1/auth/login
    ↓
 2. 验证 email + password（Argon2id）
    ↓
@@ -204,7 +204,7 @@ CREATE INDEX idx_wallets_created_at ON wallets(created_at DESC);
    ↓
 7. 每次 API 请求携带: Authorization: Bearer <token>
    ↓
-8. Token 过期前调用 /api/auth/refresh 刷新
+8. Token 过期前调用 /api/v1/auth/refresh 刷新
 ```
 
 **安全最佳实践清单**:

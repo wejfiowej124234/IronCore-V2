@@ -66,12 +66,12 @@ GET http://localhost:8088/metrics
 
 ```rust
 // 请求总数
-http_requests_total{method="GET", path="/api/wallets", status="200"}
+http_requests_total{method="POST", path="/api/v1/wallets/batch", status="200"}
 
 // 请求延迟（秒）
-http_request_duration_seconds{method="GET", path="/api/wallets", quantile="0.5"}
-http_request_duration_seconds{method="GET", path="/api/wallets", quantile="0.95"}
-http_request_duration_seconds{method="GET", path="/api/wallets", quantile="0.99"}
+http_request_duration_seconds{method="POST", path="/api/v1/wallets/batch", quantile="0.5"}
+http_request_duration_seconds{method="POST", path="/api/v1/wallets/batch", quantile="0.95"}
+http_request_duration_seconds{method="POST", path="/api/v1/wallets/batch", quantile="0.99"}
 
 // 活跃连接数
 http_active_connections
@@ -190,42 +190,37 @@ GET /api/health
 **响应**:
 ```json
 {
-  "status": "ok",
-  "timestamp": "2025-11-24T10:30:00Z"
+  "code": 0,
+  "message": "success",
+  "data": {
+    "status": "ok"
+  }
 }
 ```
 
-#### 2. 就绪检查
+> 说明：当前实现还提供两个实用别名/扩展：
+> - `GET /health`：简短别名（兼容部分测试脚本）
+> - `GET /healthz`：包含 DB/Redis/Immudb/RPC 探活与版本信息
+
+#### 2. 详细健康检查（推荐用于就绪探针）
 
 ```
-GET /api/health/ready
+GET /healthz
 ```
 
-**响应**:
+**响应（示例）**:
 ```json
 {
-  "status": "ready",
-  "checks": {
-    "database": "ok",
-    "redis": "ok",
-    "immudb": "ok"
-  },
-  "timestamp": "2025-11-24T10:30:00Z"
-}
-```
-
-#### 3. 存活检查
-
-```
-GET /api/health/live
-```
-
-**响应**:
-```json
-{
-  "status": "alive",
-  "uptime_seconds": 3600,
-  "timestamp": "2025-11-24T10:30:00Z"
+  "code": 0,
+  "message": "success",
+  "data": {
+    "status": "ok",
+    "db_ok": true,
+    "redis_ok": true,
+    "immu_ok": true,
+    "rpc_ok": true,
+    "version": "0.1.0+dev"
+  }
 }
 ```
 

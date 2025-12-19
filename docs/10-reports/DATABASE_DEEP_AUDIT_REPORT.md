@@ -291,7 +291,7 @@ SELECT * FROM generate_non_custodial_compliance_report();
 $env:DATABASE_URL = "postgresql://root@localhost:26257/ironcore?sslmode=disable"
 
 # 2. 执行所有迁移
-cd IronCore
+cd IronCore-V2
 .\apply_migrations_cargo.ps1
 
 # 3. 验证
@@ -402,7 +402,7 @@ ORDER BY created_at DESC LIMIT 1;
 ### 可以安全执行迁移！
 
 ```powershell
-cd IronCore
+cd IronCore-V2
 .\apply_migrations_cargo.ps1
 ```
 
