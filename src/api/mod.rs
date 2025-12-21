@@ -399,13 +399,12 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/health", get(api_health)) // 简短别名，兼容测试脚本
         .route("/api/health", get(api_health))
         .route("/healthz", get(healthz))
-        // ✅ 全局 CORS 预检兜底：避免漏配 .options(preflight_ok) 导致浏览器预检 405
-        // 仅匹配 OPTIONS 方法，不会干扰 GET/POST 等业务路由。
-        .route("/*path", axum::routing::options(preflight_ok))
         .layer(
             ServiceBuilder::new()
                 .layer(from_fn(middleware::method_whitelist_middleware)) // ✅ P0 Security: 最先应用
                 .layer(from_fn(trace_id_middleware))
+                // ✅ 全局 CORS 预检兜底：避免漏配 .options(preflight_ok) 导致浏览器预检 405
+                .layer(from_fn(cors_preflight_middleware))
                 .layer(from_fn(add_cors_headers))
                 .layer(from_fn(add_security_headers)) // ✅ P1修复：添加安全头
                 .layer(from_fn(add_response_time_header))
@@ -697,6 +696,8 @@ pub fn routes(state: Arc<AppState>) -> Router {
             ServiceBuilder::new()
                 .layer(from_fn(middleware::method_whitelist_middleware)) // ✅ P0 Security: 最先应用
                 .layer(from_fn(trace_id_middleware))
+                // ✅ 全局 CORS 预检兜底：避免漏配 .options(preflight_ok) 导致浏览器预检 405
+                .layer(from_fn(cors_preflight_middleware))
                 .layer(from_fn(add_security_headers))
                 .layer(from_fn(add_api_version_header))
                 .layer(from_fn(add_cors_headers))
@@ -794,7 +795,6 @@ async fn preflight_ok(headers: axum::http::HeaderMap) -> Response {
     resp
 }
 
-#[allow(dead_code)]
 async fn cors_preflight_middleware(req: Request, next: axum::middleware::Next) -> Response {
     if req.method() == axum::http::Method::OPTIONS {
         let origin = req
