@@ -4,9 +4,9 @@
 use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tokio::sync::RwLock;
 
@@ -445,16 +445,11 @@ impl UnifiedFeeConfigService {
     }
 
     async fn upsert_fee_config(&self, config: &FeeConfig) -> Result<()> {
-        let rate_percentage = Decimal::from_f64_retain(config.rate_percentage).unwrap_or(Decimal::ZERO);
-        let min_fee_usd = config
-            .min_fee_usd
-            .and_then(Decimal::from_f64_retain);
-        let max_fee_usd = config
-            .max_fee_usd
-            .and_then(Decimal::from_f64_retain);
-        let fixed_fee_usd = config
-            .fixed_fee_usd
-            .and_then(Decimal::from_f64_retain);
+        let rate_percentage =
+            Decimal::from_f64_retain(config.rate_percentage).unwrap_or(Decimal::ZERO);
+        let min_fee_usd = config.min_fee_usd.and_then(Decimal::from_f64_retain);
+        let max_fee_usd = config.max_fee_usd.and_then(Decimal::from_f64_retain);
+        let fixed_fee_usd = config.fixed_fee_usd.and_then(Decimal::from_f64_retain);
 
         sqlx::query(
             "INSERT INTO fee_configurations

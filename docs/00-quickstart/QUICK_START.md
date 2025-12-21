@@ -4,7 +4,7 @@
 
 - ✅ CockroachDB 已启动并运行
 - ✅ 数据库 `ironcore` 已创建
-- ⏳ 等待执行迁移
+- ⏳ 等待执行迁移（或由服务启动时自动执行）
 
 ---
 
@@ -22,6 +22,8 @@ cargo run
 2. 自动执行所有迁移文件
 3. 创建所有表和索引
 4. 插入初始数据
+
+> 备注：如需跳过启动迁移，可设置 `SKIP_MIGRATIONS=1`（通常用于部署期的健康检查/分阶段 rollout）。
 
 ### 方法 2: 使用 sqlx-cli 手动迁移
 
@@ -51,17 +53,16 @@ cd IronCore-V2
 迁移完成后，可以验证：
 
 ```bash
-# 查看所有表
-docker exec ironwallet-cockroachdb cockroach sql --insecure -e "USE ironcore; SELECT table_schema, COUNT(*) FROM information_schema.tables WHERE table_schema IN ('public', 'gas', 'admin', 'notify', 'tokens', 'events', 'fiat') GROUP BY table_schema;"
+# 查看表（示例：按 schema 统计；不同版本/功能开关下数量可能不同）
+docker exec ironwallet-cockroachdb cockroach sql --insecure -e "USE ironcore; SELECT table_schema, COUNT(*) AS table_count FROM information_schema.tables WHERE table_schema NOT IN ('crdb_internal','information_schema','pg_catalog') GROUP BY table_schema ORDER BY table_schema;"
 
-# 查看迁移记录
-docker exec ironwallet-cockroachdb cockroach sql --insecure -e "USE ironcore; SELECT version, name FROM schema_migrations ORDER BY version;"
+# 查看迁移记录（表名以实际为准；若使用 sqlx migrations，通常为 _sqlx_migrations）
+docker exec ironwallet-cockroachdb cockroach sql --insecure -e "USE ironcore; SELECT * FROM _sqlx_migrations ORDER BY version;"
 ```
 
-应该看到：
-- 7 个 Schema
-- 38 个表
-- 13 个迁移记录
+你应当能看到：
+- 业务相关 schema 中存在表（例如 public/gas/admin/tokens 等，具体以当前版本为准）
+- `_sqlx_migrations` 中存在已应用的迁移记录
 
 ---
 
@@ -110,7 +111,8 @@ docker compose up -d cockroach
 现在可以：
 1. 启动应用：`cargo run`
 2. 访问 API：`http://localhost:8088`
-3. 查看 Admin UI：`http://localhost:8090`
+3. 健康检查：`GET /healthz`（例如 `http://localhost:8088/healthz`）
+4. 查看 Admin UI：`http://localhost:8090`
 
 ---
 

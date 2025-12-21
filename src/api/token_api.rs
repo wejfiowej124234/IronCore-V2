@@ -217,16 +217,20 @@ pub async fn get_token_balance(
     );
 
     // 统一链标识符（支持 eth/ETH/1/Ethereum 等）
-    let chain_cfg = crate::utils::chain_normalizer::get_chain_config(&query.chain).map_err(|e| {
-        convert_error(
-            StatusCode::BAD_REQUEST,
-            format!("Unsupported network: {} ({})", query.chain, e),
-        )
-    })?;
+    let chain_cfg =
+        crate::utils::chain_normalizer::get_chain_config(&query.chain).map_err(|e| {
+            convert_error(
+                StatusCode::BAD_REQUEST,
+                format!("Unsupported network: {} ({})", query.chain, e),
+            )
+        })?;
     let chain_id: u64 = u64::try_from(chain_cfg.chain_id).map_err(|_| {
         convert_error(
             StatusCode::BAD_REQUEST,
-            format!("Unsupported chain_id for token lookup: {}", chain_cfg.chain_id),
+            format!(
+                "Unsupported chain_id for token lookup: {}",
+                chain_cfg.chain_id
+            ),
         )
     })?;
     let canonical_chain = chain_cfg.canonical_name;
@@ -235,7 +239,10 @@ pub async fn get_token_balance(
     if !crate::utils::chain_normalizer::is_evm_chain(canonical_chain) {
         return Err(convert_error(
             StatusCode::BAD_REQUEST,
-            format!("Token balance only supports EVM chains, got: {}", query.chain),
+            format!(
+                "Token balance only supports EVM chains, got: {}",
+                query.chain
+            ),
         ));
     }
 
@@ -282,13 +289,15 @@ pub async fn get_token_balance(
             })?
     } else {
         // 校验合约地址格式（优先使用DB里的地址，避免路径大小写/别名问题）
-        let contract_address = crate::infrastructure::rpc_validator::validate_address(&token.address)
-            .map_err(|e| {
-                convert_error(
-                    StatusCode::BAD_REQUEST,
-                    format!("Invalid token contract address: {} ({})", token.address, e),
-                )
-            })?;
+        let contract_address = crate::infrastructure::rpc_validator::validate_address(
+            &token.address,
+        )
+        .map_err(|e| {
+            convert_error(
+                StatusCode::BAD_REQUEST,
+                format!("Invalid token contract address: {} ({})", token.address, e),
+            )
+        })?;
 
         state
             .blockchain_client

@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use axum::{extract::State, routing::get, Json, Router};
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 use tracing::warn;
+use utoipa::ToSchema;
 
 use crate::{api::response::success_response, app_state::AppState, error::AppError};
 

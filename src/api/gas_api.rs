@@ -99,7 +99,9 @@ pub async fn estimate_gas(
             .ok_or_else(|| AppError::bad_request(format!("Unsupported chain_id: {chain_id}")))?
             .to_string()
     } else {
-        return Err(AppError::bad_request("Missing required query param: chain (or chain_id)"));
+        return Err(AppError::bad_request(
+            "Missing required query param: chain (or chain_id)",
+        ));
     };
 
     let chain_lower = chain_input.to_lowercase();
@@ -171,7 +173,9 @@ pub async fn estimate_all_speeds(
             .ok_or_else(|| AppError::bad_request(format!("Unsupported chain_id: {chain_id}")))?
             .to_string()
     } else {
-        return Err(AppError::bad_request("Missing required query param: chain (or chain_id)"));
+        return Err(AppError::bad_request(
+            "Missing required query param: chain (or chain_id)",
+        ));
     };
 
     // 验证链名称

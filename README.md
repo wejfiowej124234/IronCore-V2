@@ -1,10 +1,11 @@
 # IronCore Backend - 企业级多链钱包后端
 
-> 生产级后端 API 服务器 | 46+ REST API | 900+ 测试 | 非托管架构
+> 生产级后端 API 服务器 | OpenAPI 驱动 | 非托管架构
 
 **端口**: 8088  
-**技术栈**: Rust + Axum + PostgreSQL/CockroachDB + Redis + Immudb  
-**文档覆盖率**: 100% ✅ | **测试覆盖率**: 85% ✅
+**技术栈**: Rust + Axum + PostgreSQL/CockroachDB + Redis + Immudb
+
+> 说明：接口数量、覆盖率、性能指标等属于“快照数据”，可能随迭代变化；请以 OpenAPI（`/openapi.yaml`）与 CI 结果为准。
 
 ---
 
@@ -14,23 +15,22 @@
 
 ### 🎯 按角色快速导航
 
-| 角色 | 推荐阅读路径 | 预计时间 |
-|------|-------------|----------|
-| **🌟 新手开发者** | [快速开始](./docs/00-quickstart/README.md) → [开发指南](./docs/11-development/README.md) | 30 分钟 |
-| **🏗️ 架构师** | [系统架构](./docs/01-architecture/README.md) → [配置与安全](./docs/02-configuration/README.md) | 60 分钟 |
-| **📡 前端工程师** | [API 参考](./docs/03-api/README.md) → [错误处理](./docs/08-error-handling/README.md) | 45 分钟 |
-| **🧪 测试工程师** | [测试指南](./docs/04-testing/README.md) → [项目报告](./docs/10-reports/README.md) | 50 分钟 |
-| **🚀 DevOps/SRE** | [部署](./docs/05-deployment/README.md) → [运维](./docs/06-operations/README.md) → [监控](./docs/07-monitoring/README.md) | 90 分钟 |
-| **🔐 系统管理员** | [管理后台](./docs/09-admin/README.md) → [配置管理](./docs/02-configuration/README.md) | 60 分钟 |
 
----
+# 创建/编辑 config.toml（也可从 config.example.toml 复制）
+# 关键：allow_degraded_start=true 可在无数据库时启动
 
 ## 📂 文档分类 (12个分类，100%覆盖)
+启动服务：
 
-| # | 分类 | 核心文档 | 说明 |
-|---|------|---------|------|
-| 00 | **🌟 [快速开始](./docs/00-quickstart/README.md)** | 4 份 | 零基础上手、常见问题、故障排查 |
-| 01 | **🏗️ [系统架构](./docs/01-architecture/README.md)** | 3 份 | 多链架构、API 路由、业务逻辑 |
+```bash
+cargo run
+```
+
+本地访问：
+
+- 健康检查：`http://127.0.0.1:8088/healthz` 或 `http://127.0.0.1:8088/api/health`
+- OpenAPI（权威）：`http://127.0.0.1:8088/openapi.yaml`
+- Swagger UI：`http://127.0.0.1:8088/docs/`
 | 02 | **⚙️ [配置与安全](./docs/02-configuration/README.md)** | 9 份 | 配置管理、数据库、安全策略 |
 | 03 | **📡 [API 设计](./docs/03-api/README.md)** | 3 份 | 46+ API、错误码、Gas 估算 |
 | 04 | **🧪 [测试](./docs/04-testing/README.md)** | 2 份 | 900+ 测试、85% 覆盖率 |
@@ -151,7 +151,7 @@ enable_prometheus = true
 
 ### OpenAPI（权威）
 - `GET /openapi.yaml` - OpenAPI 文档
-- `GET /docs` - Swagger UI
+- `GET /docs/` - Swagger UI（`/docs` 会重定向到 `/docs/`）
 
 ### 业务 API（权威）
 - 所有业务接口统一在 `/api/v1/...`，请以 OpenAPI 为准（避免复制 README 中的历史清单）。
@@ -271,13 +271,13 @@ cargo tarpaulin --out Html
 
 ```bash
 # 构建镜像
-docker build -t ironforge-backend .
+docker build -t ironcore .
 
 # 运行容器
 docker run -p 8088:8088 \
   -e DATABASE_URL="postgres://..." \
   -e JWT_SECRET="..." \
-  ironforge-backend
+  ironcore
 ```
 
 ### 生产环境
@@ -287,8 +287,17 @@ docker run -p 8088:8088 \
 cargo build --release
 
 # 运行
-./target/release/ironforge_backend
+./target/release/ironcore
 ```
+
+### Fly.io（已发布）
+
+- Backend（默认域名）：https://oxidevault-ironcore-v2.fly.dev
+- 健康检查：https://oxidevault-ironcore-v2.fly.dev/healthz
+- OpenAPI：https://oxidevault-ironcore-v2.fly.dev/openapi.yaml
+- Swagger UI：https://oxidevault-ironcore-v2.fly.dev/docs/
+
+注：Fly 配置默认设置 `SKIP_MIGRATIONS=1`（见 `fly.toml`），避免发布滚动时因迁移阻塞导致健康检查失败。需要迁移时请在受控窗口单独执行。
 
 **详细说明**: [部署指南](./docs/05-deployment/DEPLOYMENT.md)
 
@@ -297,8 +306,8 @@ cargo build --release
 ## 📁 项目结构
 
 ```
-backend/
-├── src/
+IronCore-V2/
+├── src/                  # Rust 源代码
 │   ├── api/              # API 路由和处理器
 │   ├── service/          # 业务逻辑
 │   ├── repository/       # 数据访问
@@ -307,9 +316,9 @@ backend/
 │   └── utils/            # 工具函数
 ├── docs/                 # 完整文档
 ├── migrations/           # 数据库迁移
-├── tests/                # 集成测试
-├── benches/              # 基准测试
-└── config.toml           # 配置文件
+├── tests/                # 测试
+├── config.example.toml   # 配置示例
+└── config.toml           # 本地配置（建议不提交）
 ```
 
 ---
@@ -335,17 +344,11 @@ backend/
 
 ---
 
-## 📊 项目统计
+## 📊 指标口径
 
-| 指标 | 数值 | 状态 |
-|------|------|------|
-| **REST API 端点** | 46+ | ✅ 完成 |
-| **测试用例** | 900+ | ✅ 完成 |
-| **代码覆盖率** | 85% | ✅ 优秀 |
-| **文档数量** | 85 份 (32,789 行) | ✅ 完整 |
-| **支持区块链** | 4+ (ETH, BSC, Polygon, BTC) | ✅ 生产就绪 |
-| **响应时间 (p95)** | < 100ms | ✅ 高性能 |
-| **生产就绪度** | 100% | ✅ 可部署 |
+- API 能力：以 `GET /openapi.yaml` 为准
+- 质量门禁：以 GitHub Actions CI（fmt/clippy/test/build）为准
+- 性能/容量：以压测报告与运行时监控为准
 
 ---
 

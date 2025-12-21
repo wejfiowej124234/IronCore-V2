@@ -183,7 +183,7 @@ impl RpcSelector {
                     last_latency_ms::BIGINT AS last_latency_ms,
                     circuit_state,
                     last_checked_at
-             FROM admin.rpc_endpoints"
+             FROM admin.rpc_endpoints",
         )
         .fetch_all(&self.pool)
         .await?;

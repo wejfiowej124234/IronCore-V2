@@ -188,7 +188,12 @@ pub async fn api_fees(
     // 企业级标准：统一chain参数处理，支持多种格式
     // - 如果提供了 chain：允许链名/符号 或 chain_id 字符串
     // - 否则使用 chain_id（与前端现有调用兼容）
-    let chain_id = if let Some(chain_str) = q.chain.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+    let chain_id = if let Some(chain_str) = q
+        .chain
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+    {
         if let Ok(chain_id) = chain_str.parse::<i64>() {
             chain_id
         } else {
@@ -239,9 +244,9 @@ pub async fn api_fees(
     // - 基础转账（无 data）：21,000 gas（ETH标准，这是固定的，不是硬编码）
     let gas_limit = if q.data.as_deref().unwrap_or("").trim().is_empty() {
         if q.to.starts_with("0x") && q.to.len() == 42 {
-        // 企业级实现：从环境变量读取标准ETH转账gas limit（支持动态调整）
-        // 注意：21000 gas是EIP-1559协议规定的标准ETH转账gas limit，但可以通过环境变量覆盖
-        std::env::var("STANDARD_ETH_TRANSFER_GAS_LIMIT")
+            // 企业级实现：从环境变量读取标准ETH转账gas limit（支持动态调整）
+            // 注意：21000 gas是EIP-1559协议规定的标准ETH转账gas limit，但可以通过环境变量覆盖
+            std::env::var("STANDARD_ETH_TRANSFER_GAS_LIMIT")
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
             .filter(|&v| v > 0 && v <= 100_000) // 验证范围：合理值
@@ -266,16 +271,16 @@ pub async fn api_fees(
                 );
                 21_000u64 // 安全默认值：标准ETH转账（协议规定，仅作为最后保障）
             })
-            } else {
-        // 企业级实现：合约调用应该使用 eth_estimateGas RPC 方法
-        // 当前实现：使用配置的默认值（从环境变量或配置读取）
-        // 生产环境建议：调用 eth_estimateGas({from, to, data}) 获取精确值
+        } else {
+            // 企业级实现：合约调用应该使用 eth_estimateGas RPC 方法
+            // 当前实现：使用配置的默认值（从环境变量或配置读取）
+            // 生产环境建议：调用 eth_estimateGas({from, to, data}) 获取精确值
 
-        // 企业级实现：多级降级策略
-        // 1. 优先从环境变量读取链特定的默认值
-        let chain_specific_key =
-            format!("DEFAULT_CONTRACT_GAS_LIMIT_{}", chain_name.to_uppercase());
-        let default_contract_gas_limit = std::env::var(&chain_specific_key)
+            // 企业级实现：多级降级策略
+            // 1. 优先从环境变量读取链特定的默认值
+            let chain_specific_key =
+                format!("DEFAULT_CONTRACT_GAS_LIMIT_{}", chain_name.to_uppercase());
+            let default_contract_gas_limit = std::env::var(&chain_specific_key)
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
             .filter(|&limit| limit > 0 && limit <= 10_000_000) // 验证范围：合理值
@@ -436,13 +441,13 @@ pub async fn api_fees(
                 }
             });
 
-        tracing::debug!(
-            chain=%chain_name,
-            gas_limit=default_contract_gas_limit,
-            "使用配置的合约调用gas_limit（企业级实现：多级降级策略）"
-        );
+            tracing::debug!(
+                chain=%chain_name,
+                gas_limit=default_contract_gas_limit,
+                "使用配置的合约调用gas_limit（企业级实现：多级降级策略）"
+            );
 
-        default_contract_gas_limit
+            default_contract_gas_limit
         }
     } else {
         // ✅ 合约调用：优先使用 eth_estimateGas 获取精确 gas_limit
@@ -456,8 +461,7 @@ pub async fn api_fees(
             .clone()
             .unwrap_or_else(|| "0x0000000000000000000000000000000000000000".to_string());
 
-        let value_hex = dec_wei_to_hex_quantity(&q.amount)
-            .unwrap_or_else(|| "0x0".to_string());
+        let value_hex = dec_wei_to_hex_quantity(&q.amount).unwrap_or_else(|| "0x0".to_string());
 
         let req = crate::service::gas_estimation_service::GasEstimationRequest {
             chain: chain_name.to_string(),
@@ -468,10 +472,7 @@ pub async fn api_fees(
         };
 
         match gas_svc.estimate_gas(req).await {
-            Ok(r) => r
-                .gas_limit
-                .parse::<u64>()
-                .unwrap_or_else(|_| 150_000u64),
+            Ok(r) => r.gas_limit.parse::<u64>().unwrap_or(150_000u64),
             Err(e) => {
                 tracing::warn!(error=%e, chain=%chain_name, "eth_estimateGas failed; falling back to default contract gas limit");
                 std::env::var("DEFAULT_CONTRACT_GAS_LIMIT")
@@ -1033,40 +1034,43 @@ pub async fn broadcast_raw_transaction(
 
     // Best-effort: persist tx record for user history/status lookups.
     // For EVM chains we parse the signed tx to extract from/to/value/nonce.
-    let (from_address, to_address, amount_decimal, token_symbol, gas_fee, nonce_i64) =
-        match req.chain.to_lowercase().as_str() {
-            "ethereum" | "eth" | "bsc" | "polygon" | "matic" | "binance" => {
-                match parse_evm_signed_tx_details(&req.signed_tx) {
-                    Ok(details) => (
-                        details.from,
-                        details.to,
-                        details.amount_decimal,
-                        Some("NATIVE".to_string()),
-                        details.gas_fee,
-                        details.nonce,
-                    ),
-                    Err(e) => {
-                        tracing::warn!(error=?e, chain=%req.chain, "Failed to parse EVM signed tx; storing minimal transaction record");
-                        (
-                            "unknown".to_string(),
-                            "unknown".to_string(),
-                            None,
-                            None,
-                            None,
-                            None,
-                        )
-                    }
+    let (from_address, to_address, amount_decimal, token_symbol, gas_fee, nonce_i64) = match req
+        .chain
+        .to_lowercase()
+        .as_str()
+    {
+        "ethereum" | "eth" | "bsc" | "polygon" | "matic" | "binance" => {
+            match parse_evm_signed_tx_details(&req.signed_tx) {
+                Ok(details) => (
+                    details.from,
+                    details.to,
+                    details.amount_decimal,
+                    Some("NATIVE".to_string()),
+                    details.gas_fee,
+                    details.nonce,
+                ),
+                Err(e) => {
+                    tracing::warn!(error=?e, chain=%req.chain, "Failed to parse EVM signed tx; storing minimal transaction record");
+                    (
+                        "unknown".to_string(),
+                        "unknown".to_string(),
+                        None,
+                        None,
+                        None,
+                        None,
+                    )
                 }
             }
-            _ => (
-                "unknown".to_string(),
-                "unknown".to_string(),
-                None,
-                None,
-                None,
-                None,
-            ),
-        };
+        }
+        _ => (
+            "unknown".to_string(),
+            "unknown".to_string(),
+            None,
+            None,
+            None,
+            None,
+        ),
+    };
 
     // NOTE: wallet_id is optional in schema; we may not know it during raw broadcast.
     // Store tx_type as "send" to match frontend expectations.
@@ -1140,7 +1144,12 @@ pub async fn tx_status(
 
     // Frontend does not always provide `chain` for status.
     // Prefer query param; otherwise infer from user's recorded transactions.
-    let chain = if let Some(chain) = query.chain.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+    let chain = if let Some(chain) = query
+        .chain
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
         chain.to_string()
     } else {
         let inferred: Option<String> = sqlx::query_scalar(
@@ -4341,10 +4350,16 @@ pub async fn get_tx_history(
                 status: row.get::<String, _>("status"),
                 from: row.get::<String, _>("from_address"),
                 to: row.get::<String, _>("to_address"),
-                amount: row.get::<Option<String>, _>("amount").unwrap_or_else(|| "0".to_string()),
+                amount: row
+                    .get::<Option<String>, _>("amount")
+                    .unwrap_or_else(|| "0".to_string()),
                 token: {
                     let sym: String = row.get("token_symbol");
-                    if sym.trim().is_empty() { "NATIVE".to_string() } else { sym }
+                    if sym.trim().is_empty() {
+                        "NATIVE".to_string()
+                    } else {
+                        sym
+                    }
                 },
                 timestamp: row.get::<i64, _>("ts").max(0) as u64,
                 fee: row.get::<String, _>("gas_fee"),

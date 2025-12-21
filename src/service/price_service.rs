@@ -324,7 +324,8 @@ impl PriceService {
     /// 后台任务：定时更新所有支持的币种价格
     pub async fn start_price_updater(self: Arc<Self>) {
         let supported_symbols = vec![
-            "ETH", "SOL", "BTC", "BNB", "MATIC", "AVAX", "DOT", "ADA", "USDT", "USDC", "DAI", "BUSD",
+            "ETH", "SOL", "BTC", "BNB", "MATIC", "AVAX", "DOT", "ADA", "USDT", "USDC", "DAI",
+            "BUSD",
         ];
 
         tokio::spawn(async move {

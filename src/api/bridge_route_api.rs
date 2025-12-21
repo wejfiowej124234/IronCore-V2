@@ -26,7 +26,11 @@ use crate::{
 pub struct BridgeRouteQuoteRequest {
     #[serde(alias = "from_chain", alias = "source_chain")]
     pub from_chain: String,
-    #[serde(alias = "to_chain", alias = "destination_chain", alias = "target_chain")]
+    #[serde(
+        alias = "to_chain",
+        alias = "destination_chain",
+        alias = "target_chain"
+    )]
     pub to_chain: String,
 
     #[serde(alias = "token_symbol", alias = "token")]
@@ -205,10 +209,10 @@ fn amount_f64_to_u256_units(amount: f64, decimals: u32) -> Result<U256, AppError
     };
 
     let scale = U256::from(10u64).pow(U256::from(decimals));
-    Ok(int_u256
+    int_u256
         .checked_mul(scale)
         .and_then(|v| v.checked_add(frac_u256))
-        .ok_or_else(|| AppError::bad_request("Amount overflow".to_string()))?)
+        .ok_or_else(|| AppError::bad_request("Amount overflow".to_string()))
 }
 
 async fn resolve_token_on_chain(
@@ -245,17 +249,10 @@ async fn resolve_token_on_chain(
     Ok((row.address, decimals_u32, row.is_native))
 }
 
-async fn eth_call(
-    state: &AppState,
-    chain: &str,
-    to: &str,
-    data: &str,
-) -> Result<String, AppError> {
-    let endpoint = state
-        .rpc_selector
-        .select(chain)
-        .await
-        .ok_or_else(|| AppError::internal_error(format!("No RPC endpoint available for {chain}")))?;
+async fn eth_call(state: &AppState, chain: &str, to: &str, data: &str) -> Result<String, AppError> {
+    let endpoint = state.rpc_selector.select(chain).await.ok_or_else(|| {
+        AppError::internal_error(format!("No RPC endpoint available for {chain}"))
+    })?;
 
     let request_body = serde_json::json!({
         "jsonrpc": "2.0",
@@ -347,13 +344,17 @@ pub async fn quote_bridge_route(
 
     let src_chain_id = chain_normalizer::get_chain_id(&source_chain)
         .map_err(|e| AppError::bad_request(e.to_string()))?;
-    let (token_address, decimals, is_native) =
-        resolve_token_on_chain(&state, src_chain_id, req.token.trim().to_uppercase().as_str())
-            .await?;
+    let (token_address, decimals, is_native) = resolve_token_on_chain(
+        &state,
+        src_chain_id,
+        req.token.trim().to_uppercase().as_str(),
+    )
+    .await?;
 
     if is_native {
         return Err(AppError::bad_request(
-            "Phase A bridging currently supports ERC20 pool assets only (e.g. USDT/USDC/DAI)".to_string(),
+            "Phase A bridging currently supports ERC20 pool assets only (e.g. USDT/USDC/DAI)"
+                .to_string(),
         ));
     }
 
@@ -465,7 +466,7 @@ pub async fn quote_bridge_route(
         .to_string()
         .parse::<f64>()
         .ok()
-        .and_then(|wei| Some(wei / 1e18))
+        .map(|wei| wei / 1e18)
         .unwrap_or(0.0);
 
     success_response(BridgeRouteQuoteResponse {

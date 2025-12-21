@@ -282,7 +282,9 @@ pub async fn execute_bridge(
     // 基础 hex 校验 helper
     let validate_signed_hex = |signed: &str| -> Result<(), AppError> {
         if !signed.starts_with("0x") {
-            return Err(AppError::bad_request("Invalid transaction format".to_string()));
+            return Err(AppError::bad_request(
+                "Invalid transaction format".to_string(),
+            ));
         }
         let hex_part = signed.strip_prefix("0x").unwrap_or(signed);
         let raw_bytes = hex::decode(hex_part)
@@ -298,7 +300,9 @@ pub async fn execute_bridge(
     if has_steps {
         for step in &req.route_steps {
             if step.signed_tx.trim().is_empty() {
-                return Err(AppError::bad_request("route_steps contains empty signed_tx".to_string()));
+                return Err(AppError::bad_request(
+                    "route_steps contains empty signed_tx".to_string(),
+                ));
             }
             // Phase A: enforce chain match to reduce footguns
             if !step.chain.eq_ignore_ascii_case(&req.source_chain) {
@@ -411,7 +415,11 @@ pub async fn execute_bridge(
                     if msg_lc.contains("invalid raw transaction") || msg_lc.contains("too short") {
                         return Err(AppError::bad_request(format!("Broadcast failed: {}", msg)));
                     }
-                    tracing::error!("Failed to broadcast bridge route step: kind={} err={:?}", step.kind, e);
+                    tracing::error!(
+                        "Failed to broadcast bridge route step: kind={} err={:?}",
+                        step.kind,
+                        e
+                    );
 
                     response_status = "Failed".to_string();
                     let _ = sqlx::query(
@@ -676,15 +684,18 @@ pub async fn get_bridge_status(
                 .get("swap_tx_hash")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
-            let steps = route.get("step_hashes").and_then(|v| v.as_array()).map(|arr| {
-                arr.iter()
-                    .filter_map(|it| {
-                        let kind = it.get("kind")?.as_str()?.to_string();
-                        let tx_hash = it.get("tx_hash")?.as_str()?.to_string();
-                        Some(RouteStepHash { kind, tx_hash })
-                    })
-                    .collect::<Vec<_>>()
-            });
+            let steps = route
+                .get("step_hashes")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|it| {
+                            let kind = it.get("kind")?.as_str()?.to_string();
+                            let tx_hash = it.get("tx_hash")?.as_str()?.to_string();
+                            Some(RouteStepHash { kind, tx_hash })
+                        })
+                        .collect::<Vec<_>>()
+                });
             (approve, swap, steps)
         })
         .unwrap_or((None, None, None));

@@ -36,20 +36,22 @@ echo     [OK] Database ready
 :: Start backend
 echo.
 echo [3/3] Starting IronCore backend...
-echo     Port: 3012
-echo     Swagger: http://localhost:3012/swagger-ui
+echo     Port: 8088
+echo     Docs: http://localhost:8088/docs/
+echo     OpenAPI: http://localhost:8088/openapi.yaml
 echo     Database: postgresql://root@localhost:26257/ironcore?sslmode=disable
 echo.
 
 :: Set environment variables
-rem SKIP_MIGRATIONS removed - migrations will run automatically
+rem NOTE: For local dev, you may set SKIP_MIGRATIONS=1 to speed up startup.
 set RUST_LOG=info
 set DATABASE_URL=postgresql://root@localhost:26257/ironcore?sslmode=disable
-set REDIS_URL=redis://:cdoqUAJuktZ9y9U8tJ31v9hXCnUjxCjLlTxVsh7lavs=@localhost:6379
-set JWT_SECRET=w5s85oUKczFa9cwGhx1LUYz9LGc9PMK34MzymMFe6Z6nvCchqkN9MYbCNUU3f6Ww
-set WALLET_ENC_KEY=dev-wallet-encryption-key-32chars!!
+set REDIS_URL=redis://localhost:6379
+rem Dev-only defaults. Override these in your environment or .env.
+if "%JWT_SECRET%"=="" set JWT_SECRET=dev-jwt-secret-change-me-in-production-32chars
+if "%WALLET_ENC_KEY%"=="" set WALLET_ENC_KEY=dev-wallet-enc-key-change-me-32chars!!
 
-echo     [INFO] Auto-migration enabled (first start may be slower)
+echo     [INFO] If first start is slow, consider setting SKIP_MIGRATIONS=1
 
 :: Run backend
 cargo run --release --bin ironcore

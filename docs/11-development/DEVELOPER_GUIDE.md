@@ -639,7 +639,24 @@ RUST_BACKTRACE=1 cargo run
 RUST_BACKTRACE=full cargo run
 ```
 
-### 5. 性能分析
+### 5. CORS 策略（开发 / 生产）
+
+后端 CORS 行为由环境变量 `CORS_ALLOW_ORIGINS` 控制：
+
+- 默认值（未配置时）：`http://localhost:8080,http://127.0.0.1:8080,http://localhost:8081,http://127.0.0.1:8081`
+- 配置方式：逗号分隔的 Origin 列表；也可设置为 `*`
+
+当前实现为了避免生产环境误配导致前端不可用，存在“兼容模式”：
+
+- 请求包含 `Origin` 时：即使不在 `CORS_ALLOW_ORIGINS` 列表中，也可能回显该 `Origin`（宽松策略）。
+- `Access-Control-Allow-Credentials` 固定为 `false`。
+
+生产建议：
+
+- 在部署环境显式设置 `CORS_ALLOW_ORIGINS` 为前端域名（例如 `https://oxidevault-ironforge-v2.fly.dev`）。
+- 如需严格白名单（不允许任意 Origin 回显），需要移除 `src/api/mod.rs` 中“存在显式 Origin 时先放行”的分支逻辑。
+
+### 6. 性能分析
 
 ```bash
 # 安装 flamegraph
